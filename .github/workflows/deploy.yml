@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: '0 16 * * *' # 16:00 UTC is 00:00 Taipei Time (UTC+8)
 
 jobs:
   deploy:
@@ -26,7 +28,14 @@ jobs:
             [ -f ~/.env ] && cp ~/.env .env || echo ".env not found in home directory"
             pip3 install -r requirements.txt
             
-            sudo apt-get install at -y || true
-            echo "cd ~/ai_crypto_strategy && export PYTHONPATH=\$PYTHONPATH:. && pkill -f src.market || true && python3 -m src.market > market.log 2>&1" | at now
-            sleep 2
+            if [ "${{ github.event_name }}" == "schedule" ]; then
+              echo "Running daily summary..."
+              export PYTHONPATH=$PYTHONPATH:.
+              python3 -m src.summary
+            else
+              echo "Deploying market monitor..."
+              sudo apt-get install at -y || true
+              echo "cd ~/ai_crypto_strategy && export PYTHONPATH=\$PYTHONPATH:. && pkill -f src.market || true && python3 -m src.market > market.log 2>&1" | at now
+              sleep 2
+            fi
             exit 0

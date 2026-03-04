@@ -1,5 +1,6 @@
 
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 import ccxt
 import pandas as pd
@@ -32,6 +33,25 @@ def calculate_rsi(df, period=14):
     rsi = 100 - (100 / (1 + rs))
     return rsi
 
+
+
+def log_data(timestamp, price, rsi, ema20, ema50):
+    log_file = 'data/history.csv'
+    data = {
+        'timestamp': [timestamp],
+        'price': [price],
+        'rsi': [rsi],
+        'ema20': [ema20],
+        'ema50': [ema50]
+    }
+    df = pd.DataFrame(data)
+    
+    if not os.path.isfile(log_file):
+        df.to_csv(log_file, index=False)
+    else:
+        df.to_csv(log_file, mode='a', header=False, index=False)
+
+
 def calculate_ema(df, period):
     return df['close'].ewm(span=period, adjust=False).mean()
 
@@ -46,6 +66,10 @@ def main():
         latest_close = df['close'].iloc[-1]
         latest_ema20 = df['ema20'].iloc[-1]
         latest_ema50 = df['ema50'].iloc[-1]
+        latest_timestamp = df['timestamp'].iloc[-1]
+
+        # 實作日誌存檔
+        log_data(latest_timestamp, latest_close, latest_rsi, latest_ema20, latest_ema50)
         
         # 趨勢過濾邏輯：
         # 1. 價格 > EMA 20 (短期強勢)
