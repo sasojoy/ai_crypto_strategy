@@ -52,11 +52,11 @@ def main():
         latest_close = df['close'].iloc[-1]
         latest_ema20 = df['ema20'].iloc[-1]
         
-        if latest_close > latest_ema20 and latest_rsi < 35:
-            print(f"【強勢回調買入信號】當前價格 ({latest_close}) > EMA 20 ({latest_ema20:.2f}) 且 RSI ({latest_rsi:.2f}) < 35。")
+        if latest_rsi < 30:
+            print(f"【買入預警】RSI 為 {latest_rsi:.2f}，超賣區間請注意。")
         else:
-            print(f"目前價格: {latest_close}, EMA 20: {latest_ema20:.2f}, RSI: {latest_rsi:.2f}")
-            print("尚未符合強勢回調買入信號。")
+            print(f"目前價格: {latest_close}, RSI: {latest_rsi:.2f}")
+            print("尚未進入 RSI 超賣區間。")
             
     except Exception as e:
         print(f"發生錯誤: {e}")
