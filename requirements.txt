@@ -1,9 +1,4 @@
 ccxt
 pandas
 python-dotenv
-requests
-EOF > requirements.txt
-ccxt
-pandas
-python-dotenv
-requests
+httpx
