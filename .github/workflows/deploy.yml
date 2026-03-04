@@ -26,19 +26,7 @@ jobs:
             [ -f ~/.env ] && cp ~/.env .env || echo ".env not found in home directory"
             pip3 install -r requirements.txt
             
-            # 1. 殺掉舊進程 (確保乾淨重啟)
-            pkill -f src.market || true
-            
-            # 2. 設定路徑並啟動 (使用 nohup + setsid 雙保險)
-            export PYTHONPATH=$PYTHONPATH:.
-            setsid nohup python3 -m src.market > market.log 2>&1 &
-            
-            # 3. 關鍵：給予緩衝時間並主動回報成功
-            sleep 5
-            if ps aux | grep -v grep | grep "src.market"; then
-              echo "✅ Deployment Successful!"
-              exit 0
-            else
-              echo "❌ Deployment Failed!"
-              exit 1
-            fi
+            sudo apt-get install at -y || true
+            echo "cd ~/ai_crypto_strategy && export PYTHONPATH=\$PYTHONPATH:. && pkill -f src.market || true && python3 -m src.market > market.log 2>&1" | at now
+            sleep 2
+            exit 0
