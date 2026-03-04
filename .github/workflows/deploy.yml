@@ -16,9 +16,9 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.GCE_HOST }}
-          username: ${{ secrets.GCE_USERNAME }}
-          key: ${{ secrets.GCE_SSH_KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
             cd ~/ai_crypto_strategy
             git pull origin main
