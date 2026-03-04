@@ -1,9 +1,23 @@
 
+import os
+from dotenv import load_dotenv
 import ccxt
 import pandas as pd
 
+# Load environment variables from .env file
+load_dotenv()
+
 def fetch_15m_data():
-    exchange = ccxt.binance()
+    # Initialize exchange with API keys if available
+    api_key = os.getenv('BINANCE_API_KEY')
+    secret_key = os.getenv('BINANCE_SECRET_KEY')
+    
+    config = {}
+    if api_key and secret_key:
+        config['apiKey'] = api_key
+        config['secret'] = secret_key
+        
+    exchange = ccxt.binance(config)
     symbol = 'BTC/USDT'
     timeframe = '15m'
     limit = 100
