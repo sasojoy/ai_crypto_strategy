@@ -51,6 +51,7 @@ def main():
         # 1. 價格 > EMA 20 (短期強勢)
         # 2. EMA 20 > EMA 50 (長期趨勢向上)
         # 3. RSI < 30 (回調超賣)
+        # 買入條件：價格 > EMA20 且 EMA20 > EMA50 且 RSI < 30
         if latest_close > latest_ema20 and latest_ema20 > latest_ema50 and latest_rsi < 30:
             msg = (
                 f"🔔【目標 100 萬 - 買入預警】\n"
