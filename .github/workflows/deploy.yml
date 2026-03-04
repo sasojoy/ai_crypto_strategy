@@ -23,6 +23,6 @@ jobs:
             cd ~/ai_crypto_strategy
             git pull origin main
             pip install -r requirements.txt
-            # 使用 nohup 在背景執行，並將 PID 記錄下來以便重啟
-            pkill -f "python src/market.py" || true
-            nohup python src/market.py > market.log 2>&1 &
+            pkill -f "python3 -m src.market" || true
+            export PYTHONPATH=$PYTHONPATH:.
+            nohup python3 -m src.market > market.log 2>&1 &
