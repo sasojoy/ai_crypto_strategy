@@ -3,22 +3,14 @@ import os
 from dotenv import load_dotenv
 import ccxt
 import pandas as pd
-from src.notifier import send_telegram_message
+from src.notifier import send_telegram_msg
 
 # Load environment variables from .env file
 load_dotenv()
 
 def fetch_15m_data():
-    # Initialize exchange with API keys if available
-    api_key = os.getenv('BINANCE_API_KEY')
-    secret_key = os.getenv('BINANCE_SECRET_KEY')
-    
-    config = {}
-    if api_key and secret_key:
-        config['apiKey'] = api_key
-        config['secret'] = secret_key
-        
-    exchange = ccxt.binance(config)
+    # 僅使用公共 API 獲取市場數據，移除下單相關邏輯
+    exchange = ccxt.binance()
     symbol = 'BTC/USDT'
     timeframe = '15m'
     limit = 100
@@ -58,11 +50,17 @@ def main():
         # 趨勢過濾邏輯：
         # 1. 價格 > EMA 20 (短期強勢)
         # 2. EMA 20 > EMA 50 (長期趨勢向上)
-        # 3. RSI < 35 (回調超賣)
-        if latest_close > latest_ema20 and latest_ema20 > latest_ema50 and latest_rsi < 35:
-            msg = f"【強勢回調買入預警】\n價格: {latest_close}\nEMA20: {latest_ema20:.2f}\nEMA50: {latest_ema50:.2f}\nRSI: {latest_rsi:.2f}"
+        # 3. RSI < 30 (回調超賣)
+        if latest_close > latest_ema20 and latest_ema20 > latest_ema50 and latest_rsi < 30:
+            msg = (
+                f"🔔【目標 100 萬 - 買入預警】\n"
+                f"幣種：BTC/USDT\n"
+                f"目前 RSI：{latest_rsi:.2f}\n"
+                f"目前價格：{latest_close}\n"
+                f"均線狀態：多頭排列。"
+            )
             print(msg)
-            send_telegram_message(msg)
+            send_telegram_msg(msg)
         else:
             print(f"目前價格: {latest_close}, RSI: {latest_rsi:.2f}, EMA20: {latest_ema20:.2f}, EMA50: {latest_ema50:.2f}")
             print("尚未符合強勢回調買入條件。")
