@@ -1,4 +1,4 @@
-name: Deploy to GCE
+name: Deploy to GCE v1.1
 
 on:
   push:
@@ -24,15 +24,15 @@ jobs:
             cd ~/ai_crypto_strategy
             # 強制覆蓋本地變動，確保代碼絕對同步
             git fetch --all && git reset --hard origin/main
-            
+
             # 使用 GitHub Secrets 建立 .env (確保 GCE 上已有這些 Secrets)
             printf "TELEGRAM_BOT_TOKEN=%s\n" "${{ secrets.TELEGRAM_BOT_TOKEN }}" > .env
             printf "TELEGRAM_CHAT_ID=%s\n" "${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
             # 💡 記得補上 GEMINI_API_KEY，否則研究循環會跑不動
             printf "GEMINI_API_KEY=%s\n" "${{ secrets.GEMINI_API_KEY }}" >> .env
-            
+
             pip3 install -r requirements.txt
-            
+
             if [ "${{ github.event_name }}" == "schedule" ]; then
               echo "Running daily summary..."
               export PYTHONPATH=$PYTHONPATH:.
@@ -42,20 +42,20 @@ jobs:
               # 清空舊環境進程
               pkill -f "python3 -u -m src.market" || true
               pkill -f "market.py" || true
-              
+
               # 正確重啟
               export PYTHONPATH=$PYTHONPATH:.
               nohup python3 -u -m src.market > market.log 2>&1 &
-              
+
               # 連線測試
               sleep 5
               echo "--- Market Log (Last 20 lines) ---"
               tail -n 20 market.log
-              
+
               # 自動化 Crontab 設定
               echo "Updating crontab..."
               (crontab -l 2>/dev/null | grep -v "src.market" ; cat .github/crontab_template.txt) | crontab -
-              
+
               # 最終驗證
               echo "Verifying process..."
               sleep 10
@@ -65,7 +65,7 @@ jobs:
                 echo "❌ Market monitor failed to start."
                 exit 1
               fi
-              
+
               # 部署成功後，自動建立策略報告
               echo "Generating strategy report..."
               python3 src/report.py
