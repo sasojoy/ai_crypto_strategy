@@ -1,10 +1,9 @@
-
 {
-    "version": "V8.1-OOS-Protected",
-    "rsi_th": 30,
-    "ema_f": 50,
-    "ema_s": 200,
-    "sl_mult": 2.0,
-    "tp_mult": 4.0,
-    "macd_confirm": false
+  "rsi_th": 45,
+  "ema_f": 20,
+  "ema_s": 100,
+  "sl_mult": 2.5,
+  "macd_confirm": true,
+  "reason": "The previous iteration yielded almost zero trades, indicating the RSI 30 threshold coupled with a slow trend filter (50/200) is too restrictive. Raising RSI to 45 allows entries on shallower pullbacks during medium-term trends (EMA 20/100).",
+  "version": "Iteration 11"
 }

@@ -9,7 +9,8 @@ from src.evaluate import get_full_report
 from src.grid_search import grid_search
 
 # Configure Gemini API
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+genai.configure(api_key=api_key)
 
 def log_research(message):
     os.makedirs('logs', exist_ok=True)
@@ -50,7 +51,8 @@ def get_market_context():
     return context
 
 def ask_gemini_for_params(context, iteration_count):
-    model = genai.GenerativeModel('gemini-pro')
+    # 使用 gemini-pro-latest 作為備選，這通常對所有 API Key 都開放
+    model = genai.GenerativeModel('gemini-pro-latest')
     prompt = f"""
     You are an expert AI Crypto Quantitative Researcher.
     Current Market Context and Performance (Iteration {iteration_count}):

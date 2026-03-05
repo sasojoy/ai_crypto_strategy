@@ -1,0 +1,38 @@
+[2026-03-05T17:18:47.667550] Starting Autonomous Research Loop...
+[2026-03-05T17:18:56.723656] Sending prompt to Gemini (Iteration 11)...
+[2026-03-05T17:19:13.233732] Starting Autonomous Research Loop...
+[2026-03-05T17:19:22.325643] Sending prompt to Gemini (Iteration 11)...
+[2026-03-05T17:19:52.597858] Starting Autonomous Research Loop...
+[2026-03-05T17:20:01.851582] Sending prompt to Gemini (Iteration 11)...
+[2026-03-05T17:20:26.094707] Starting Autonomous Research Loop...
+[2026-03-05T17:20:35.501599] Sending prompt to Gemini (Iteration 11)...
+[2026-03-05T17:26:12.600888] Starting Autonomous Research Loop...
+[2026-03-05T17:26:21.249264] Sending prompt to Gemini (Iteration 11)...
+[2026-03-05T17:26:41.916207] Gemini Response: [
+  {
+    "rsi_th": 45,
+    "ema_f": 20,
+    "ema_s": 100,
+    "sl_mult": 2.5,
+    "macd_confirm": true,
+    "reason": "The previous iteration yielded almost zero trades, indicating the RSI 30 threshold coupled with a slow trend filter (50/200) is too restrictive. Raising RSI to 45 allows entries on shallower pullbacks during medium-term trends (EMA 20/100)."
+  },
+  {
+    "rsi_th": 35,
+    "ema_f": 40,
+    "ema_s": 150,
+    "sl_mult": 3.0,
+    "macd_confirm": true,
+    "reason": "Adjusting RSI to 35 retains the oversold logic but increases trigger frequency. The wider SL (3.0) is necessary to accommodate the lag inherent in MACD confirmation, preventing premature stop-outs before the reversal materializes."
+  },
+  {
+    "rsi_th": 50,
+    "ema_f": 10,
+    "ema_s": 200,
+    "sl_mult": 1.5,
+    "macd_confirm": true,
+    "reason": "Setting RSI to the maximum constraint (50) shifts the strategy from deep value to momentum continuation. Using a very fast EMA (10) ensures the price is reactive to the trend, relying heavily on the MACD histogram for precise entry timing."
+  }
+]
+[2026-03-05T17:26:41.916479] Testing Suggestion 1: The previous iteration yielded almost zero trades, indicating the RSI 30 threshold coupled with a slow trend filter (50/200) is too restrictive. Raising RSI to 45 allows entries on shallower pullbacks during medium-term trends (EMA 20/100).
+[2026-03-05T17:26:50.361837] Suggestion 1 passed safety check (Positive symbols: 2)
