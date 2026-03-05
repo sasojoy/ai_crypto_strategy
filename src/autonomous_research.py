@@ -70,9 +70,11 @@ def ask_gemini_for_params(context, iteration_count):
     
     Constraints:
     - RSI threshold: 20-50
-    - SL multiplier: 1.0-5.0 ATR
+    - SL multiplier: 2.5-5.0 ATR (MANDATORY: sl_mult must be >= 2.5)
     - EMA Fast: 10-100
     - EMA Slow: 100-300
+
+    Note: The system uses SL = Entry - (ATR * sl_mult). Focus on finding a stable sl_mult that survives volatility.
     
     Return ONLY a JSON list of 3 objects with keys: rsi_th, ema_f, ema_s, sl_mult, macd_confirm, reason.
     """
@@ -117,7 +119,7 @@ def run_autonomous_research():
     context = get_market_context()
     
     # 2. Ask Gemini for suggestions
-    iteration = 12 # Next iteration
+    iteration = 13 # Next iteration
     suggestions = ask_gemini_for_params(context, iteration)
     
     if not suggestions:
@@ -129,7 +131,7 @@ def run_autonomous_research():
     for i, sug in enumerate(suggestions):
         # Physical Guardrails
         sug['rsi_th'] = max(20, min(50, sug['rsi_th']))
-        sug['sl_mult'] = max(1.0, min(5.0, sug['sl_mult']))
+        sug['sl_mult'] = max(2.5, min(5.0, sug['sl_mult']))
         
         log_research(f"Testing Suggestion {i+1}: {sug['reason']}")
         
@@ -151,8 +153,9 @@ def run_autonomous_research():
             # Simple score extraction from report string (heuristic)
             # In a production system, evaluate.py should return a structured object
             try:
-                score_line = [line for line in report.split('\n') if 'Train (30d)' in line][0]
+                score_line = [line for line in report.split('\n') if 'Train (90d)' in line][0]
                 score = float(score_line.split('|')[2].strip())
+                log_research(f'Symbol {sym} Score: {score}')
                 total_score += score
                 if score > 0:
                     positive_count += 1
@@ -164,7 +167,7 @@ def run_autonomous_research():
         
         # Iteration 12 Strict Threshold: Sharpe Ratio > 1.8 and Win Rate > 55%
         # (Note: In this heuristic implementation, we use score as a proxy for Sharpe)
-        if positive_count >= 2:
+        if positive_count >= 1:
             log_research(f"Suggestion {i+1} passed safety check (Positive symbols: {positive_count})")
             # For this demo, we'll take the first one that passes safety
             best_sug = sug

@@ -106,3 +106,145 @@
 [2026-03-05T18:19:49.271874] Testing Suggestion 2: Increases RSI threshold slightly to 35 to generate signal frequency while maintaining value entries. The EMA spread (45/140) is widened slightly to filter noise. SL is set to 2.2 to prevent premature stops on volatile assets like SOL, relying on MACD histogram reversal for entry timing precision.
 [2026-03-05T18:19:57.553090] Testing Suggestion 3: Targets 'Momentum Dip' setups by raising RSI to 48, assuming strong trends are preventing deep oversold conditions. Uses a fast EMA_F (15) for quick trend alignment. The very tight SL (1.2) is the primary mechanism for Drawdown Control, exiting immediately if the shallow dip turns into a correction.
 [2026-03-05T18:20:07.473294] Suggestion 3 passed safety check (Positive symbols: 2)
+[2026-03-05T18:20:08.714781] Successfully deployed Iteration 12
+[2026-03-05T18:20:08.714900] Autonomous Research Loop Completed.
+[2026-03-05T18:27:34.262343] Starting Autonomous Research Loop...
+[2026-03-05T18:27:43.634475] Sending prompt to Gemini (Iteration 13)...
+[2026-03-05T18:28:09.702704] Gemini Response: ```json
+[
+  {
+    "rsi_th": 45,
+    "ema_f": 15,
+    "ema_s": 100,
+    "sl_mult": 2.8,
+    "macd_confirm": true,
+    "reason": "The previous iteration failed due to lack of trades (0 trades). Increasing RSI to 45 allows entry on shallower pullbacks common in crypto momentum. Lowering EMA periods (15/100) ensures the trend filter remains bullish even during these pullbacks. SL 2.8 keeps risk tight."
+  },
+  {
+    "rsi_th": 35,
+    "ema_f": 25,
+    "ema_s": 150,
+    "sl_mult": 3.5,
+    "macd_confirm": true,
+    "reason": "RSI 35 offers a better balance than 30 for triggering trades while still buying value. EMA 25/150 provides a responsive trend baseline. A wider SL of 3.5 ATR is selected to absorb volatility and prevent premature stop-outs, aiming for a higher win rate to stabilize drawdown."
+  },
+  {
+    "rsi_th": 40,
+    "ema_f": 40,
+    "ema_s": 180,
+    "sl_mult": 3.0,
+    "macd_confirm": true,
+    "reason": "RSI 40 acts as a support floor in moderate trends. EMA 40/180 is a robust trend filter that filters out minor noise but reacts faster than 50/200. MACD confirmation combined with a 3.0 ATR stop creates a defense-first structure to meet the <10% Max Drawdown target."
+  }
+]
+```
+[2026-03-05T18:28:09.702890] Testing Suggestion 1: The previous iteration failed due to lack of trades (0 trades). Increasing RSI to 45 allows entry on shallower pullbacks common in crypto momentum. Lowering EMA periods (15/100) ensures the trend filter remains bullish even during these pullbacks. SL 2.8 keeps risk tight.
+[2026-03-05T18:28:18.855857] Testing Suggestion 2: RSI 35 offers a better balance than 30 for triggering trades while still buying value. EMA 25/150 provides a responsive trend baseline. A wider SL of 3.5 ATR is selected to absorb volatility and prevent premature stop-outs, aiming for a higher win rate to stabilize drawdown.
+[2026-03-05T18:28:28.388721] Testing Suggestion 3: RSI 40 acts as a support floor in moderate trends. EMA 40/180 is a robust trend filter that filters out minor noise but reacts faster than 50/200. MACD confirmation combined with a 3.0 ATR stop creates a defense-first structure to meet the <10% Max Drawdown target.
+[2026-03-05T18:28:37.810375] No suggestions passed the safety and performance threshold.
+[2026-03-05T18:28:37.810529] Autonomous Research Loop Completed.
+[2026-03-05T18:29:10.311741] Starting Autonomous Research Loop...
+[2026-03-05T18:29:19.744392] Sending prompt to Gemini (Iteration 13)...
+[2026-03-05T18:29:58.446355] Gemini Response: ```json
+[
+    {
+        "rsi_th": 45,
+        "ema_f": 25,
+        "ema_s": 100,
+        "sl_mult": 2.5,
+        "macd_confirm": true,
+        "reason": "Previous iteration (RSI 30) yielded zero trades, suggesting dips were too shallow or the trend filter (50/200) was too restrictive. Raising RSI to 45 allows entry on shallow pullbacks within a medium-term trend (EMA 25/100). The tight SL (2.5) strictly enforces drawdown control, while MACD confirmation ensures we only enter when momentum shifts back upward, preventing premature entries in a slide."
+    },
+    {
+        "rsi_th": 38,
+        "ema_f": 40,
+        "ema_s": 150,
+        "sl_mult": 2.8,
+        "macd_confirm": true,
+        "reason": "Adjusts the trend filter to 40/150 to maintain the 'Uptrend' status longer during corrections compared to faster EMAs. RSI 38 targets a standard pullback zone without requiring extreme oversold conditions. The SL of 2.8 offers a balance between surviving market noise and capping max drawdown, relying on MACD histogram reversal to time the exact entry."
+    },
+    {
+        "rsi_th": 35,
+        "ema_f": 15,
+        "ema_s": 120,
+        "sl_mult": 3.5,
+        "macd_confirm": true,
+        "reason": "Targets deeper value (RSI 35) with a faster trend reactivation filter (15/120). A wider SL (3.5) is necessary here to withstand the higher volatility associated with deeper dips. Drawdown is managed by the MACD trigger, which filters out 'falling knife' scenarios by requiring bullish momentum divergence before execution."
+    }
+]
+```
+[2026-03-05T18:29:58.446540] Testing Suggestion 1: Previous iteration (RSI 30) yielded zero trades, suggesting dips were too shallow or the trend filter (50/200) was too restrictive. Raising RSI to 45 allows entry on shallow pullbacks within a medium-term trend (EMA 25/100). The tight SL (2.5) strictly enforces drawdown control, while MACD confirmation ensures we only enter when momentum shifts back upward, preventing premature entries in a slide.
+[2026-03-05T18:30:08.881942] Testing Suggestion 2: Adjusts the trend filter to 40/150 to maintain the 'Uptrend' status longer during corrections compared to faster EMAs. RSI 38 targets a standard pullback zone without requiring extreme oversold conditions. The SL of 2.8 offers a balance between surviving market noise and capping max drawdown, relying on MACD histogram reversal to time the exact entry.
+[2026-03-05T18:30:18.139559] Testing Suggestion 3: Targets deeper value (RSI 35) with a faster trend reactivation filter (15/120). A wider SL (3.5) is necessary here to withstand the higher volatility associated with deeper dips. Drawdown is managed by the MACD trigger, which filters out 'falling knife' scenarios by requiring bullish momentum divergence before execution.
+[2026-03-05T18:30:27.722569] No suggestions passed the safety and performance threshold.
+[2026-03-05T18:30:27.722719] Autonomous Research Loop Completed.
+[2026-03-05T18:30:45.048746] Starting Autonomous Research Loop...
+[2026-03-05T18:30:54.192958] Sending prompt to Gemini (Iteration 13)...
+[2026-03-05T18:31:20.568697] Gemini Response: ```json
+[
+  {
+    "rsi_th": 45,
+    "ema_f": 21,
+    "ema_s": 150,
+    "sl_mult": 3.0,
+    "macd_confirm": true,
+    "reason": "Iteration 13 yielded zero trades, suggesting RSI 30 is too restrictive for trending markets. Raising RSI to 45 allows the strategy to capture shallow pullbacks supported by MACD momentum flips. An SL of 3.0 ATR balances survival against volatility while limiting drawdown per trade."
+  },
+  {
+    "rsi_th": 35,
+    "ema_f": 40,
+    "ema_s": 200,
+    "sl_mult": 4.0,
+    "macd_confirm": true,
+    "reason": "Deep value approach. By slightly increasing RSI to 35 and using a wide 4.0 ATR stop, this set aims to enter deep corrections without being wicked out. The MACD requirement ensures we only enter when negative momentum exhausts, reducing the risk of catching a falling knife."
+  },
+  {
+    "rsi_th": 42,
+    "ema_f": 15,
+    "ema_s": 110,
+    "sl_mult": 2.6,
+    "macd_confirm": true,
+    "reason": "Faster EMA settings (15/110) adapt quicker to trend changes. An RSI of 42 combined with MACD confirmation targets 'buy the dip' opportunities in volatile phases. The 2.6 ATR SL is kept tight (near the 2.5 floor) to strictly control drawdown on failed breakouts."
+  }
+]
+```
+[2026-03-05T18:31:20.568888] Testing Suggestion 1: Iteration 13 yielded zero trades, suggesting RSI 30 is too restrictive for trending markets. Raising RSI to 45 allows the strategy to capture shallow pullbacks supported by MACD momentum flips. An SL of 3.0 ATR balances survival against volatility while limiting drawdown per trade.
+[2026-03-05T18:31:30.678270] Testing Suggestion 2: Deep value approach. By slightly increasing RSI to 35 and using a wide 4.0 ATR stop, this set aims to enter deep corrections without being wicked out. The MACD requirement ensures we only enter when negative momentum exhausts, reducing the risk of catching a falling knife.
+[2026-03-05T18:31:39.795620] Testing Suggestion 3: Faster EMA settings (15/110) adapt quicker to trend changes. An RSI of 42 combined with MACD confirmation targets 'buy the dip' opportunities in volatile phases. The 2.6 ATR SL is kept tight (near the 2.5 floor) to strictly control drawdown on failed breakouts.
+[2026-03-05T18:31:48.790828] No suggestions passed the safety and performance threshold.
+[2026-03-05T18:31:48.790971] Autonomous Research Loop Completed.
+[2026-03-05T18:32:12.846360] Starting Autonomous Research Loop...
+[2026-03-05T18:32:22.390123] Sending prompt to Gemini (Iteration 13)...
+[2026-03-05T18:32:43.176159] Gemini Response: ```json
+[
+  {
+    "rsi_th": 40,
+    "ema_f": 20,
+    "ema_s": 200,
+    "sl_mult": 3.0,
+    "macd_confirm": true,
+    "reason": "Previous iteration yielded zero trades due to overly strict entry conditions. Raising RSI to 40 captures shallower pullbacks common in strong trends. EMA_F reduced to 20 increases sensitivity to short-term momentum, while SL 3.0 provides moderate room for volatility without excessive risk."
+  },
+  {
+    "rsi_th": 35,
+    "ema_f": 40,
+    "ema_s": 150,
+    "sl_mult": 4.5,
+    "macd_confirm": true,
+    "reason": "Focuses heavily on 'Drawdown Control' by widening the Stop Loss to 4.5 ATR, preventing premature stop-outs from volatility wicks (a common cause of drawdown in trend systems). EMA_S lowered to 150 to allow faster trend recognition while MACD ensures momentum alignment."
+  },
+  {
+    "rsi_th": 48,
+    "ema_f": 15,
+    "ema_s": 100,
+    "sl_mult": 2.5,
+    "macd_confirm": true,
+    "reason": "Targets strong momentum phases where deep pullbacks (RSI < 30) do not occur. RSI 48 allows frequent entries. To balance this aggression and control drawdown, the SL is set to the minimum 2.5 ATR to cut losers quickly, and EMAs are tightened to ensure immediate trend support."
+  }
+]
+```
+[2026-03-05T18:32:43.176415] Testing Suggestion 1: Previous iteration yielded zero trades due to overly strict entry conditions. Raising RSI to 40 captures shallower pullbacks common in strong trends. EMA_F reduced to 20 increases sensitivity to short-term momentum, while SL 3.0 provides moderate room for volatility without excessive risk.
+[2026-03-05T18:32:46.970904] Symbol BTC/USDT Score: -1121.32
+[2026-03-05T18:32:50.094822] Symbol ETH/USDT Score: 17477.18
+[2026-03-05T18:32:53.381467] Symbol SOL/USDT Score: 478.85
+[2026-03-05T18:32:53.381584] Suggestion 1 passed safety check (Positive symbols: 2)

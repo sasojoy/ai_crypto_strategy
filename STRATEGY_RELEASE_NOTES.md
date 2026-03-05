@@ -9,6 +9,30 @@
 
 # Strategy Release Notes
 
+## Iteration 13 - Triple Threat Optimized
+- **Date**: 2026-03-05
+- **Logic**: Previous iteration yielded zero trades due to overly strict entry conditions. Raising RSI to 40 captures shallower pullbacks common in strong trends. EMA_F reduced to 20 increases sensitivity to short-term momentum, while SL 3.0 provides moderate room for volatility without excessive risk.
+- **Parameters**: RSI=40, EMA_F=20, EMA_S=200, SL=3.0, MACD=True
+- **Performance**:
+### BTC/USDT
+| Period | Score | Net Profit | Win Rate | Max Drawdown | Trades |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Train (90d)** | -1121.32 | $-1152.06 | 11.11% | 11.42% | 9 |
+| **Test (15d)** | 4895.03 | $387.69 | 50.00% | 3.96% | 4 |
+
+### ETH/USDT
+| Period | Score | Net Profit | Win Rate | Max Drawdown | Trades |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Train (90d)** | 17477.18 | $1423.94 | 50.00% | 4.07% | 14 |
+| **Test (15d)** | -99.66 | $-11.84 | 33.33% | 3.96% | 3 |
+
+### SOL/USDT
+| Period | Score | Net Profit | Win Rate | Max Drawdown | Trades |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Train (90d)** | 478.85 | $131.81 | 35.29% | 9.71% | 17 |
+| **Test (15d)** | -0.00 | $-588.08 | 0.00% | 3.96% | 3 |
+
+
 ## Iteration 12 - Triple Threat Optimized
 - **Date**: 2026-03-05
 - **Logic**: Targets 'Momentum Dip' setups by raising RSI to 48, assuming strong trends are preventing deep oversold conditions. Uses a fast EMA_F (15) for quick trend alignment. The very tight SL (1.2) is the primary mechanism for Drawdown Control, exiting immediately if the shallow dip turns into a correction.

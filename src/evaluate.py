@@ -116,29 +116,31 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
 
 def get_full_report(symbol='BTC/USDT', rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True):
     print(f"📊 Generating report for {symbol}...")
-    df_all = fetch_backtest_data(symbol, days=90) # Increased to 90 days as requested
+    # Fetch 105 days of data (90 days train + 15 days test)
+    df_all = fetch_backtest_data(symbol, days=105) 
     if df_all.empty:
         return "No data found."
-    
-    mid_point = len(df_all) // 2
-    df_train = df_all.iloc[:mid_point].copy()
-    df_test = df_all.iloc[mid_point:].copy()
-    
+
+    # Split: Last 15 days for test, previous 90 days for train
+    test_cutoff = df_all['timestamp'].max() - timedelta(days=15)
+    df_train = df_all[df_all['timestamp'] <= test_cutoff].copy()
+    df_test = df_all[df_all['timestamp'] > test_cutoff].copy()
+
     score_tr, profit_tr, wr_tr, mdd_tr, count_tr = run_evaluation(df_train, rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult, macd_confirm=macd_confirm)
     score_ts, profit_ts, wr_ts, mdd_ts, count_ts = run_evaluation(df_test, rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult, macd_confirm=macd_confirm)
-    
+
     report = f"### [Strategy Iteration] Report - {datetime.now().strftime('%Y-%m-%d')}\n\n"
     report += f"#### Symbol: {symbol} | RSI: {rsi_th} | EMA_F: {ema_f} | EMA_S: {ema_s} | SL: {sl_mult} | MACD: {macd_confirm}\n\n"
     report += "| Period | Score | Net Profit | Win Rate | Max Drawdown | Trades |\n"
     report += "| :--- | :--- | :--- | :--- | :--- | :--- |\n"
-    report += f"| **Train (30d)** | {score_tr:.2f} | ${profit_tr:.2f} | {wr_tr*100:.2f}% | {mdd_tr*100:.2f}% | {count_tr} |\n"
-    report += f"| **Test (30d)** | {score_ts:.2f} | ${profit_ts:.2f} | {wr_ts*100:.2f}% | {mdd_ts*100:.2f}% | {count_ts} |\n\n"
-    
+    report += f"| **Train (90d)** | {score_tr:.2f} | ${profit_tr:.2f} | {wr_tr*100:.2f}% | {mdd_tr*100:.2f}% | {count_tr} |\n"
+    report += f"| **Test (15d)** | {score_ts:.2f} | ${profit_ts:.2f} | {wr_ts*100:.2f}% | {mdd_ts*100:.2f}% | {count_ts} |\n\n"
+
     if profit_tr > 0 and profit_ts > 0:
         report += "✅ **Strategy passed OOS test.**\n"
     else:
         report += "❌ **Strategy failed OOS test.**\n"
-        
+
     return report
 
 if __name__ == "__main__":
