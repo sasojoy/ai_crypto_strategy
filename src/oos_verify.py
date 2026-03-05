@@ -6,9 +6,12 @@ from src.report import create_github_issue
 import os
 import subprocess
 
-def verify_and_deploy():
-    top_3 = pd.read_csv('data/grid_search_results.csv')
-    symbol = 'BTC/USDT'
+def verify_and_deploy(symbol='BTC/USDT'):
+    filename = f"data/grid_search_{symbol.replace('/', '_')}.csv"
+    if not os.path.exists(filename):
+        print(f"No grid search results for {symbol}")
+        return
+    top_3 = pd.read_csv(filename)
     df_all = fetch_backtest_data(symbol, days=90)
     mid_point = len(df_all) // 2
     df_test = df_all.iloc[mid_point:].copy()
@@ -216,5 +219,6 @@ def deploy_and_notify(score):
     print("✅ Deployment pushed to main.")
 
 if __name__ == "__main__":
-    verify_and_deploy()
+    for sym in ['BTC/USDT', 'SOL/USDT', 'ETH/USDT']:
+        verify_and_deploy(symbol=sym)
 

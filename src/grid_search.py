@@ -54,8 +54,10 @@ def grid_search(symbol='BTC/USDT'):
     
     print("\n--- Grid Search Top 3 Results ---")
     print(top_3)
-    top_3.to_csv('data/grid_search_results.csv', index=False)
+    filename = f"data/grid_search_{symbol.replace('/', '_')}.csv"
+    top_3.to_csv(filename, index=False)
     return top_3
 
 if __name__ == "__main__":
-    grid_search()
+    for sym in ['BTC/USDT', 'SOL/USDT', 'ETH/USDT']:
+        grid_search(symbol=sym)

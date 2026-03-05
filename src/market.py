@@ -55,9 +55,9 @@ def log_data(timestamp, price, rsi, ema200):
         df.to_csv(log_file, mode='a', header=False, index=False)
 
 def run_strategy():
-    symbols = ['BTC/USDT', 'SOL/USDT']
+    symbols = ['BTC/USDT', 'SOL/USDT', 'ETH/USDT']
     now = datetime.now()
-    btc_price, btc_rsi = None, None
+    prices_rsi = {}
     
     for symbol in symbols:
         try:
@@ -74,8 +74,9 @@ def run_strategy():
             latest = df.iloc[-1]
             prev = df.iloc[-2]
             
+            prices_rsi[symbol] = (latest['close'], latest['rsi'])
+            
             if symbol == 'BTC/USDT':
-                btc_price, btc_rsi = latest['close'], latest['rsi']
                 log_data(latest['timestamp'], latest['close'], latest['rsi'], latest['ema200'])
             
             # Volatility Filter: ATR must not exceed 2x of 24h average
@@ -110,7 +111,7 @@ def run_strategy():
                 
         except Exception as e:
             print(f"Error: {e}")
-    return btc_price, btc_rsi
+    return prices_rsi
 
 if __name__ == "__main__":
     STRATEGY_VERSION = "V8.1-OOS-Protected"
@@ -118,11 +119,15 @@ if __name__ == "__main__":
     send_telegram_msg(f"🤖 目標 100 萬監測站：啟動優化版循環 ({STRATEGY_VERSION})！")
     while True:
         try:
-            btc_price, btc_rsi = run_strategy()
+            prices_rsi = run_strategy()
             current_time = time.time()
             if current_time - last_heartbeat_time >= 900:
-                if btc_price:
-                    send_telegram_msg(f"📊 定時回報\nBTC: {btc_price:.2f} | RSI: {btc_rsi:.2f}\n版本: {STRATEGY_VERSION}\n狀態: 運行中")
+                if prices_rsi:
+                    report = "📊 定時回報\n"
+                    for symbol, (price, rsi) in prices_rsi.items():
+                        report += f"{symbol}: {price:.2f} | RSI: {rsi:.2f}\n"
+                    report += f"版本: {STRATEGY_VERSION}\n狀態: 運行中"
+                    send_telegram_msg(report)
                     last_heartbeat_time = current_time
         except Exception as e:
             print(f"Loop error: {e}")

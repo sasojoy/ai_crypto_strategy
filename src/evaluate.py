@@ -115,6 +115,7 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
     return score, net_profit, win_rate, max_dd, total_trades
 
 def get_full_report(symbol='BTC/USDT', rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True):
+    print(f"📊 Generating report for {symbol}...")
     df_all = fetch_backtest_data(symbol, days=90) # Increased to 90 days as requested
     if df_all.empty:
         return "No data found."
@@ -141,4 +142,5 @@ def get_full_report(symbol='BTC/USDT', rsi_th=30, ema_f=50, ema_s=200, sl_mult=2
     return report
 
 if __name__ == "__main__":
-    print(get_full_report())
+    for sym in ['BTC/USDT', 'SOL/USDT', 'ETH/USDT']:
+        print(get_full_report(symbol=sym, macd_confirm=False)) # Iteration 8 baseline
