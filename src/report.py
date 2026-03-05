@@ -4,10 +4,15 @@ import subprocess
 from src.evaluate import get_full_report
 from datetime import datetime
 
-def create_github_issue():
-    report_content = get_full_report()
+def create_github_issue(rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, oos_passed=True):
+    report_content = get_full_report(rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult)
     title = f"[Strategy Iteration] Report - {datetime.now().strftime('%Y-%m-%d')}"
     
+    if not oos_passed:
+        title = f"⚠️ [Strategy Iteration] OOS Failed - {datetime.now().strftime('%Y-%m-%d')}"
+        report_content = "### ⚠️ Out-of-Sample Verification Failed\n\n" + report_content
+        report_content += "\n\n**Note**: This iteration did not pass the OOS test and was not deployed."
+
     # Use gh CLI to create issue
     try:
         # Create a temporary file for the report body to avoid shell escaping issues

@@ -99,15 +99,16 @@ def run_strategy():
     return btc_price, btc_rsi
 
 if __name__ == "__main__":
+    STRATEGY_VERSION = "V8.1-OOS-Protected"
     last_heartbeat_time = 0
-    send_telegram_msg("🤖 目標 100 萬監測站：啟動優化版循環 (V8)！")
+    send_telegram_msg(f"🤖 目標 100 萬監測站：啟動優化版循環 ({STRATEGY_VERSION})！")
     while True:
         try:
             btc_price, btc_rsi = run_strategy()
             current_time = time.time()
             if current_time - last_heartbeat_time >= 900:
                 if btc_price:
-                    send_telegram_msg(f"📊 定時回報\nBTC: {btc_price:.2f} | RSI: {btc_rsi:.2f}\n狀態: 運行中")
+                    send_telegram_msg(f"📊 定時回報\nBTC: {btc_price:.2f} | RSI: {btc_rsi:.2f}\n版本: {STRATEGY_VERSION}\n狀態: 運行中")
                     last_heartbeat_time = current_time
         except Exception as e:
             print(f"Loop error: {e}")

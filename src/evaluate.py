@@ -28,11 +28,11 @@ def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=60):
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     return df
 
-def run_evaluation(df, initial_balance=10000):
+def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl_mult=2):
     # Indicators
     df['rsi'] = calculate_rsi(df)
-    df['ema50'] = calculate_ema(df, 50)
-    df['ema200'] = calculate_ema(df, 200)
+    df['ema_f'] = calculate_ema(df, ema_f)
+    df['ema_s'] = calculate_ema(df, ema_s)
     df['atr'] = calculate_atr(df, 14)
     
     # Volatility Warning: 24h (96 candles of 15m) Avg ATR
@@ -55,15 +55,15 @@ def run_evaluation(df, initial_balance=10000):
             # Volatility Filter: ATR must not exceed 2x of 24h average
             volatility_ok = latest['atr'] <= (latest['atr_ma24h'] * 2)
             
-            # Entry Logic (Iteration 8)
+            # Entry Logic
             if volatility_ok and \
-               latest['close'] > latest['ema50'] and \
-               latest['ema50'] > latest['ema200'] and \
-               prev['rsi'] < 30 and latest['rsi'] > 30:
+               latest['close'] > latest['ema_f'] and \
+               latest['ema_f'] > latest['ema_s'] and \
+               prev['rsi'] < rsi_th and latest['rsi'] > rsi_th:
                 in_position = True
                 entry_price = latest['close']
-                sl_price = entry_price - (2 * latest['atr'])
-                tp_price = entry_price + (4 * latest['atr'])
+                sl_price = entry_price - (sl_mult * latest['atr'])
+                tp_price = entry_price + (sl_mult * 2 * latest['atr'])
                 
                 # Risk Check: 2% Max Risk per trade
                 risk_per_share = entry_price - sl_price
@@ -108,7 +108,7 @@ def run_evaluation(df, initial_balance=10000):
     
     return score, net_profit, win_rate, max_dd, total_trades
 
-def get_full_report(symbol='BTC/USDT'):
+def get_full_report(symbol='BTC/USDT', rsi_th=30, ema_f=50, ema_s=200, sl_mult=2):
     df_all = fetch_backtest_data(symbol, days=60)
     if df_all.empty:
         return "No data found."
@@ -117,11 +117,11 @@ def get_full_report(symbol='BTC/USDT'):
     df_train = df_all.iloc[:mid_point].copy()
     df_test = df_all.iloc[mid_point:].copy()
     
-    score_tr, profit_tr, wr_tr, mdd_tr, count_tr = run_evaluation(df_train)
-    score_ts, profit_ts, wr_ts, mdd_ts, count_ts = run_evaluation(df_test)
+    score_tr, profit_tr, wr_tr, mdd_tr, count_tr = run_evaluation(df_train, rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult)
+    score_ts, profit_ts, wr_ts, mdd_ts, count_ts = run_evaluation(df_test, rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult)
     
     report = f"### [Strategy Iteration] Report - {datetime.now().strftime('%Y-%m-%d')}\n\n"
-    report += f"#### Symbol: {symbol}\n\n"
+    report += f"#### Symbol: {symbol} | RSI: {rsi_th} | EMA_F: {ema_f} | EMA_S: {ema_s} | SL: {sl_mult}\n\n"
     report += "| Period | Score | Net Profit | Win Rate | Max Drawdown | Trades |\n"
     report += "| :--- | :--- | :--- | :--- | :--- | :--- |\n"
     report += f"| **Train (30d)** | {score_tr:.2f} | ${profit_tr:.2f} | {wr_tr*100:.2f}% | {mdd_tr*100:.2f}% | {count_tr} |\n"
