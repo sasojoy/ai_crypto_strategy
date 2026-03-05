@@ -1,12 +1,10 @@
-# Last Trigger: 2026-03-05 17:56
-name: Deploy to GCE (Final Fixed)
+name: Deploy to GCE Final
 
 on:
   push:
     branches:
       - main
-  schedule:
-    - cron: '0 16 * * *' # 16:00 UTC (00:00 Taipei)
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -23,56 +21,46 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd ~/ai_crypto_strategy
-            
-            echo "=== 1. 診斷系統狀態 ==="
-            df -h | grep '^/'
-            
-            echo "=== 2. 同步代碼 ==="
+            echo "=== 1. 同步代碼 ==="
             git fetch --all && git reset --hard origin/main
-
-            echo "=== 3. 配置環境變數 ==="
-            # 使用 printf 確保特殊字元不會跑掉，並補齊 GEMINI_API_KEY
+            
+            echo "=== 2. 配置環境變數 ==="
             printf "TELEGRAM_BOT_TOKEN=%s\n" "${{ secrets.TELEGRAM_BOT_TOKEN }}" > .env
             printf "TELEGRAM_CHAT_ID=%s\n" "${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
             printf "GEMINI_API_KEY=%s\n" "${{ secrets.GEMINI_API_KEY }}" >> .env
-
+            
             pip3 install -r requirements.txt
-
             export PYTHONPATH=$PYTHONPATH:.
-
+            
             if [ "${{ github.event_name }}" == "schedule" ]; then
-              echo "執行定時任務：Daily Summary..."
+              echo "執行定時任務..."
               python3 -m src.summary
             else
-              echo "=== 4. 部署 Market Monitor ==="
-              # 安全殺死舊進程：排除目前 Shell 的 PID ($$)，防止 143 錯誤
+              echo "=== 3. 部署 Market Monitor ==="
               PID=$(pgrep -f "src.market" | grep -v $$ || true)
               if [ ! -z "$PID" ]; then
-                echo "正在關閉舊進程: $PID"
+                echo "關閉舊進程: $PID"
                 kill -15 $PID || kill -9 $PID
               fi
-
-              # 啟動新進程
-              nohup python3 -u -m src.market > market.log 2>&1 & 
+              
+              nohup python3 -u -m src.market > market.log 2>&1 &
               
               sleep 5
-              echo "--- 啟動日誌 (最後 20 行) ---"
+              echo "--- 啟動日誌 ---"
               tail -n 20 market.log
-
-              echo "=== 5. 更新 Crontab (自動重啟機制) ==="
+              
+              echo "=== 4. 更新 Crontab ==="
               (crontab -l 2>/dev/null | grep -v "src.market" ; cat .github/crontab_template.txt) | crontab -
               
-              echo "=== 6. 最終驗證 ==="
+              echo "=== 5. 驗證 ==="
               sleep 10
               if ps aux | grep -v grep | grep "src.market" > /dev/null; then
-                echo "✅ 部署成功：Market monitor 運行中。"
+                echo "✅ 部署成功"
               else
-                echo "❌ 部署失敗：進程未啟動。請檢查 market.log"
+                echo "❌ 部署失敗"
                 cat market.log
                 exit 1
               fi
-
-              echo "=== 7. 建立策略報告 ==="
-              python3 src/report.py || echo "Report generation skipped or failed"
+              
+              python3 src/report.py || echo "Report skipped"
             fi
-            exit 0
