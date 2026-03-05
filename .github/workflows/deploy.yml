@@ -21,6 +21,8 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           script: |
             cd ~/ai_crypto_strategy
             # 強制覆蓋本地變動，確保代碼絕對同步
@@ -65,5 +67,10 @@ jobs:
                 tail -n 50 market.log
                 exit 1
               fi
+              
+              # 部署成功後，自動建立策略報告 Issue
+              echo "Generating strategy report..."
+              export PYTHONPATH=$PYTHONPATH:.
+              python3 src/report.py
             fi
             exit 0

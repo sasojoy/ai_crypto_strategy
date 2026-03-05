@@ -59,6 +59,9 @@ def run_strategy():
             df['ema200'] = calculate_ema(df, 200)
             df['atr'] = calculate_atr(df, 14)
             
+            # Volatility Warning: 24h (96 candles of 15m) Avg ATR
+            df['atr_ma24h'] = df['atr'].rolling(96).mean()
+            
             latest = df.iloc[-1]
             prev = df.iloc[-2]
             
@@ -66,10 +69,14 @@ def run_strategy():
                 btc_price, btc_rsi = latest['close'], latest['rsi']
                 log_data(latest['timestamp'], latest['close'], latest['rsi'], latest['ema200'])
             
+            # Volatility Filter: ATR must not exceed 2x of 24h average
+            volatility_ok = latest['atr'] <= (latest['atr_ma24h'] * 2)
+            
             # Optimized Strategy Logic (Iteration 8)
             # 1. Dual Trend Filter: Price > EMA 50 AND EMA 50 > EMA 200
             # 2. RSI Hook: Prev < 30 AND Current > 30
-            if latest['close'] > latest['ema50'] and latest['ema50'] > latest['ema200'] and \
+            if volatility_ok and \
+               latest['close'] > latest['ema50'] and latest['ema50'] > latest['ema200'] and \
                prev['rsi'] < 30 and latest['rsi'] > 30:
                 
                 sl = latest['close'] - (2 * latest['atr'])

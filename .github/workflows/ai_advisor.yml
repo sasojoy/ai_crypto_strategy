@@ -1,0 +1,61 @@
+
+
+
+name: AI Strategy Advisor
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  advise:
+    if: contains(github.event.issue.labels.*.name, 'Strategy Iteration') && github.event.comment.user.login != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get AI Advice
+        id: gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          ISSUE_BODY="${{ github.event.issue.body }}"
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          
+          PROMPT="You are a professional quantitative trader. Analyze the following backtest report and provide 3 specific, actionable optimization suggestions (e.g., adjusting RSI thresholds, adding filters, or changing ATR multipliers). 
+          
+          Report:
+          $ISSUE_BODY
+          
+          User Feedback:
+          $COMMENT_BODY
+          
+          Format your response as a GitHub comment."
+          
+          # Call Gemini API (Simplified for this example, using curl)
+          RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=$GEMINI_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"contents\": [{
+                \"parts\": [{
+                  \"text\": \"$PROMPT\"
+                }]
+              }]
+            }")
+          
+          ADVICE=$(echo $RESPONSE | jq -r '.candidates[0].content.parts[0].text')
+          echo "advice<<EOF" >> $GITHUB_OUTPUT
+          echo "$ADVICE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post Advice to Issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ADVICE: ${{ steps.gemini.outputs.advice }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "$ADVICE"
+
+

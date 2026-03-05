@@ -8,7 +8,7 @@ import os
 # Import logic from market.py
 from src.market import calculate_rsi, calculate_ema, calculate_atr
 
-def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=30):
+def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=60):
     exchange = ccxt.binance()
     since = exchange.parse8601((datetime.now() - timedelta(days=days)).isoformat())
     
@@ -31,8 +31,12 @@ def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=30):
 def run_evaluation(df, initial_balance=10000):
     # Indicators
     df['rsi'] = calculate_rsi(df)
+    df['ema50'] = calculate_ema(df, 50)
     df['ema200'] = calculate_ema(df, 200)
     df['atr'] = calculate_atr(df, 14)
+    
+    # Volatility Warning: 24h (96 candles of 15m) Avg ATR
+    df['atr_ma24h'] = df['atr'].rolling(96).mean()
     
     df = df.dropna().reset_index(drop=True)
     
@@ -43,20 +47,17 @@ def run_evaluation(df, initial_balance=10000):
     sl_price = 0
     tp_price = 0
     
-    # Strategy Parameters (Iteration 8 Proposal)
-    # RSI Hook: Prev < 30, Current > 30
-    # Filter: Price > EMA 50 AND EMA 50 > EMA 200
-    # SL: 2 * ATR, TP: 4 * ATR (2:1 RR)
-    
-    df['ema50'] = calculate_ema(df, 50)
-    
     for i in range(1, len(df)):
         latest = df.iloc[i]
         prev = df.iloc[i-1]
         
         if not in_position:
-            # Entry Logic
-            if latest['close'] > latest['ema50'] and \
+            # Volatility Filter: ATR must not exceed 2x of 24h average
+            volatility_ok = latest['atr'] <= (latest['atr_ma24h'] * 2)
+            
+            # Entry Logic (Iteration 8)
+            if volatility_ok and \
+               latest['close'] > latest['ema50'] and \
                latest['ema50'] > latest['ema200'] and \
                prev['rsi'] < 30 and latest['rsi'] > 30:
                 in_position = True
@@ -107,17 +108,31 @@ def run_evaluation(df, initial_balance=10000):
     
     return score, net_profit, win_rate, max_dd, total_trades
 
-if __name__ == "__main__":
-    symbol = 'BTC/USDT'
-    print(f"Evaluating {symbol} for the last 30 days...")
-    df = fetch_backtest_data(symbol)
-    if not df.empty:
-        score, profit, wr, mdd, count = run_evaluation(df)
-        print(f"\n--- Evaluation Result ---")
-        print(f"Score: {score:.2f}")
-        print(f"Net Profit: ${profit:.2f}")
-        print(f"Win Rate: {wr*100:.2f}%")
-        print(f"Max Drawdown: {mdd*100:.2f}%")
-        print(f"Total Trades: {count}")
+def get_full_report(symbol='BTC/USDT'):
+    df_all = fetch_backtest_data(symbol, days=60)
+    if df_all.empty:
+        return "No data found."
+    
+    mid_point = len(df_all) // 2
+    df_train = df_all.iloc[:mid_point].copy()
+    df_test = df_all.iloc[mid_point:].copy()
+    
+    score_tr, profit_tr, wr_tr, mdd_tr, count_tr = run_evaluation(df_train)
+    score_ts, profit_ts, wr_ts, mdd_ts, count_ts = run_evaluation(df_test)
+    
+    report = f"### [Strategy Iteration] Report - {datetime.now().strftime('%Y-%m-%d')}\n\n"
+    report += f"#### Symbol: {symbol}\n\n"
+    report += "| Period | Score | Net Profit | Win Rate | Max Drawdown | Trades |\n"
+    report += "| :--- | :--- | :--- | :--- | :--- | :--- |\n"
+    report += f"| **Train (30d)** | {score_tr:.2f} | ${profit_tr:.2f} | {wr_tr*100:.2f}% | {mdd_tr*100:.2f}% | {count_tr} |\n"
+    report += f"| **Test (30d)** | {score_ts:.2f} | ${profit_ts:.2f} | {wr_ts*100:.2f}% | {mdd_ts*100:.2f}% | {count_ts} |\n\n"
+    
+    if profit_tr > 0 and profit_ts > 0:
+        report += "✅ **Strategy passed OOS test.**\n"
     else:
-        print("No data found.")
+        report += "❌ **Strategy failed OOS test.**\n"
+        
+    return report
+
+if __name__ == "__main__":
+    print(get_full_report())
