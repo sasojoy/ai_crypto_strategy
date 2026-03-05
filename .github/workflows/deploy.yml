@@ -54,5 +54,16 @@ jobs:
               echo "Updating crontab..."
               (crontab -l 2>/dev/null | grep -v "src.market" ; cat .github/crontab_template.txt) | crontab -
               crontab -l
+              
+              # 最終驗證：確保進程已成功啟動
+              echo "Verifying process..."
+              sleep 10
+              if ps aux | grep -v grep | grep "src.market" > /dev/null; then
+                echo "✅ Market monitor is running successfully."
+              else
+                echo "❌ Market monitor failed to start. Check market.log for details."
+                tail -n 50 market.log
+                exit 1
+              fi
             fi
             exit 0
