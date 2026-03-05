@@ -1,0 +1,10 @@
+
+{
+    "version": "V8.1-OOS-Protected",
+    "rsi_th": 30,
+    "ema_f": 50,
+    "ema_s": 200,
+    "sl_mult": 2.0,
+    "tp_mult": 4.0,
+    "macd_confirm": false
+}

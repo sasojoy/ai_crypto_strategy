@@ -1,4 +1,3 @@
-
 name: Deploy to GCE
 
 on:
@@ -6,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 16 * * *' # 16:00 UTC is 00:00 Taipei Time (UTC+8)
+    - cron: '0 16 * * *' # 16:00 UTC (00:00 Taipei)
 
 jobs:
   deploy:
@@ -21,16 +20,17 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           script: |
             cd ~/ai_crypto_strategy
             # 強制覆蓋本地變動，確保代碼絕對同步
             git fetch --all && git reset --hard origin/main
             
-            # 使用 GitHub Secrets 建立 .env 檔案，使用 printf 避免特殊字元問題
+            # 使用 GitHub Secrets 建立 .env (確保 GCE 上已有這些 Secrets)
             printf "TELEGRAM_BOT_TOKEN=%s\n" "${{ secrets.TELEGRAM_BOT_TOKEN }}" > .env
             printf "TELEGRAM_CHAT_ID=%s\n" "${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
+            # 💡 記得補上 GEMINI_API_KEY，否則研究循環會跑不動
+            printf "GEMINI_API_KEY=%s\n" "${{ secrets.GEMINI_API_KEY }}" >> .env
+            
             pip3 install -r requirements.txt
             
             if [ "${{ github.event_name }}" == "schedule" ]; then
@@ -43,34 +43,30 @@ jobs:
               pkill -f "python3 -u -m src.market" || true
               pkill -f "market.py" || true
               
-              # 正確重啟：使用 nohup 配合 -u 確保日誌即時寫入
+              # 正確重啟
               export PYTHONPATH=$PYTHONPATH:.
               nohup python3 -u -m src.market > market.log 2>&1 &
               
-              # 連線測試：等待並顯示日誌以確認啟動狀態
+              # 連線測試
               sleep 5
               echo "--- Market Log (Last 20 lines) ---"
               tail -n 20 market.log
               
-              # 自動化 Crontab 設定：確保程式崩潰後能自動重啟
+              # 自動化 Crontab 設定
               echo "Updating crontab..."
               (crontab -l 2>/dev/null | grep -v "src.market" ; cat .github/crontab_template.txt) | crontab -
-              crontab -l
               
-              # 最終驗證：確保進程已成功啟動
+              # 最終驗證
               echo "Verifying process..."
               sleep 10
               if ps aux | grep -v grep | grep "src.market" > /dev/null; then
                 echo "✅ Market monitor is running successfully."
               else
-                echo "❌ Market monitor failed to start. Check market.log for details."
-                tail -n 50 market.log
+                echo "❌ Market monitor failed to start."
                 exit 1
               fi
               
-              # 部署成功後，自動建立策略報告 Issue
+              # 部署成功後，自動建立策略報告
               echo "Generating strategy report..."
-              export PYTHONPATH=$PYTHONPATH:.
               python3 src/report.py
             fi
-            exit 0
