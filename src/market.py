@@ -28,6 +28,14 @@ def calculate_rsi(df, period=14):
 def calculate_ema(df, period):
     return df['close'].ewm(span=period, adjust=False).mean()
 
+def calculate_macd(df, fast=12, slow=26, signal=9):
+    ema_fast = calculate_ema(df, fast)
+    ema_slow = calculate_ema(df, slow)
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    histogram = macd_line - signal_line
+    return macd_line, signal_line, histogram
+
 def calculate_atr(df, period=14):
     high_low = df['high'] - df['low']
     high_close = (df['high'] - df['close'].shift()).abs()
@@ -58,6 +66,7 @@ def run_strategy():
             df['ema50'] = calculate_ema(df, 50)
             df['ema200'] = calculate_ema(df, 200)
             df['atr'] = calculate_atr(df, 14)
+            _, _, df['macd_hist'] = calculate_macd(df)
             
             # Volatility Warning: 24h (96 candles of 15m) Avg ATR
             df['atr_ma24h'] = df['atr'].rolling(96).mean()
@@ -72,10 +81,14 @@ def run_strategy():
             # Volatility Filter: ATR must not exceed 2x of 24h average
             volatility_ok = latest['atr'] <= (latest['atr_ma24h'] * 2)
             
-            # Optimized Strategy Logic (Iteration 8)
+            # MACD Confirmation: Histogram > 0 and increasing
+            macd_ok = latest['macd_hist'] > 0 and latest['macd_hist'] > prev['macd_hist']
+            
+            # Optimized Strategy Logic (Iteration 9 - MACD Enhanced)
             # 1. Dual Trend Filter: Price > EMA 50 AND EMA 50 > EMA 200
             # 2. RSI Hook: Prev < 30 AND Current > 30
-            if volatility_ok and \
+            # 3. MACD Confirmation: Histogram > 0 and increasing
+            if volatility_ok and macd_ok and \
                latest['close'] > latest['ema50'] and latest['ema50'] > latest['ema200'] and \
                prev['rsi'] < 30 and latest['rsi'] > 30:
                 
@@ -83,14 +96,15 @@ def run_strategy():
                 tp = latest['close'] + (4 * latest['atr'])
                 
                 msg = (
-                    f"🚀 [目標 100 萬] 優化版買入訊號 (V8)\n"
+                    f"🚀 [目標 100 萬] MACD 增強版買入訊號 (V9)\n"
                     f"----------------------------\n"
                     f"幣種：{symbol}\n"
                     f"價格：{latest['close']:.2f}\n"
                     f"RSI：{latest['rsi']:.2f}\n"
+                    f"MACD Hist：{latest['macd_hist']:.4f}\n"
                     f"止損：{sl:.2f} | 止盈：{tp:.2f}\n"
                     f"----------------------------\n"
-                    f"趨勢：雙均線多頭排列，強勢回調確認。"
+                    f"趨勢：雙均線多頭 + MACD 動能增強。"
                 )
                 send_telegram_msg(msg)
                 

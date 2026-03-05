@@ -9,7 +9,7 @@ import subprocess
 def verify_and_deploy():
     top_3 = pd.read_csv('data/grid_search_results.csv')
     symbol = 'BTC/USDT'
-    df_all = fetch_backtest_data(symbol, days=60)
+    df_all = fetch_backtest_data(symbol, days=90)
     mid_point = len(df_all) // 2
     df_test = df_all.iloc[mid_point:].copy()
     
@@ -24,10 +24,11 @@ def verify_and_deploy():
             rsi_th=row['rsi_th'], 
             ema_f=row['ema_f'], 
             ema_s=row['ema_s'], 
-            sl_mult=row['sl_mult']
+            sl_mult=row['sl_mult'],
+            macd_confirm=row['macd_confirm']
         )
         
-        print(f"Combo {idx+1}: RSI={row['rsi_th']}, EMA_F={row['ema_f']}, EMA_S={row['ema_s']}, SL={row['sl_mult']}")
+        print(f"Combo {idx+1}: RSI={row['rsi_th']}, EMA_F={row['ema_f']}, EMA_S={row['ema_s']}, SL={row['sl_mult']}, MACD={row['macd_confirm']}")
         print(f"Test Score: {score:.2f} | Profit: ${profit:.2f}")
         
         if profit > 0 and score > max_test_score:
@@ -43,7 +44,8 @@ def verify_and_deploy():
             ema_f=best_combination['ema_f'],
             ema_s=best_combination['ema_s'],
             sl_mult=best_combination['sl_mult'],
-            oos_passed=True
+            oos_passed=True,
+            macd_confirm=best_combination['macd_confirm']
         )
         
         # Step 4: Check for 20% improvement over Iteration 8
@@ -64,7 +66,8 @@ def verify_and_deploy():
             ema_f=best_gs['ema_f'],
             ema_s=best_gs['ema_s'],
             sl_mult=best_gs['sl_mult'],
-            oos_passed=False
+            oos_passed=False,
+            macd_confirm=best_gs['macd_confirm']
         )
 
 def update_market_py(combo):
@@ -73,7 +76,10 @@ def update_market_py(combo):
     ema_f = int(combo['ema_f'])
     ema_s = int(combo['ema_s'])
     sl_mult = combo['sl_mult']
+    macd_confirm = combo['macd_confirm']
     tp_mult = sl_mult * 2
+    
+    version_name = "Iteration 9 (MACD Enhanced)" if macd_confirm else "Iteration 9 (Optimized)"
     
     content = f"""import os
 import time
@@ -105,6 +111,14 @@ def calculate_rsi(df, period=14):
 def calculate_ema(df, period):
     return df['close'].ewm(span=period, adjust=False).mean()
 
+def calculate_macd(df, fast=12, slow=26, signal=9):
+    ema_fast = calculate_ema(df, fast)
+    ema_slow = calculate_ema(df, slow)
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    histogram = macd_line - signal_line
+    return macd_line, signal_line, histogram
+
 def calculate_atr(df, period=14):
     high_low = df['high'] - df['low']
     high_close = (df['high'] - df['close'].shift()).abs()
@@ -134,6 +148,7 @@ def run_strategy():
             df['ema_f'] = calculate_ema(df, {ema_f})
             df['ema_s'] = calculate_ema(df, {ema_s})
             df['atr'] = calculate_atr(df, 14)
+            _, _, df['macd_hist'] = calculate_macd(df)
             df['atr_ma24h'] = df['atr'].rolling(96).mean()
             
             latest = df.iloc[-1]
@@ -145,8 +160,13 @@ def run_strategy():
             
             volatility_ok = latest['atr'] <= (latest['atr_ma24h'] * 2)
             
+            # MACD Confirmation
+            macd_ok = True
+            if {macd_confirm}:
+                macd_ok = latest['macd_hist'] > 0 and latest['macd_hist'] > prev['macd_hist']
+            
             # Optimized Strategy Logic (Auto-Iterated)
-            if volatility_ok and \\
+            if volatility_ok and macd_ok and \\
                latest['close'] > latest['ema_f'] and latest['ema_f'] > latest['ema_s'] and \\
                prev['rsi'] < {rsi} and latest['rsi'] > {rsi}:
                 
@@ -154,14 +174,15 @@ def run_strategy():
                 tp = latest['close'] + ({tp_mult} * latest['atr'])
                 
                 msg = (
-                    f"🚀 [目標 100 萬] 自動疊代買入訊號\\n"
+                    f"🚀 [目標 100 萬] 自動疊代買入訊號 ({version_name})\\n"
                     f"----------------------------\\n"
                     f"幣種：{{symbol}}\\n"
                     f"價格：{{latest['close']:.2f}}\\n"
                     f"RSI：{{latest['rsi']:.2f}}\\n"
+                    f"MACD Hist：{{latest['macd_hist']:.4f}}\\n"
                     f"止損：{{sl:.2f}} | 止盈：{{tp:.2f}}\\n"
                     f"----------------------------\\n"
-                    f"參數：RSI={rsi}, EMA_F={ema_f}, EMA_S={ema_s}, SL={sl_mult}"
+                    f"參數：RSI={rsi}, EMA_F={ema_f}, EMA_S={ema_s}, SL={sl_mult}, MACD={macd_confirm}"
                 )
                 send_telegram_msg(msg)
                 
@@ -170,15 +191,16 @@ def run_strategy():
     return btc_price, btc_rsi
 
 if __name__ == "__main__":
+    STRATEGY_VERSION = "{version_name}"
     last_heartbeat_time = 0
-    send_telegram_msg("🤖 目標 100 萬監測站：啟動自動疊代版本！")
+    send_telegram_msg(f"🤖 目標 100 萬監測站：啟動自動疊代版本 ({{STRATEGY_VERSION}})！")
     while True:
         try:
             btc_price, btc_rsi = run_strategy()
             current_time = time.time()
             if current_time - last_heartbeat_time >= 900:
                 if btc_price:
-                    send_telegram_msg(f"📊 定時回報\\nBTC: {{btc_price:.2f}} | RSI: {{btc_rsi:.2f}}\\n狀態: 運行中")
+                    send_telegram_msg(f"📊 定時回報\\nBTC: {{btc_price:.2f}} | RSI: {{btc_rsi:.2f}}\\n版本: {{STRATEGY_VERSION}}\\n狀態: 運行中")
                     last_heartbeat_time = current_time
         except Exception as e:
             print(f"Loop error: {{e}}")

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import os
 
 # Import logic from market.py
-from src.market import calculate_rsi, calculate_ema, calculate_atr
+from src.market import calculate_rsi, calculate_ema, calculate_atr, calculate_macd
 
 def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=60):
     exchange = ccxt.binance()
@@ -28,12 +28,13 @@ def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=60):
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     return df
 
-def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl_mult=2):
+def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True):
     # Indicators
     df['rsi'] = calculate_rsi(df)
     df['ema_f'] = calculate_ema(df, ema_f)
     df['ema_s'] = calculate_ema(df, ema_s)
     df['atr'] = calculate_atr(df, 14)
+    _, _, df['macd_hist'] = calculate_macd(df)
     
     # Volatility Warning: 24h (96 candles of 15m) Avg ATR
     df['atr_ma24h'] = df['atr'].rolling(96).mean()
@@ -55,8 +56,13 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
             # Volatility Filter: ATR must not exceed 2x of 24h average
             volatility_ok = latest['atr'] <= (latest['atr_ma24h'] * 2)
             
+            # MACD Confirmation: Histogram > 0 and increasing
+            macd_ok = True
+            if macd_confirm:
+                macd_ok = latest['macd_hist'] > 0 and latest['macd_hist'] > prev['macd_hist']
+            
             # Entry Logic
-            if volatility_ok and \
+            if volatility_ok and macd_ok and \
                latest['close'] > latest['ema_f'] and \
                latest['ema_f'] > latest['ema_s'] and \
                prev['rsi'] < rsi_th and latest['rsi'] > rsi_th:
@@ -108,8 +114,8 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
     
     return score, net_profit, win_rate, max_dd, total_trades
 
-def get_full_report(symbol='BTC/USDT', rsi_th=30, ema_f=50, ema_s=200, sl_mult=2):
-    df_all = fetch_backtest_data(symbol, days=60)
+def get_full_report(symbol='BTC/USDT', rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True):
+    df_all = fetch_backtest_data(symbol, days=90) # Increased to 90 days as requested
     if df_all.empty:
         return "No data found."
     
@@ -117,11 +123,11 @@ def get_full_report(symbol='BTC/USDT', rsi_th=30, ema_f=50, ema_s=200, sl_mult=2
     df_train = df_all.iloc[:mid_point].copy()
     df_test = df_all.iloc[mid_point:].copy()
     
-    score_tr, profit_tr, wr_tr, mdd_tr, count_tr = run_evaluation(df_train, rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult)
-    score_ts, profit_ts, wr_ts, mdd_ts, count_ts = run_evaluation(df_test, rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult)
+    score_tr, profit_tr, wr_tr, mdd_tr, count_tr = run_evaluation(df_train, rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult, macd_confirm=macd_confirm)
+    score_ts, profit_ts, wr_ts, mdd_ts, count_ts = run_evaluation(df_test, rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult, macd_confirm=macd_confirm)
     
     report = f"### [Strategy Iteration] Report - {datetime.now().strftime('%Y-%m-%d')}\n\n"
-    report += f"#### Symbol: {symbol} | RSI: {rsi_th} | EMA_F: {ema_f} | EMA_S: {ema_s} | SL: {sl_mult}\n\n"
+    report += f"#### Symbol: {symbol} | RSI: {rsi_th} | EMA_F: {ema_f} | EMA_S: {ema_s} | SL: {sl_mult} | MACD: {macd_confirm}\n\n"
     report += "| Period | Score | Net Profit | Win Rate | Max Drawdown | Trades |\n"
     report += "| :--- | :--- | :--- | :--- | :--- | :--- |\n"
     report += f"| **Train (30d)** | {score_tr:.2f} | ${profit_tr:.2f} | {wr_tr*100:.2f}% | {mdd_tr*100:.2f}% | {count_tr} |\n"

@@ -4,8 +4,8 @@ import subprocess
 from src.evaluate import get_full_report
 from datetime import datetime
 
-def create_github_issue(rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, oos_passed=True):
-    report_content = get_full_report(rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult)
+def create_github_issue(rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, oos_passed=True, macd_confirm=True):
+    report_content = get_full_report(rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult, macd_confirm=macd_confirm)
     title = f"[Strategy Iteration] Report - {datetime.now().strftime('%Y-%m-%d')}"
     
     if not oos_passed:
