@@ -1,10 +1,11 @@
-name: Deploy to GCE Final
+name: Deploy to GCE
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
+  schedule:
+    - cron: '0 16 * * *' # 16:00 UTC is 00:00 Taipei Time (UTC+8)
 
 jobs:
   deploy:
@@ -19,48 +20,58 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+
           script: |
             cd ~/ai_crypto_strategy
-            echo "=== 1. 同步代碼 ==="
+            # 強制覆蓋本地變動，確保代碼絕對同步
             git fetch --all && git reset --hard origin/main
             
-            echo "=== 2. 配置環境變數 ==="
+            # 使用 GitHub Secrets 建立 .env 檔案
             printf "TELEGRAM_BOT_TOKEN=%s\n" "${{ secrets.TELEGRAM_BOT_TOKEN }}" > .env
             printf "TELEGRAM_CHAT_ID=%s\n" "${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
             printf "GEMINI_API_KEY=%s\n" "${{ secrets.GEMINI_API_KEY }}" >> .env
             
             pip3 install -r requirements.txt
-            export PYTHONPATH=$PYTHONPATH:.
             
             if [ "${{ github.event_name }}" == "schedule" ]; then
-              echo "執行定時任務..."
+              echo "Running daily summary..."
+              export PYTHONPATH=$PYTHONPATH:.
               python3 -m src.summary
             else
-              echo "=== 3. 部署 Market Monitor ==="
+              echo "Deploying market monitor..."
+              # 【修正版】安全殺死舊進程，防止 143 錯誤
               PID=$(pgrep -f "src.market" | grep -v $$ || true)
               if [ ! -z "$PID" ]; then
-                echo "關閉舊進程: $PID"
                 kill -15 $PID || kill -9 $PID
               fi
               
+              # 正確重啟
+              export PYTHONPATH=$PYTHONPATH:.
               nohup python3 -u -m src.market > market.log 2>&1 &
               
+              # 連線測試
               sleep 5
-              echo "--- 啟動日誌 ---"
+              echo "--- Market Log (Last 20 lines) ---"
               tail -n 20 market.log
               
-              echo "=== 4. 更新 Crontab ==="
+              # 自動化 Crontab 設定
+              echo "Updating crontab..."
               (crontab -l 2>/dev/null | grep -v "src.market" ; cat .github/crontab_template.txt) | crontab -
               
-              echo "=== 5. 驗證 ==="
+              # 最終驗證
+              echo "Verifying process..."
               sleep 10
               if ps aux | grep -v grep | grep "src.market" > /dev/null; then
-                echo "✅ 部署成功"
+                echo "✅ Market monitor is running successfully."
               else
-                echo "❌ 部署失敗"
-                cat market.log
+                echo "❌ Market monitor failed to start."
+                tail -n 50 market.log
                 exit 1
               fi
               
-              python3 src/report.py || echo "Report skipped"
+              # 部署成功後，自動建立策略報告
+              echo "Generating strategy report..."
+              export PYTHONPATH=$PYTHONPATH:.
+              python3 src/report.py || echo "Report generation skipped"
             fi
+            exit 0
