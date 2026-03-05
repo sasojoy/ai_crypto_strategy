@@ -12,7 +12,7 @@ load_dotenv()
 def fetch_15m_data(symbol='BTC/USDT'):
     exchange = ccxt.binance()
     timeframe = '15m'
-    limit = 300  # Ensure enough data for EMA 200
+    limit = 300
     ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
     df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
@@ -39,12 +39,7 @@ def calculate_atr(df, period=14):
 def log_data(timestamp, price, rsi, ema200):
     log_file = 'data/history.csv'
     os.makedirs('data', exist_ok=True)
-    data = {
-        'timestamp': [timestamp],
-        'price': [price],
-        'rsi': [rsi],
-        'ema200': [ema200]
-    }
+    data = {'timestamp': [timestamp], 'price': [price], 'rsi': [rsi], 'ema200': [ema200]}
     df = pd.DataFrame(data)
     if not os.path.isfile(log_file):
         df.to_csv(log_file, index=False)
@@ -58,9 +53,9 @@ def run_strategy():
     
     for symbol in symbols:
         try:
-            print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] Analyzing {symbol}...")
             df = fetch_15m_data(symbol)
             df['rsi'] = calculate_rsi(df)
+            df['ema50'] = calculate_ema(df, 50)
             df['ema200'] = calculate_ema(df, 200)
             df['atr'] = calculate_atr(df, 14)
             
@@ -71,51 +66,42 @@ def run_strategy():
                 btc_price, btc_rsi = latest['close'], latest['rsi']
                 log_data(latest['timestamp'], latest['close'], latest['rsi'], latest['ema200'])
             
-            # Strategy Logic (Iteration 4: RSI Hook)
-            if latest['close'] > latest['ema200'] and prev['rsi'] < 35 and latest['rsi'] > 40:
-                sl = latest['close'] - (3 * latest['atr'])
-                tp = latest['close'] + (6 * latest['atr'])
+            # Optimized Strategy Logic (Iteration 8)
+            # 1. Dual Trend Filter: Price > EMA 50 AND EMA 50 > EMA 200
+            # 2. RSI Hook: Prev < 30 AND Current > 30
+            if latest['close'] > latest['ema50'] and latest['ema50'] > latest['ema200'] and \
+               prev['rsi'] < 30 and latest['rsi'] > 30:
+                
+                sl = latest['close'] - (2 * latest['atr'])
+                tp = latest['close'] + (4 * latest['atr'])
                 
                 msg = (
-                    f"🚀 [目標 100 萬] 強勢回調買入訊號\n"
+                    f"🚀 [目標 100 萬] 優化版買入訊號 (V8)\n"
                     f"----------------------------\n"
                     f"幣種：{symbol}\n"
-                    f"當前價格：{latest['close']:.2f}\n"
-                    f"RSI 數值：{latest['rsi']:.2f} (勾頭確認)\n"
-                    f"建議止損：{sl:.2f}\n"
-                    f"建議止盈：{tp:.2f}\n"
+                    f"價格：{latest['close']:.2f}\n"
+                    f"RSI：{latest['rsi']:.2f}\n"
+                    f"止損：{sl:.2f} | 止盈：{tp:.2f}\n"
                     f"----------------------------\n"
-                    f"均線狀態：價格位於 EMA 200 之上，趨勢看漲。"
+                    f"趨勢：雙均線多頭排列，強勢回調確認。"
                 )
-                print(msg)
                 send_telegram_msg(msg)
                 
         except Exception as e:
-            print(f"Error analyzing {symbol}: {e}")
+            print(f"Error: {e}")
     return btc_price, btc_rsi
 
 if __name__ == "__main__":
     last_heartbeat_time = 0
-    send_telegram_msg("🤖 目標 100 萬監測站：啟動循環監控！")
-    
+    send_telegram_msg("🤖 目標 100 萬監測站：啟動優化版循環 (V8)！")
     while True:
         try:
             btc_price, btc_rsi = run_strategy()
-            
             current_time = time.time()
             if current_time - last_heartbeat_time >= 900:
-                if btc_price is not None:
-                    heartbeat_msg = (
-                        f"📊 [目標 100 萬] 定時狀態回報\n"
-                        f"----------------------------\n"
-                        f"幣種：BTC/SOL\n"
-                        f"BTC 價格：{btc_price:.2f} (RSI: {btc_rsi:.2f})\n"
-                        f"狀態：監控中 (24/7 循環已啟動)"
-                    )
-                    send_telegram_msg(heartbeat_msg)
+                if btc_price:
+                    send_telegram_msg(f"📊 定時回報\nBTC: {btc_price:.2f} | RSI: {btc_rsi:.2f}\n狀態: 運行中")
                     last_heartbeat_time = current_time
-                
         except Exception as e:
-            print(f"Main loop error: {e}")
-            
+            print(f"Loop error: {e}")
         time.sleep(60)
