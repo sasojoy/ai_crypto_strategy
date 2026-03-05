@@ -36,3 +36,37 @@
 ]
 [2026-03-05T17:26:41.916479] Testing Suggestion 1: The previous iteration yielded almost zero trades, indicating the RSI 30 threshold coupled with a slow trend filter (50/200) is too restrictive. Raising RSI to 45 allows entries on shallower pullbacks during medium-term trends (EMA 20/100).
 [2026-03-05T17:26:50.361837] Suggestion 1 passed safety check (Positive symbols: 2)
+[2026-03-05T17:26:51.520773] Successfully deployed Iteration 11
+[2026-03-05T17:26:51.520884] Autonomous Research Loop Completed.
+[2026-03-05T17:48:56.900079] Starting Autonomous Research Loop...
+[2026-03-05T17:49:05.446578] Sending prompt to Gemini (Iteration 11)...
+[2026-03-05T17:49:26.490394] Gemini Response: ```json
+[
+    {
+        "rsi_th": 45,
+        "ema_f": 20,
+        "ema_s": 100,
+        "sl_mult": 2.5,
+        "macd_confirm": true,
+        "reason": "Iteration 11 yielded near-zero trades, indicating entry criteria were too strict. Raising RSI to 45 allows for entries during shallower pullbacks, while 20/100 EMAs align faster with changing trends."
+    },
+    {
+        "rsi_th": 35,
+        "ema_f": 15,
+        "ema_s": 150,
+        "sl_mult": 3.0,
+        "macd_confirm": true,
+        "reason": "To fix the lack of volume, RSI is relaxed to 35. A very fast EMA_F (15) is paired with MACD to catch momentum reversals quickly within a medium-term trend (EMA 150)."
+    },
+    {
+        "rsi_th": 40,
+        "ema_f": 30,
+        "ema_s": 120,
+        "sl_mult": 4.0,
+        "macd_confirm": true,
+        "reason": "Balancing sensitivity with noise filtering. RSI 40 increases trade frequency compared to 30. A wider SL (4.0 ATR) accommodates crypto volatility to prevent premature stop-outs on valid setups."
+    }
+]
+```
+[2026-03-05T17:49:26.490591] Testing Suggestion 1: Iteration 11 yielded near-zero trades, indicating entry criteria were too strict. Raising RSI to 45 allows for entries during shallower pullbacks, while 20/100 EMAs align faster with changing trends.
+[2026-03-05T17:49:35.174965] Suggestion 1 passed safety check (Positive symbols: 2)

@@ -4,6 +4,6 @@
   "ema_s": 100,
   "sl_mult": 2.5,
   "macd_confirm": true,
-  "reason": "The previous iteration yielded almost zero trades, indicating the RSI 30 threshold coupled with a slow trend filter (50/200) is too restrictive. Raising RSI to 45 allows entries on shallower pullbacks during medium-term trends (EMA 20/100).",
+  "reason": "Iteration 11 yielded near-zero trades, indicating entry criteria were too strict. Raising RSI to 45 allows for entries during shallower pullbacks, while 20/100 EMAs align faster with changing trends.",
   "version": "Iteration 11"
 }
