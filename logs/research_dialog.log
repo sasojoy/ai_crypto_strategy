@@ -70,3 +70,39 @@
 ```
 [2026-03-05T17:49:26.490591] Testing Suggestion 1: Iteration 11 yielded near-zero trades, indicating entry criteria were too strict. Raising RSI to 45 allows for entries during shallower pullbacks, while 20/100 EMAs align faster with changing trends.
 [2026-03-05T17:49:35.174965] Suggestion 1 passed safety check (Positive symbols: 2)
+[2026-03-05T17:49:36.222388] Successfully deployed Iteration 11
+[2026-03-05T17:49:36.222526] Autonomous Research Loop Completed.
+[2026-03-05T18:19:05.169321] Starting Autonomous Research Loop...
+[2026-03-05T18:19:13.748602] Sending prompt to Gemini (Iteration 12)...
+[2026-03-05T18:19:40.059953] Gemini Response: ```json
+[
+  {
+    "rsi_th": 42,
+    "ema_f": 21,
+    "ema_s": 100,
+    "sl_mult": 1.5,
+    "macd_confirm": true,
+    "reason": "Previous iteration yielded zero trades, suggesting RSI < 30 is too restrictive for the current market trend. Raising RSI to 42 allows entries on shallower dips. Reducing EMA_S to 100 helps capture medium-term trends. A tight SL of 1.5 ATR is applied to enforce strict Drawdown Control."
+  },
+  {
+    "rsi_th": 35,
+    "ema_f": 45,
+    "ema_s": 140,
+    "sl_mult": 2.2,
+    "macd_confirm": true,
+    "reason": "Increases RSI threshold slightly to 35 to generate signal frequency while maintaining value entries. The EMA spread (45/140) is widened slightly to filter noise. SL is set to 2.2 to prevent premature stops on volatile assets like SOL, relying on MACD histogram reversal for entry timing precision."
+  },
+  {
+    "rsi_th": 48,
+    "ema_f": 15,
+    "ema_s": 110,
+    "sl_mult": 1.2,
+    "macd_confirm": true,
+    "reason": "Targets 'Momentum Dip' setups by raising RSI to 48, assuming strong trends are preventing deep oversold conditions. Uses a fast EMA_F (15) for quick trend alignment. The very tight SL (1.2) is the primary mechanism for Drawdown Control, exiting immediately if the shallow dip turns into a correction."
+  }
+]
+```
+[2026-03-05T18:19:40.060132] Testing Suggestion 1: Previous iteration yielded zero trades, suggesting RSI < 30 is too restrictive for the current market trend. Raising RSI to 42 allows entries on shallower dips. Reducing EMA_S to 100 helps capture medium-term trends. A tight SL of 1.5 ATR is applied to enforce strict Drawdown Control.
+[2026-03-05T18:19:49.271874] Testing Suggestion 2: Increases RSI threshold slightly to 35 to generate signal frequency while maintaining value entries. The EMA spread (45/140) is widened slightly to filter noise. SL is set to 2.2 to prevent premature stops on volatile assets like SOL, relying on MACD histogram reversal for entry timing precision.
+[2026-03-05T18:19:57.553090] Testing Suggestion 3: Targets 'Momentum Dip' setups by raising RSI to 48, assuming strong trends are preventing deep oversold conditions. Uses a fast EMA_F (15) for quick trend alignment. The very tight SL (1.2) is the primary mechanism for Drawdown Control, exiting immediately if the shallow dip turns into a correction.
+[2026-03-05T18:20:07.473294] Suggestion 3 passed safety check (Positive symbols: 2)

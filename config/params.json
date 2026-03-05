@@ -1,9 +1,9 @@
 {
-  "rsi_th": 45,
-  "ema_f": 20,
-  "ema_s": 100,
-  "sl_mult": 2.5,
+  "rsi_th": 48,
+  "ema_f": 15,
+  "ema_s": 110,
+  "sl_mult": 1.2,
   "macd_confirm": true,
-  "reason": "Iteration 11 yielded near-zero trades, indicating entry criteria were too strict. Raising RSI to 45 allows for entries during shallower pullbacks, while 20/100 EMAs align faster with changing trends.",
-  "version": "Iteration 11"
+  "reason": "Targets 'Momentum Dip' setups by raising RSI to 48, assuming strong trends are preventing deep oversold conditions. Uses a fast EMA_F (15) for quick trend alignment. The very tight SL (1.2) is the primary mechanism for Drawdown Control, exiting immediately if the shallow dip turns into a correction.",
+  "version": "Iteration 12"
 }

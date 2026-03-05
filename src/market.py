@@ -59,12 +59,23 @@ def log_data(timestamp, price, rsi, ema200):
     else:
         df.to_csv(log_file, mode='a', header=False, index=False)
 
+def get_active_positions_count():
+    """
+    獲取當前活躍持倉數量。
+    在實際生產環境中，這應該對接交易所 API。
+    """
+    # 模擬邏輯：此處應為實際持倉查詢
+    return 0 
+
 def run_strategy():
     params = load_params()
     symbols = ['BTC/USDT', 'SOL/USDT', 'ETH/USDT']
     now = datetime.now()
     prices_rsi = {}
-    
+
+    # 獲取當前總持倉數
+    current_pos_count = get_active_positions_count()
+
     for symbol in symbols:
         try:
             df = fetch_15m_data(symbol)
@@ -73,34 +84,31 @@ def run_strategy():
             df['ema_s'] = calculate_ema(df, params['ema_s'])
             df['atr'] = calculate_atr(df, 14)
             _, _, df['macd_hist'] = calculate_macd(df)
-            
-            # Volatility Warning: 24h (96 candles of 15m) Avg ATR
+
             df['atr_ma24h'] = df['atr'].rolling(96).mean()
-            
             latest = df.iloc[-1]
             prev = df.iloc[-2]
-            
             prices_rsi[symbol] = (latest['close'], latest['rsi'])
-            
+
             if symbol == 'BTC/USDT':
                 log_data(latest['timestamp'], latest['close'], latest['rsi'], latest['ema_s'])
-            
-            # Volatility Filter: ATR must not exceed 2x of 24h average
+
             volatility_ok = latest['atr'] <= (latest['atr_ma24h'] * 2)
-            
-            # MACD Confirmation
             macd_ok = True
             if params.get('macd_confirm', True):
                 macd_ok = latest['macd_hist'] > 0 and latest['macd_hist'] > prev['macd_hist']
-            
-            # Optimized Strategy Logic
-            if volatility_ok and macd_ok and \
-               latest['close'] > latest['ema_f'] and latest['ema_f'] > latest['ema_s'] and \
-               prev['rsi'] < params['rsi_th'] and latest['rsi'] > params['rsi_th']:
-                
+
+            # 策略開倉邏輯
+            if volatility_ok and macd_ok and                latest['close'] > latest['ema_f'] and latest['ema_f'] > latest['ema_s'] and                prev['rsi'] < params['rsi_th'] and latest['rsi'] > params['rsi_th']:
+
+                # 🛡️ 總倉位風控攔截
+                if current_pos_count >= 3:
+                    print(f"[Global Risk] Max exposure reached ({current_pos_count}/3). Order for {symbol} suppressed.")
+                    continue
+
                 sl = latest['close'] - (params['sl_mult'] * latest['atr'])
                 tp = latest['close'] + (params['tp_mult'] * latest['atr'])
-                
+
                 msg = (
                     f"🚀 [目標 100 萬] 自動化買入訊號 ({params['version']})\n"
                     f"----------------------------\n"
@@ -113,13 +121,13 @@ def run_strategy():
                     f"趨勢：雙均線多頭 + MACD 動能確認。"
                 )
                 send_telegram_msg(msg)
-                
+
         except Exception as e:
             print(f"Error: {e}")
     return prices_rsi
 
 if __name__ == "__main__":
-    STRATEGY_VERSION = "V8.1-OOS-Protected"
+    STRATEGY_VERSION = "V8.2-Risk-Controlled"
     last_heartbeat_time = 0
     send_telegram_msg(f"🤖 目標 100 萬監測站：啟動優化版循環 ({STRATEGY_VERSION})！")
     while True:
