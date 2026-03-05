@@ -45,7 +45,7 @@ jobs:
               fi
 
               export PYTHONPATH=$PYTHONPATH:.
-              # 使用 nohup 並確保輸出重定向，最後加上 disown 徹底脫離
+              # 使用 nohup 並確保輸出重定向
               nohup python3 -u -m src.market > market.log 2>&1 & 
               
               sleep 5
