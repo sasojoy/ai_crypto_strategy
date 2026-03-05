@@ -1,4 +1,4 @@
-name: Deploy to GCE v1.1
+name: Deploy to GCE v1.2
 
 on:
   push:
@@ -22,13 +22,11 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd ~/ai_crypto_strategy
-            # 強制覆蓋本地變動，確保代碼絕對同步
             git fetch --all && git reset --hard origin/main
 
-            # 使用 GitHub Secrets 建立 .env (確保 GCE 上已有這些 Secrets)
+            # 建立環境變數
             printf "TELEGRAM_BOT_TOKEN=%s\n" "${{ secrets.TELEGRAM_BOT_TOKEN }}" > .env
             printf "TELEGRAM_CHAT_ID=%s\n" "${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
-            # 💡 記得補上 GEMINI_API_KEY，否則研究循環會跑不動
             printf "GEMINI_API_KEY=%s\n" "${{ secrets.GEMINI_API_KEY }}" >> .env
 
             pip3 install -r requirements.txt
@@ -39,34 +37,34 @@ jobs:
               python3 -m src.summary
             else
               echo "Deploying market monitor..."
-              # 清空舊環境進程
-              pkill -f "python3 -u -m src.market" || true
-              pkill -f "market.py" || true
+              # 使用更安全的方式殺死舊進程，避免殺到目前的 SSH Session
+              PID=$(pgrep -f "src.market" | grep -v $$ || true)
+              if [ ! -z "$PID" ]; then
+                echo "Killing existing market processes: $PID"
+                kill -15 $PID || kill -9 $PID
+              fi
 
-              # 正確重啟
               export PYTHONPATH=$PYTHONPATH:.
-              nohup python3 -u -m src.market > market.log 2>&1 &
-
-              # 連線測試
+              # 使用 nohup 並確保輸出重定向，最後加上 disown 徹底脫離
+              nohup python3 -u -m src.market > market.log 2>&1 & 
+              
               sleep 5
               echo "--- Market Log (Last 20 lines) ---"
               tail -n 20 market.log
 
-              # 自動化 Crontab 設定
               echo "Updating crontab..."
               (crontab -l 2>/dev/null | grep -v "src.market" ; cat .github/crontab_template.txt) | crontab -
 
-              # 最終驗證
               echo "Verifying process..."
               sleep 10
               if ps aux | grep -v grep | grep "src.market" > /dev/null; then
                 echo "✅ Market monitor is running successfully."
               else
-                echo "❌ Market monitor failed to start."
+                echo "❌ Market monitor failed to start. Check market.log"
+                cat market.log
                 exit 1
               fi
 
-              # 部署成功後，自動建立策略報告
               echo "Generating strategy report..."
               python3 src/report.py
             fi
