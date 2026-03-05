@@ -49,5 +49,10 @@ jobs:
               sleep 5
               echo "--- Market Log (Last 20 lines) ---"
               tail -n 20 market.log
+              
+              # 自動化 Crontab 設定：確保程式崩潰後能自動重啟
+              echo "Updating crontab..."
+              (crontab -l 2>/dev/null | grep -v "src.market" ; cat .github/crontab_template.txt) | crontab -
+              crontab -l
             fi
             exit 0
