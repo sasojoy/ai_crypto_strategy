@@ -24,8 +24,9 @@ jobs:
           script: |
             cd ~/ai_crypto_strategy
             git pull origin main
-            # 確保 .env 存在 (如果有的話)
-            [ -f ~/.env ] && cp ~/.env .env || echo ".env not found in home directory"
+            # 使用 GitHub Secrets 建立 .env 檔案
+            echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" > .env
+            echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
             pip3 install -r requirements.txt
             
             if [ "${{ github.event_name }}" == "schedule" ]; then
