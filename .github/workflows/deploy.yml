@@ -20,13 +20,12 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-
+          # 傳遞 GITHUB_TOKEN 給 SSH 腳本環境
+          envs: GITHUB_TOKEN,GITHUB_REPOSITORY
           script: |
             cd ~/ai_crypto_strategy
-            # 強制覆蓋本地變動，確保代碼絕對同步
             git fetch --all && git reset --hard origin/main
             
-            # 使用 GitHub Secrets 建立 .env 檔案
             printf "TELEGRAM_BOT_TOKEN=%s\n" "${{ secrets.TELEGRAM_BOT_TOKEN }}" > .env
             printf "TELEGRAM_CHAT_ID=%s\n" "${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
             printf "GEMINI_API_KEY=%s\n" "${{ secrets.GEMINI_API_KEY }}" >> .env
@@ -39,26 +38,21 @@ jobs:
               python3 -m src.summary
             else
               echo "Deploying market monitor..."
-              # 【修正版】安全殺死舊進程，防止 143 錯誤
               PID=$(pgrep -f "src.market" | grep -v $$ || true)
               if [ ! -z "$PID" ]; then
                 kill -15 $PID || kill -9 $PID
               fi
               
-              # 正確重啟
               export PYTHONPATH=$PYTHONPATH:.
               nohup python3 -u -m src.market > market.log 2>&1 &
               
-              # 連線測試
               sleep 5
               echo "--- Market Log (Last 20 lines) ---"
               tail -n 20 market.log
               
-              # 自動化 Crontab 設定
               echo "Updating crontab..."
               (crontab -l 2>/dev/null | grep -v "src.market" ; cat .github/crontab_template.txt) | crontab -
               
-              # 最終驗證
               echo "Verifying process..."
               sleep 10
               if ps aux | grep -v grep | grep "src.market" > /dev/null; then
@@ -69,9 +63,14 @@ jobs:
                 exit 1
               fi
               
-              # 部署成功後，自動建立策略報告
               echo "Generating strategy report..."
               export PYTHONPATH=$PYTHONPATH:.
+              # 確保環境變數在 Python 執行時可用
+              export GITHUB_TOKEN=$GITHUB_TOKEN
+              export GITHUB_REPOSITORY=$GITHUB_REPOSITORY
               python3 src/report.py || echo "Report generation skipped"
             fi
             exit 0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
