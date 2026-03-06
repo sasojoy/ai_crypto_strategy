@@ -1,9 +1,11 @@
 {
   "rsi_th": 40,
-  "ema_f": 20,
+  "ema_f": 50,
   "ema_s": 200,
-  "sl_mult": 3.0,
-  "macd_confirm": true,
-  "reason": "Previous iteration yielded zero trades due to overly strict entry conditions. Raising RSI to 40 captures shallower pullbacks common in strong trends. EMA_F reduced to 20 increases sensitivity to short-term momentum, while SL 3.0 provides moderate room for volatility without excessive risk.",
-  "version": "Iteration 13"
+  "sl_mult": 4.5,
+  "macd_confirm": false,
+  "adx_min": 30,
+  "bb_std": 1.8,
+  "reason": "Retains the 50/200 Golden Cross baseline but widens the SL significantly to survive volatility and raises RSI to 40 to trigger entries in strong ADX trends.",
+  "version": "Iteration 14"
 }

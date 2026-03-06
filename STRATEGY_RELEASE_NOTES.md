@@ -9,6 +9,37 @@
 
 # Strategy Release Notes
 
+## Iteration 14 - ADX & Bollinger Bands (Self-Evolved)
+- **Date**: 2026-03-06
+- **Logic**: Retains the 50/200 Golden Cross baseline but widens the SL significantly to survive volatility and raises RSI to 40 to trigger entries in strong ADX trends.
+- **Judge Status**: Passed Quality Gate (Anti-Overfit, SL >= 2.5, Trades > 20, ADX Filter)
+- **Parameters**: RSI=40, EMA_F=50, EMA_S=200, SL=4.5, ADX_Min=30, BB_Std=1.8
+- **Performance**:
+### BTC/USDT
+### [Strategy Iteration] Report - 2026-03-06
+#### Symbol: BTC/USDT | RSI: 40 | EMA_F: 50 | EMA_S: 200 | SL: 4.5 | ADX_Min: 30
+| Period | Score | Net Profit | Win Rate | Max Drawdown | Trades |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Train (90d)** | 786544.74 | $19283.03 | 81.58% | 2.00% | 38 |
+| **Test (30d)** | 116366.80 | $5671.54 | 81.25% | 3.96% | 16 |
+
+### ETH/USDT
+### [Strategy Iteration] Report - 2026-03-06
+#### Symbol: ETH/USDT | RSI: 40 | EMA_F: 50 | EMA_S: 200 | SL: 4.5 | ADX_Min: 30
+| Period | Score | Net Profit | Win Rate | Max Drawdown | Trades |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Train (90d)** | 265485.92 | $20965.62 | 74.47% | 5.88% | 47 |
+| **Test (30d)** | 202751.49 | $5068.79 | 80.00% | 2.00% | 15 |
+
+### SOL/USDT
+### [Strategy Iteration] Report - 2026-03-06
+#### Symbol: SOL/USDT | RSI: 40 | EMA_F: 50 | EMA_S: 200 | SL: 4.5 | ADX_Min: 30
+| Period | Score | Net Profit | Win Rate | Max Drawdown | Trades |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Train (90d)** | 1115504.09 | $24338.27 | 91.67% | 2.00% | 36 |
+| **Test (30d)** | 133338.47 | $6930.27 | 76.19% | 3.96% | 21 |
+
+
 ## Iteration 13 - Triple Threat Optimized
 - **Date**: 2026-03-05
 - **Logic**: Previous iteration yielded zero trades due to overly strict entry conditions. Raising RSI to 40 captures shallower pullbacks common in strong trends. EMA_F reduced to 20 increases sensitivity to short-term momentum, while SL 3.0 provides moderate room for volatility without excessive risk.
@@ -113,3 +144,10 @@ This file tracks the evolution of the AI Crypto Strategy.
 - **Status**: Deployed as baseline for Phase 2.
 
 
+
+## 📊 實盤績效追蹤 (Live Performance Tracking)
+| 週期 | 策略版本 | 實際勝率 | 盈虧比 (Avg W/L) | 最大滑價 | 狀態 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 2026-03-06 | Iteration 15 | -- | -- | -- | 監控中 |
+
+> *註：此表格將由系統自動更新，記錄 Iteration 15 上線後的真實市場表現。*

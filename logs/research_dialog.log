@@ -248,3 +248,94 @@
 [2026-03-05T18:32:50.094822] Symbol ETH/USDT Score: 17477.18
 [2026-03-05T18:32:53.381467] Symbol SOL/USDT Score: 478.85
 [2026-03-05T18:32:53.381584] Suggestion 1 passed safety check (Positive symbols: 2)
+[2026-03-05T18:32:54.558394] Successfully deployed Iteration 13
+[2026-03-05T18:32:54.558514] Autonomous Research Loop Completed.
+[2026-03-05T23:57:00.353031] Starting Autonomous Research Loop with Judge Logic...
+[2026-03-05T23:57:00.353369] Attempt 1/3
+[2026-03-05T23:57:07.393479] Sending prompt to Gemini (Iteration 13)...
+[2026-03-05T23:57:25.894908] Testing Suggestion: Raising RSI threshold to 45 and using faster EMAs to capture shallow pullbacks in medium-term trends, addressing the zero-trade issue.
+[2026-03-05T23:57:32.224011] --- Judge Logic: Quality Gate Check ---
+[2026-03-05T23:57:32.224170] REJECTED: BTC/USDT failed positive profit check (Train: -971.4944542341109, Test: -211.60319999999774)
+[2026-03-05T23:57:32.224216] Testing Suggestion: Slightly loosening RSI to 35 while maintaining a stable trend filter; widening SL to 4.5 ATR to tolerate higher volatility during momentum shifts.
+[2026-03-05T23:57:39.637048] --- Judge Logic: Quality Gate Check ---
+[2026-03-05T23:57:39.637344] REJECTED: Total trades 4 <= 15 (Statistically insignificant)
+[2026-03-05T23:57:39.637427] Testing Suggestion: Using maximum allowed RSI (50) and fastest allowed EMA Slow (100) to maximize signal generation and test MACD validity as the primary filter.
+[2026-03-05T23:57:46.761857] --- Judge Logic: Quality Gate Check ---
+[2026-03-05T23:57:46.762024] REJECTED: BTC/USDT failed positive profit check (Train: -830.793445341882, Test: -787.2392390143996)
+[2026-03-05T23:57:46.762077] No suggestions passed Quality Gate. Retrying with warning...
+[2026-03-05T23:57:46.762124] Attempt 2/3
+[2026-03-05T23:57:53.555589] Sending prompt to Gemini (Iteration 13)...
+[2026-03-05T23:58:12.905433] Testing Suggestion: Significantly relaxed RSI threshold to 45 and faster EMA_F to 20 to solve the zero-trade issue. SL widened to 3.0 ATR to accommodate volatility, with MACD confirmation to filter false reversals.
+[2026-03-05T23:58:19.785429] --- Judge Logic: Quality Gate Check ---
+[2026-03-05T23:58:19.785581] REJECTED: BTC/USDT failed positive profit check (Train: -787.2392390143996, Test: -407.37113599999793)
+[2026-03-05T23:58:19.785626] Testing Suggestion: Focus on deep mean reversion without momentum lag. RSI increased slightly to 35 to find trades, but SL maximized to 4.5 ATR to survive long wicks common in BTC/ETH consolidation phases.
+[2026-03-05T23:58:26.331857] --- Judge Logic: Quality Gate Check ---
+[2026-03-05T23:58:26.331976] REJECTED: BTC/USDT failed positive profit check (Train: 167.87963171635056, Test: -599.2237132800001)
+[2026-03-05T23:58:26.332020] Testing Suggestion: Balanced approach targeting moderate pullbacks (RSI 42). EMA parameters tuned for faster trend recognition (40/120). MACD confirmation used to align entry with histogram recovery.
+[2026-03-05T23:58:32.925482] --- Judge Logic: Quality Gate Check ---
+[2026-03-05T23:58:32.925634] REJECTED: BTC/USDT failed positive profit check (Train: -407.3711360000052, Test: 816.0000000000091)
+[2026-03-05T23:58:32.925687] No suggestions passed Quality Gate. Retrying with warning...
+[2026-03-05T23:58:32.925725] Attempt 3/3
+[2026-03-05T23:58:39.491621] Sending prompt to Gemini (Iteration 13)...
+[2026-03-05T23:59:00.244215] Testing Suggestion: Previous RSI 30 was too restrictive resulting in zero trades. Raising RSI to 45 allows for entering moderate pullbacks. Faster EMA_F (21) improves reaction time to recent price action, while MACD confirmation ensures momentum is recovering before entry.
+[2026-03-05T23:59:06.911369] --- Judge Logic: Quality Gate Check ---
+[2026-03-05T23:59:06.911528] REJECTED: BTC/USDT failed positive profit check (Train: -787.2392390143996, Test: -407.37113599999793)
+[2026-03-05T23:59:06.911588] Testing Suggestion: Addressing the 'Warning' by significantly widening the Stop Loss to 4.5 ATR to allow trades to breathe during volatility. EMA_S reduced to 150 to identify trends earlier than the 200 EMA. RSI 35 targets deeper value but is more attainable than 30.
+[2026-03-05T23:59:13.708450] --- Judge Logic: Quality Gate Check ---
+[2026-03-05T23:59:13.708591] REJECTED: Total trades 5 <= 15 (Statistically insignificant)
+[2026-03-05T23:59:13.708635] Testing Suggestion: Utilizing the upper bound of the RSI constraint (50) to capture shallow dips in strong momentum markets. Fast EMA (12) combined with a 100 Slow EMA creates a responsive trend filter. Minimum allowed SL (2.5) is used here to manage risk on more frequent entries.
+[2026-03-05T23:59:20.510880] --- Judge Logic: Quality Gate Check ---
+[2026-03-05T23:59:20.511059] REJECTED: BTC/USDT failed positive profit check (Train: -830.793445341882, Test: -787.2392390143996)
+[2026-03-05T23:59:20.511105] No suggestions passed Quality Gate. Retrying with warning...
+[2026-03-05T23:59:20.511141] Autonomous Research Loop failed after 3 attempts.
+[2026-03-06T00:59:31.132319] Starting Autonomous Research Loop (Iteration 14) with ADX/BB...
+[2026-03-06T00:59:31.138762] Attempt 1/3
+[2026-03-06T00:59:42.039394] Sending prompt to Gemini (Iteration 14)...
+[2026-03-06T01:00:02.655720] Testing Suggestion: Drastically increasing RSI threshold and shortening EMAs to address the zero-trade volume issue. Lower ADX min captures moderate trends.
+[2026-03-06T01:00:17.881507] --- Judge Logic: Quality Gate Check (Iteration 14) ---
+[2026-03-06T01:00:17.881657] REJECTED: BTC/USDT Overfitting (Test Profit 9409.897417909324 < 20% of Train Profit 48971.69475498556)
+[2026-03-06T01:00:17.881703] Testing Suggestion: Balances strict trend requirements with a slightly looser RSI entry (35) compared to the failed previous iteration (30). MACD confirm adds momentum validation.
+[2026-03-06T01:00:28.661368] --- Judge Logic: Quality Gate Check (Iteration 14) ---
+[2026-03-06T01:00:28.661504] REJECTED: Total trades 11 <= 20 (Statistically insignificant)
+[2026-03-06T01:00:28.661549] Testing Suggestion: Retains the 50/200 Golden Cross baseline but widens the SL significantly to survive volatility and raises RSI to 40 to trigger entries in strong ADX trends.
+[2026-03-06T01:00:40.156689] --- Judge Logic: Quality Gate Check (Iteration 14) ---
+[2026-03-06T01:00:40.156841] PASSED: Quality Gate Check.
+[2026-03-06T01:00:40.157299] Successfully deployed Iteration 14
+[2026-03-06T18:10:38.669939] Starting Autonomous Research Loop (Iteration 14) with ADX/BB...
+[2026-03-06T18:10:38.670370] Attempt 1/3
+[2026-03-06T18:10:50.432283] Sending prompt to Gemini (Iteration 15)...
+[2026-03-06T18:11:17.485025] Testing Suggestion: Significantly increasing RSI threshold to 45 and lowering ADX to 20 to solve the zero-trade frequency issue. Faster EMA settings (20/100) aim to capture trends earlier.
+[2026-03-06T18:11:28.268448] --- Judge Logic: Quality Gate Check (Iteration 14) ---
+[2026-03-06T18:11:28.268592] REJECTED: BTC/USDT failed positive profit check (Train: -334.3096393009273, Test: 30.86762605324475)
+[2026-03-06T18:11:28.268639] Testing Suggestion: Maintaining the robust 50/200 trend baseline but relaxing RSI to 35 to trigger entries that missed the previous '30' cutoff. Wide SL of 4.0 allows trades to breathe during volatility.
+[2026-03-06T18:11:38.948988] --- Judge Logic: Quality Gate Check (Iteration 14) ---
+[2026-03-06T18:11:38.949139] REJECTED: BTC/USDT failed positive profit check (Train: -233.72419650842676, Test: 102.06868493084403)
+[2026-03-06T18:11:38.949185] Testing Suggestion: Balanced approach using RSI 40 and intermediate EMA lengths (30/150). Tighter BB deviation (1.8) facilitates quicker scaling out in choppy conditions.
+[2026-03-06T18:11:49.912651] --- Judge Logic: Quality Gate Check (Iteration 14) ---
+[2026-03-06T18:11:49.912817] REJECTED: BTC/USDT failed positive profit check (Train: -705.7015637840923, Test: 51.709122434249366)
+[2026-03-06T18:11:49.912994] No suggestions passed Quality Gate. Retrying with warning...
+[2026-03-06T18:11:49.913050] Attempt 2/3
+[2026-03-06T18:12:01.016377] Sending prompt to Gemini (Iteration 15)...
+[2026-03-06T18:12:17.985403] Testing Suggestion: Increased RSI threshold to 40 and lowered ADX minimum to 20 to significantly increase trade frequency. Widened SL to 3.0 ATR to prevent premature stop outs during normal volatility while relying on a faster EMA trend.
+[2026-03-06T18:12:28.806945] --- Judge Logic: Quality Gate Check (Iteration 14) ---
+[2026-03-06T18:12:28.807070] REJECTED: BTC/USDT failed positive profit check (Train: -763.7874415762071, Test: 375.27392129662985)
+[2026-03-06T18:12:28.807114] Testing Suggestion: Relaxed the RSI threshold to 45 for more pullback opportunities but added MACD confirmation to filter out false signals. A wider 4.0 ATR stop loss and 2.2 BB Std accommodate larger market swings and optimize scaling out.
+[2026-03-06T18:12:40.052115] --- Judge Logic: Quality Gate Check (Iteration 14) ---
+[2026-03-06T18:12:40.052309] REJECTED: BTC/USDT failed positive profit check (Train: -235.9329680647461, Test: 207.25065130175608)
+[2026-03-06T18:12:40.052381] Testing Suggestion: Maintains the strong foundational trend requirements (EMA 50/200, ADX 25) from the previous iteration but increases the RSI trigger to 35 and widens SL to the minimum required 2.5 ATR to improve trade counts and survivability.
+[2026-03-06T18:12:50.991055] --- Judge Logic: Quality Gate Check (Iteration 14) ---
+[2026-03-06T18:12:50.991243] REJECTED: BTC/USDT failed positive profit check (Train: -174.2813051170142, Test: -133.20999031122847)
+[2026-03-06T18:12:50.991291] No suggestions passed Quality Gate. Retrying with warning...
+[2026-03-06T18:12:50.991327] Attempt 3/3
+[2026-03-06T18:13:02.349796] Sending prompt to Gemini (Iteration 15)...
+[2026-03-06T18:13:28.010999] Testing Suggestion: Aggressive Entry / Volatility Absorption: The previous iteration failed to trigger trades due to strict entry conditions. By raising RSI to 45 and lowering ADX to 20, we increase trade frequency. SL is widened to 3.0 ATR to accommodate the looser entry and prevent noise-based stop-outs.
+[2026-03-06T18:13:38.673875] --- Judge Logic: Quality Gate Check (Iteration 14) ---
+[2026-03-06T18:13:38.674006] REJECTED: BTC/USDT failed positive profit check (Train: -559.090517676128, Test: -3.896289959893693)
+[2026-03-06T18:13:38.674050] Testing Suggestion: Strong Trend / Deep Value: Targets established trends (ADX 30, EMA 50/200) but waits for a significant pullback (RSI 32). A very wide SL (4.5 ATR) is used to avoid 'wicking' in volatile markets, relying on the high win rate of strong trend continuations. MACD added for momentum confirmation.
+[2026-03-06T18:13:49.874214] --- Judge Logic: Quality Gate Check (Iteration 14) ---
+[2026-03-06T18:13:49.874379] REJECTED: Total trades 1 <= 20 (Statistically insignificant)
+[2026-03-06T18:13:49.874425] Testing Suggestion: Fast React / Quick Profit Taking: Uses faster EMAs to adapt to recent price action. RSI 38 captures moderate dips. Tighter Bollinger Bands (1.8) allow for faster scaling out (50% profit taking) to move the remaining position to Breakeven quickly, prioritizing capital preservation.
+[2026-03-06T18:14:00.659546] --- Judge Logic: Quality Gate Check (Iteration 14) ---
+[2026-03-06T18:14:00.659743] REJECTED: BTC/USDT failed positive profit check (Train: -463.7250672568789, Test: 16.792524720409347)
+[2026-03-06T18:14:00.659818] No suggestions passed Quality Gate. Retrying with warning...
+[2026-03-06T18:14:00.659891] Autonomous Research Loop failed after 3 attempts.

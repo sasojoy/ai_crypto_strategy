@@ -92,3 +92,4 @@ python3 -u -m src.market
 
 ---
 *Last Updated: 2026-03-05*
+\n\n## 🛡️ Security Notice\n**IMPORTANT**: When configuring your Binance API keys, ensure that only **'Enable Spot & Margin Trading'** is checked. **DO NOT** enable 'Enable Withdrawals'. This project only requires trading permissions.
