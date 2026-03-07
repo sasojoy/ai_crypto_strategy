@@ -38,7 +38,7 @@ jobs:
               python3 -m src.summary
             else
               echo "Deploying market monitor..."
-              pkill -f "python3 -u -m src.market" || true
+              pkill -9 -f "python3 -u -m src.market" || true
               
               export PYTHONPATH=$PYTHONPATH:.
               nohup python3 -u -m src.market > market.log 2>&1 &
