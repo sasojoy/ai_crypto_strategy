@@ -1,35 +1,50 @@
 
-# 🚀 AI Crypto Strategy: Evolutionary Memory & Autonomous Research
+# AI Crypto Strategy - Iteration 15 (Towards $5M)
 
-這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 實現無縫部署至 Google Compute Engine (GCE)。
+這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 核心功能
+## 🌟 核心邏輯 (Iteration 15)
 
-### 1. 自主研究循環 (Autonomous Research Loop)
-系統不再依賴人工調整參數，而是透過 `src/autonomous_research.py` 實現自動演進：
-- **數據驅動分析**：自動抓取 BTC、ETH、SOL 等多幣種的歷史 K 線數據。
-- **AI 決策優化**：整合 **Gemini 2.0 / 1.5 Flash** 模型，分析前一輪策略的盈虧、勝率及回撤，並給出下一代的優化建議。
-- **自動回測驗證**：AI 提出的參數必須通過 Train/Test 數據集的雙重驗證。
-- **物理護欄 (Safety Guardrails)**：強制執行參數限制（如 RSI 必須在 20-50 之間，止損必須在 1-5% 之間），防止 AI 產生極端風險。
+### 1. 進場策略 (Entry Logic)
+- **趨勢過濾**：ADX > 25 確保市場具備足夠動能。
+- **均線確認**：價格必須位於 EMA 趨勢線之上。
+- **動能確認**：MACD Histogram 必須為正且持續增長。
 
-### 2. 進化記憶機制 (Evolutionary Memory)
-系統會記錄每一次的失敗與成功，確保策略持續進化：
-- **策略帳本 (`STRATEGY_RELEASE_NOTES.md`)**：自動記錄每一代 (Iteration) 的邏輯變更、參數設定及回測表現。
-- **版本化備份**：在每次參數更新前，自動將舊版 `market.py` 備份至 `archive/` 目錄。
-- **參數中心化**：所有策略參數統一由 `config/params.json` 管理，實現代碼與配置分離。
+### 2. 倉位管理 (Position Sizing)
+- **風險控制**：每筆交易嚴格限制為總資產的 **1% Risk**。
+- **波動調整**：根據 ATR (Average True Range) 自動計算倉位大小，確保在不同波動率下風險一致。
 
-### 3. 多幣種量化策略
-核心交易邏輯位於 `src/market.py`，具備以下特性：
-- **多指標融合**：結合 MACD 趨勢確認、RSI 超賣買入、以及 EMA (20/100/200) 長期趨勢過濾。
-- **動態風險管理**：支持每筆交易固定風險百分比 (Risk Per Trade)。
-- **異步監控**：支持同時監控多個交易對，並即時執行信號。
+### 3. 出場與獲利管理 (Exit & Profit Management)
+- **分批減倉**：觸及 Bollinger Band Upper 時自動減倉 50%，並將止損移至保本價 (Breakeven)。
+- **追蹤止損**：剩餘 50% 倉位啟動 **EMA 20 追蹤止損**，最大化趨勢利潤。
 
-### 4. 自動化 CI/CD 部署
-透過 `.github/workflows/deploy.yml` 實現高度自動化的運維：
-- **安全部署 (Safe-Kill)**：優化後的腳本可精確重啟進程，避免傳統 `pkill` 導致的部署中斷 (143 錯誤)。
-- **環境自動構建**：自動同步代碼、安裝依賴、並根據 GitHub Secrets 生成 `.env` 配置文件。
-- **自動重啟機制**：整合 Crontab 監控，確保 `market.py` 在崩潰後能自動重啟。
-- **定時任務**：每日 00:00 (台北時間) 自動執行 `src.summary` 生成每日盈虧報告。
+## 🚀 技術堆棧 (Tech Stack)
+- **語言**：Python 3.10+
+- **交易所對接**：CCXT (Binance)
+- **進程管理**：PM2 (Process Manager 2)
+- **AI 研究員**：Google Gemini API (Strategy Researcher)
+- **基礎設施**：Google Compute Engine (GCE) & GitHub Actions
+
+## 🛠️ 操作說明
+
+### 1. 啟動交易機器人
+```bash
+pm2 start "python3 -u -m src.market" --name "Iteration15_Bot"
+```
+
+### 2. 監控與日誌
+- **即時日誌**：`pm2 logs Iteration15_Bot`
+- **儀表板**：透過 Telegram `/dashboard` 指令查看每日損益簡報。
+
+### 3. 啟動自主研究循環
+如果您想讓 AI 開始分析並優化策略，請執行：
+```bash
+python3 src/autonomous_research.py
+```
+
+## 🛡️ 風控宣告 (Risk Guardrails)
+- **最大持倉**：系統同時最多僅持有 3 個交易對。
+- **風險標準化**：所有進場均經過 1% Risk-normalized 處理，嚴禁過度槓桿。
 
 ---
 
