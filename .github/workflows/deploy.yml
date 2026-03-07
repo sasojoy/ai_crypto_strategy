@@ -38,10 +38,7 @@ jobs:
               python3 -m src.summary
             else
               echo "Deploying market monitor..."
-              PID=$(pgrep -f "src.market" | grep -v $$ || true)
-              if [ ! -z "$PID" ]; then
-                kill -15 $PID || kill -9 $PID
-              fi
+              pkill -f "python3 -u -m src.market" || true
               
               export PYTHONPATH=$PYTHONPATH:.
               nohup python3 -u -m src.market > market.log 2>&1 &

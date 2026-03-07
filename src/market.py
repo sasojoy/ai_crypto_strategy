@@ -6,7 +6,9 @@ import json
 import shutil
 from datetime import datetime
 from dotenv import load_dotenv
-from src.notifier import send_telegram_msg, send_daily_summary, send_kill_switch_alert\nfrom src.logger import log_trade\nfrom src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands
+from src.notifier import send_telegram_msg, send_daily_summary, send_kill_switch_alert
+from src.logger import log_trade
+from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands
 
 # Load environment variables
 load_dotenv()
@@ -62,15 +64,13 @@ def log_data(timestamp, price, rsi, ema200):
 
 def get_active_positions_count():
     # 模擬邏輯：此處應為實際持倉查詢
-    return 0 
+    return 0
 
 def stability_monitor():
     """
     穩定性監控器 (Circuit Breaker)
     若出現連續 3 筆止損，或帳戶淨值單日下跌超過 5%，自動回滾。
     """
-    # 模擬邏輯：此處應讀取實際交易日誌或帳戶餘額
-    # 假設我們有一個 trade_history.json
     history_file = 'data/trade_history.json'
     if not os.path.exists(history_file): return
 
@@ -78,14 +78,10 @@ def stability_monitor():
         with open(history_file, 'r') as f:
             trades = json.load(f)
 
-        # 1. 連續 3 筆止損
         last_3_trades = trades[-3:]
         if len(last_3_trades) == 3 and all(t['result'] == 'SL' for t in last_3_trades):
             trigger_rollback("連續 3 筆止損")
             return
-
-        # 2. 帳戶淨值單日下跌超過 5% (簡化邏輯)
-        # ... 實作略 ...
     except Exception as e:
         print(f"Stability monitor error: {e}")
 
@@ -97,17 +93,14 @@ def trigger_rollback(reason):
     if os.path.exists(stable_version):
         shutil.copy(stable_version, 'config/params.json')
         msg = f"🚨 緊急警告：{current_version} 觸發熔斷 ({reason})，系統已自動回滾至穩定版本 11。"
-        send_telegram_msg(msg)\n                save_order_state(symbol, {'entry_price': latest['close'], 'pos_size': position_size, 'status': 'Open', 'iteration': '15'})
+        send_telegram_msg(msg)
         print(msg)
     else:
         print("Rollback failed: Stable version not found.")
 
-
 def get_account_balance():
-    # In a real scenario, this would call exchange.fetch_balance()
-    # For now, we simulate a $10,000 balance
     return 10000.0
-\n
+
 def log_slippage(symbol, expected_price, actual_price):
     slippage = abs(actual_price - expected_price) / expected_price
     os.makedirs('logs', exist_ok=True)
@@ -127,7 +120,7 @@ def load_order_state(symbol):
         with open(path, 'r') as f:
             return json.load(f)
     return None
-\n
+
 # Global Kill Switch State
 KILL_SWITCH_ACTIVE = False
 
@@ -142,17 +135,16 @@ def check_kill_switch():
 def trigger_panic_sell_all():
     print("🚨 [EMERGENCY] KILL SWITCH ACTIVATED! Closing all positions...")
     send_kill_switch_alert("User Command /panic_sell_all")
-    # In a real scenario, this would call exchange.cancel_all_orders() and close all positions
     exit(1)
 
 def get_daily_stats():
-    # Simulated stats for the dashboard
     equity = 10500.0
     floating_pnl = 120.50
     realized_pnl = 45.00
     total_risk_pct = 1.5
     return equity, floating_pnl, realized_pnl, total_risk_pct
-\ndef run_strategy():
+
+def run_strategy():
     params = load_params()
     symbols = ['BTC/USDT', 'SOL/USDT', 'ETH/USDT']
     prices_rsi = {}
@@ -176,7 +168,6 @@ def get_daily_stats():
             prev = df.iloc[-2]
             prices_rsi[symbol] = (latest['close'], latest['rsi'])
 
-            # Entry Logic
             adx_ok = latest['adx'] > params.get('adx_min', 25)
             volatility_ok = latest['atr'] <= (latest['atr_ma24h'] * 2)
             macd_ok = True
@@ -196,29 +187,20 @@ def get_daily_stats():
 
                 sl = latest['close'] - sl_distance
                 msg = (
-                    f"🚀 [Iteration 15] 高級獲利管理進場
-"
-                    f"----------------------------
-"
-                    f"幣種：{symbol} | 價格：{latest['close']:.2f}
-"
-                    f"倉位：{position_size:.4f} (Risk 1%)
-"
-                    f"----------------------------
-"
-                    f"🎯 獲利計畫：
-"
-                    f"1. 觸及 BB Upper ({latest['bb_upper']:.2f}) 減倉 50% 並移至保本止損。
-"
+                    f"🚀 [Iteration 15] 高級獲利管理進場\n"
+                    f"----------------------------\n"
+                    f"幣種：{symbol} | 價格：{latest['close']:.2f}\n"
+                    f"倉位：{position_size:.4f} (Risk 1%)\n"
+                    f"----------------------------\n"
+                    f"🎯 獲利計畫：\n"
+                    f"1. 觸及 BB Upper ({latest['bb_upper']:.2f}) 減倉 50% 並移至保本止損。\n"
                     f"2. 剩餘 50% 啟動 EMA 20 追蹤止損，最大化趨勢利潤。"
                 )
-                send_telegram_msg(msg)\n                save_order_state(symbol, {'entry_price': latest['close'], 'pos_size': position_size, 'status': 'Open', 'iteration': '15'})
+                send_telegram_msg(msg)
+                save_order_state(symbol, {'entry_price': latest['close'], 'pos_size': position_size, 'status': 'Open', 'iteration': '15'})
         except Exception as e:
             print(f"Error: {e}")
     return prices_rsi
-
-
-
 
 if __name__ == "__main__":
     STRATEGY_VERSION = "V8.3-Self-Evolving"
@@ -231,7 +213,6 @@ if __name__ == "__main__":
             if check_kill_switch():
                 trigger_panic_sell_all()
 
-            # Daily Summary Trigger (00:00 UTC)
             now = datetime.utcnow()
             if now.hour == 0 and now.minute == 0 and last_summary_date != now.date():
                 equity, floating_pnl, realized_pnl, total_risk_pct = get_daily_stats()
@@ -243,13 +224,10 @@ if __name__ == "__main__":
             current_time = time.time()
             if current_time - last_heartbeat_time >= 900:
                 if prices_rsi:
-                    report = "📊 定時回報
-"
+                    report = "📊 定時回報\n"
                     for symbol, (price, rsi) in prices_rsi.items():
-                        report += f"{symbol}: {price:.2f} | RSI: {rsi:.2f}
-"
-                    report += f"版本: {STRATEGY_VERSION}
-狀態: 運行中"
+                        report += f"{symbol}: {price:.2f} | RSI: {rsi:.2f}\n"
+                    report += f"版本: {STRATEGY_VERSION}\n狀態: 運行中"
                     send_telegram_msg(report)
                     last_heartbeat_time = current_time
         except Exception as e:

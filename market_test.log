@@ -1,0 +1,3 @@
+Telegram token or chat ID not found in environment variables.
+/workspace/ai_crypto_strategy/src/market.py:216: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
