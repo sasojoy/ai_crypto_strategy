@@ -31,8 +31,13 @@ jobs:
 
             pip3 install -r requirements.txt
 
-            # Install PM2 if not present
-            npm install -g pm2 || sudo npm install -g pm2
+            # Local NPM Setup (No sudo required)
+            mkdir -p ~/.npm-global
+            npm config set prefix '~/.npm-global'
+            export PATH=$PATH:$HOME/.npm-global/bin
+
+            # Install PM2 locally
+            npm install -g pm2
 
             if [ "${{ github.event_name }}" == "schedule" ]; then
               echo "Running daily summary..."
@@ -42,12 +47,12 @@ jobs:
               echo "Deploying market monitor with PM2..."
               export PYTHONPATH=$PYTHONPATH:.
 
-              # PM2 Deployment Logic: Restart if exists, else start new
-              pm2 restart Iteration15_Bot || pm2 start "python3 -u -m src.market" --name "Iteration15_Bot"
-              pm2 save
+              # PM2 Deployment Logic with explicit path and PYTHONPATH
+              $HOME/.npm-global/bin/pm2 restart Iteration15_Bot || $HOME/.npm-global/bin/pm2 start "python3 -u -m src.market" --name "Iteration15_Bot"
+              $HOME/.npm-global/bin/pm2 save
 
-              echo "✅ PM2 has taken over the process. Deployment successful."
-              pm2 status
+              echo "✅ PM2 Status Verification:"
+              $HOME/.npm-global/bin/pm2 list
             fi
             exit 0
         env:
