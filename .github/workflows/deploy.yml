@@ -20,9 +20,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: GITHUB_TOKEN,GITHUB_REPOSITORY
           script: |
-            set -e
             cd ~/ai_crypto_strategy
             git fetch --all && git reset --hard origin/main
 
@@ -30,46 +28,14 @@ jobs:
             printf "TELEGRAM_CHAT_ID=%s\n" "${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
             printf "GEMINI_API_KEY=%s\n" "${{ secrets.GEMINI_API_KEY }}" >> .env
 
-            # 1. Ensure Node.js and NPM are installed
-            if ! command -v npm &> /dev/null; then
-              echo "NPM not found. Attempting installation..."
-              sudo apt-get update && sudo apt-get install -y nodejs npm
-            fi
-
-            # 2. Local NPM Setup (Avoid sudo for global packages)
-            mkdir -p ~/.npm-global
-            npm config set prefix '~/.npm-global'
-            export PATH=$HOME/.npm-global/bin:$PATH
-
-            # 3. Install PM2 locally if not present
-            if [ ! -f "$HOME/.npm-global/bin/pm2" ]; then
-              echo "Installing PM2..."
-              npm install -g pm2
-            fi
-
-            PM2_BIN="$HOME/.npm-global/bin/pm2"
-
             pip3 install -r requirements.txt
 
-            if [ "${{ github.event_name }}" == "schedule" ]; then
-              echo "Running daily summary..."
-              export PYTHONPATH=$PYTHONPATH:.
-              python3 -m src.summary
-            else
-              echo "Deploying market monitor with PM2..."
-              export PYTHONPATH=$PYTHONPATH:.
+            export PATH=$PATH:$HOME/.npm-global/bin:/usr/bin:/usr/local/bin
+            export PYTHONPATH=$PYTHONPATH:.
 
-              # 4. PM2 Deployment Logic
-              $PM2_BIN restart Iteration15_Bot || $PM2_BIN start "python3 -u -m src.market" --name "Iteration15_Bot"
-              $PM2_BIN save
+            # PM2 Deployment Logic
+            pm2 restart Iteration15_Bot || pm2 start "python3 -u -m src.market" --name "Iteration15_Bot"
+            pm2 save
 
-              echo "✅ PM2 Status Verification:"
-              $PM2_BIN list
-
-              echo "🔍 Process Verification:"
-              ps aux | grep "src.market" | grep -v grep
-            fi
-            exit 0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+            echo "✅ Deployment successful. PM2 Status:"
+            pm2 list
