@@ -110,7 +110,7 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
     drawdown = (trades_df['cum_profit'] - peak) / peak
     max_dd = abs(drawdown.min())
     score = (net_profit * win_rate) / max_dd if max_dd != 0 else 0
-    return {"score": score, "profit": net_profit, "win_rate": win_rate, "max_dd": max_dd, "trades": total_trades}
+    return {"score": score, "profit": net_profit, "win_rate": win_rate, "max_dd": max_dd, "trades": total_trades, "trades_list": trades, "df": df}
 
 
 def get_full_report(symbol='BTC/USDT', rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True, adx_min=25, bb_std=2):
@@ -128,3 +128,56 @@ def get_full_report(symbol='BTC/USDT', rsi_th=30, ema_f=50, ema_s=200, sl_mult=2
     report_str += f"| **Train (90d)** | {res_tr['score']:.2f} | ${res_tr['profit']:.2f} | {res_tr['win_rate']*100:.2f}% | {res_tr['max_dd']*100:.2f}% | {res_tr['trades']} |\n"
     report_str += f"| **Test (30d)** | {res_ts['score']:.2f} | ${res_ts['profit']:.2f} | {res_ts['win_rate']*100:.2f}% | {res_ts['max_dd']*100:.2f}% | {res_ts['trades']} |\n"
     return {"symbol": symbol, "train": res_tr, "test": res_ts, "report_str": report_str}
+
+import matplotlib.pyplot as plt
+
+def generate_backtest_plot(df, trades, initial_balance=10000):
+    if not trades:
+        print("No trades to plot.")
+        return
+
+    trades_df = pd.DataFrame(trades)
+    df = df.copy()
+
+    # Calculate Equity Curve
+    df['equity'] = float(initial_balance)
+    current_balance = float(initial_balance)
+    for _, trade in trades_df.iterrows():
+        if 'exit_time' in trade:
+            df.loc[df['timestamp'] >= trade['exit_time'], 'equity'] += trade['profit']
+
+    # Calculate Sharpe Ratio (Daily)
+    df['returns'] = df['equity'].pct_change()
+    daily_returns = df.set_index('timestamp')['returns'].resample('D').sum()
+    sharpe = (daily_returns.mean() / daily_returns.std()) * np.sqrt(365) if daily_returns.std() != 0 else 0
+
+    plt.figure(figsize=(15, 10))
+
+    # Subplot 1: Price and Trades
+    ax1 = plt.subplot(2, 1, 1)
+    plt.plot(df['timestamp'], df['close'], label='Price', alpha=0.5)
+
+    # Plot Entries
+    plt.scatter(trades_df['entry_time'], trades_df['entry_price'], marker='^', color='green', label='Buy', s=100)
+
+    # Plot Exits
+    if 'exit_time' in trades_df.columns:
+        plt.scatter(trades_df['exit_time'], trades_df['exit_price'], marker='v', color='red', label='Sell', s=100)
+
+    plt.title(f"Backtest Results - Sharpe Ratio: {sharpe:.2f}")
+    plt.legend()
+    plt.grid(True)
+
+    # Subplot 2: Equity Curve
+    ax2 = plt.subplot(2, 1, 2, sharex=ax1)
+    plt.plot(df['timestamp'], df['equity'], label='Equity Curve', color='blue')
+    plt.fill_between(df['timestamp'], initial_balance, df['equity'], where=(df['equity'] >= initial_balance), color='green', alpha=0.1)
+    plt.fill_between(df['timestamp'], initial_balance, df['equity'], where=(df['equity'] < initial_balance), color='red', alpha=0.1)
+    plt.legend()
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.savefig('backtest_result.png')
+    plt.close()
+    print(f"Backtest plot saved to backtest_result.png. Sharpe Ratio: {sharpe:.2f}")
+    return sharpe

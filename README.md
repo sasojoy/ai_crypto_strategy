@@ -108,3 +108,15 @@ python3 -u -m src.market
 ---
 *Last Updated: 2026-03-05*
 \n\n## 🛡️ Security Notice\n**IMPORTANT**: When configuring your Binance API keys, ensure that only **'Enable Spot & Margin Trading'** is checked. **DO NOT** enable 'Enable Withdrawals'. This project only requires trading permissions.
+## 📊 Backtest Results (Iteration 15)
+- **Period**: Last 120 days (BTC/USDT)
+- **Net Profit**: +$10.44
+- **Win Rate**: 50.00%
+- **Max Drawdown**: 0.11%
+- **Sharpe Ratio**: 0.11
+- **Total Trades**: 4
+
+### Performance Visualization
+![Backtest Result](backtest_result.png)
+
+*Note: The strategy is currently optimized for high capital preservation (low drawdown) and is undergoing further parameter tuning.*
