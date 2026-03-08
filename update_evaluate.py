@@ -1,28 +1,10 @@
-import ccxt
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-import os
-from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands
+import re
 
-def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=120):
-    exchange = ccxt.binance()
-    since = exchange.parse8601((datetime.now() - timedelta(days=days)).isoformat())
-    all_ohlcv = []
-    while since < exchange.milliseconds():
-        try:
-            ohlcv = exchange.fetch_ohlcv(symbol, timeframe, since=since)
-            if not ohlcv: break
-            since = ohlcv[-1][0] + 1
-            all_ohlcv.extend(ohlcv)
-        except Exception as e:
-            print(f"Error fetching data: {e}")
-            break
-    df = pd.DataFrame(all_ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-    return df
+path = 'src/evaluate.py'
+with open(path, 'r') as f:
+    content = f.read()
 
-
+new_run_evaluation = """
 def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True, adx_min=25, bb_std=2, df_4h=None):
     if df.empty: return {"score": 0, "profit": 0, "win_rate": 0, "max_dd": 0, "trades": 0}
 
@@ -146,87 +128,19 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
                     balance += profit
                     trades[-1].update({'exit_time': latest['timestamp'], 'exit_price': exit_price, 'profit': profit + (trades[-1].get('profit', 0) if scaled_out else 0), 'result': 'Exit'})
                     in_position = False
+"""
 
-    trades_df = pd.DataFrame(trades)
-    total_trades = len(trades_df)
-    win_rate = (trades_df["profit"] > 0).sum() / total_trades if total_trades > 0 else 0
-    net_profit = balance - initial_balance
-    if total_trades > 0:
-        trades_df["cum_profit"] = trades_df["profit"].cumsum() + initial_balance
-        peak = trades_df["cum_profit"].cummax()
-        drawdown = (trades_df["cum_profit"] - peak) / peak
-        max_dd = abs(drawdown.min())
-    else:
-        max_dd = 0
-    score = (net_profit * win_rate) / max_dd if max_dd != 0 else 0
-    return {"score": score, "profit": net_profit, "win_rate": win_rate, "max_dd": max_dd, "trades": total_trades, "trades_list": trades, "df": df}
+pattern = r'def run_evaluation\(.*?\):.*?in_position = False\n\s+scaled_out = False'
+# The pattern above is too short and might match multiple things or fail.
+# Let's use a more robust pattern for the whole function.
+pattern = r'def run_evaluation\(.*?\):.*?in_position = False\n\s+scaled_out = False'
+# Actually, let's just replace from def run_evaluation to the end of the loop.
 
+pattern = r'def run_evaluation\(.*?\):.*?in_position = False\n\s+scaled_out = False'
 
-def get_full_report(symbol='BTC/USDT', rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True, adx_min=25, bb_std=2):
-    df_all = fetch_backtest_data(symbol, days=120)
-    if df_all.empty: return None
-    test_cutoff = df_all['timestamp'].max() - timedelta(days=30)
-    df_train = df_all[df_all['timestamp'] <= test_cutoff].copy()
-    df_test = df_all[df_all['timestamp'] > test_cutoff].copy()
-    res_tr = run_evaluation(df_train, rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult, macd_confirm=macd_confirm, adx_min=adx_min, bb_std=bb_std)
-    res_ts = run_evaluation(df_test, rsi_th=rsi_th, ema_f=ema_f, ema_s=ema_s, sl_mult=sl_mult, macd_confirm=macd_confirm, adx_min=adx_min, bb_std=bb_std)
-    report_str = f"### [Strategy Iteration] Report - {datetime.now().strftime('%Y-%m-%d')}\n"
-    report_str += f"#### Symbol: {symbol} | RSI: {rsi_th} | EMA_F: {ema_f} | EMA_S: {ema_s} | SL: {sl_mult} | ADX_Min: {adx_min}\n"
-    report_str += "| Period | Score | Net Profit | Win Rate | Max Drawdown | Trades |\n"
-    report_str += "| :--- | :--- | :--- | :--- | :--- | :--- |\n"
-    report_str += f"| **Train (90d)** | {res_tr['score']:.2f} | ${res_tr['profit']:.2f} | {res_tr['win_rate']*100:.2f}% | {res_tr['max_dd']*100:.2f}% | {res_tr['trades']} |\n"
-    report_str += f"| **Test (30d)** | {res_ts['score']:.2f} | ${res_ts['profit']:.2f} | {res_ts['win_rate']*100:.2f}% | {res_ts['max_dd']*100:.2f}% | {res_ts['trades']} |\n"
-    return {"symbol": symbol, "train": res_tr, "test": res_ts, "report_str": report_str}
+# Let's try to find the whole function
+pattern = r'def run_evaluation\(.*?\):.*?return \{"score": score, "profit": net_profit, "win_rate": win_rate, "max_dd": max_dd, "trades": total_trades, "trades_list": trades, "df": df\}'
+new_content = re.sub(pattern, new_run_evaluation + '\n    trades_df = pd.DataFrame(trades)\n    total_trades = len(trades_df)\n    win_rate = (trades_df["profit"] > 0).sum() / total_trades if total_trades > 0 else 0\n    net_profit = balance - initial_balance\n    if total_trades > 0:\n        trades_df["cum_profit"] = trades_df["profit"].cumsum() + initial_balance\n        peak = trades_df["cum_profit"].cummax()\n        drawdown = (trades_df["cum_profit"] - peak) / peak\n        max_dd = abs(drawdown.min())\n    else:\n        max_dd = 0\n    score = (net_profit * win_rate) / max_dd if max_dd != 0 else 0\n    return {"score": score, "profit": net_profit, "win_rate": win_rate, "max_dd": max_dd, "trades": total_trades, "trades_list": trades, "df": df}', content, flags=re.DOTALL)
 
-import matplotlib.pyplot as plt
-
-def generate_backtest_plot(df, trades, initial_balance=10000):
-    if not trades:
-        print("No trades to plot.")
-        return
-
-    trades_df = pd.DataFrame(trades)
-    df = df.copy()
-
-    # Calculate Equity Curve
-    df['equity'] = float(initial_balance)
-    current_balance = float(initial_balance)
-    for _, trade in trades_df.iterrows():
-        if 'exit_time' in trade:
-            df.loc[df['timestamp'] >= trade['exit_time'], 'equity'] += trade['profit']
-
-    # Calculate Sharpe Ratio (Daily)
-    df['returns'] = df['equity'].pct_change()
-    daily_returns = df.set_index('timestamp')['returns'].resample('D').sum()
-    sharpe = (daily_returns.mean() / daily_returns.std()) * np.sqrt(365) if daily_returns.std() != 0 else 0
-
-    plt.figure(figsize=(15, 10))
-
-    # Subplot 1: Price and Trades
-    ax1 = plt.subplot(2, 1, 1)
-    plt.plot(df['timestamp'], df['close'], label='Price', alpha=0.5)
-
-    # Plot Entries
-    plt.scatter(trades_df['entry_time'], trades_df['entry_price'], marker='^', color='green', label='Buy', s=100)
-
-    # Plot Exits
-    if 'exit_time' in trades_df.columns:
-        plt.scatter(trades_df['exit_time'], trades_df['exit_price'], marker='v', color='red', label='Sell', s=100)
-
-    plt.title(f"Backtest Results - Sharpe Ratio: {sharpe:.2f}")
-    plt.legend()
-    plt.grid(True)
-
-    # Subplot 2: Equity Curve
-    ax2 = plt.subplot(2, 1, 2, sharex=ax1)
-    plt.plot(df['timestamp'], df['equity'], label='Equity Curve', color='blue')
-    plt.fill_between(df['timestamp'], initial_balance, df['equity'], where=(df['equity'] >= initial_balance), color='green', alpha=0.1)
-    plt.fill_between(df['timestamp'], initial_balance, df['equity'], where=(df['equity'] < initial_balance), color='red', alpha=0.1)
-    plt.legend()
-    plt.grid(True)
-
-    plt.tight_layout()
-    plt.savefig('backtest_result.png')
-    plt.close()
-    print(f"Backtest plot saved to backtest_result.png. Sharpe Ratio: {sharpe:.2f}")
-    return sharpe
+with open(path, 'w') as f:
+    f.write(new_content)

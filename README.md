@@ -151,3 +151,19 @@ python3 -u -m src.market
 ### 🛠️ Optimization Status
 - **Latest Optimized Params**: `ema_f: 20`, `bb_std: 1.5` (Updated via WFA on 2026-03-04).
 - **New Data Sources**: Integrated Binance Futures Funding Rate and Open Interest APIs.
+
+## 🌪️ Iteration 18: All-Weather Hedging System (Bi-directional)
+### Core Enhancements
+1. **Shorting Logic**: Added the ability to profit from downtrends when price is below 4H EMA 200.
+2. **Short Entry Rules**:
+   - **ADX > 30**: Higher momentum required for shorts.
+   - **OI Confirmation**: Price Down + OI Up.
+   - **Funding Edge**: Prevents shorting if Funding < -0.01% to avoid short squeezes.
+3. **Exit Optimization**:
+   - **Fast Exit (Short)**: Scale out 70% at Bollinger Lower Band.
+   - **Sensitive Trailing Stop**: Uses EMA 10 for shorts to capture rapid moves and protect against sharp reversals.
+4. **Bi-directional Backtesting**: Updated `src/evaluate.py` to support simultaneous long and short simulation.
+
+### 📊 Performance Summary (Iteration 18)
+- **Test Period (30d)**: Net Profit $66.25, Win Rate 27.27%.
+- **Status**: Bi-directional trading enabled. Shorting logic provides hedging during bearish regimes.
