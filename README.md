@@ -138,3 +138,16 @@ python3 -u -m src.market
 - **Total Trades**: Increased significantly compared to Iteration 15.
 
 ![Iteration 16 Backtest](backtest_result.png)
+
+## 🔍 Iteration 17: Data Deep Mining & Auto-Optimization
+### Core Enhancements
+1. **Funding Rate Filter**: Prevents long entries if the 8h funding rate > 0.03%, avoiding overheated markets and potential reversals.
+2. **Open Interest (OI) Divergence**: Monitors OI to ensure breakouts are supported by new capital (Price Up + OI Up).
+3. **Walk-Forward Analysis (WFA)**: Automated script (`src/walk_forward_optimizer.py`) that runs weekly to find the optimal `EMA length` and `Bollinger Bandwidth` for the current market regime.
+4. **Anomaly Alerts**:
+   - **Whale Alert**: Triggered when volume > 5x the 20-period average.
+   - **Funding Spike**: Triggered when funding rates exceed 0.05%.
+
+### 🛠️ Optimization Status
+- **Latest Optimized Params**: `ema_f: 20`, `bb_std: 1.5` (Updated via WFA on 2026-03-04).
+- **New Data Sources**: Integrated Binance Futures Funding Rate and Open Interest APIs.

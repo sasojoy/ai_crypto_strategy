@@ -83,6 +83,57 @@ def fetch_4h_data(symbol='BTC/USDT'):
         return pd.DataFrame()
 
 
+def fetch_funding_rate(symbol):
+    """
+    Iteration 17: Funding Rate Filter
+    Fetch current funding rate for the symbol.
+    """
+    try:
+        exchange = ccxt.binance({'options': {'defaultType': 'future'}})
+        funding = exchange.fetch_funding_rate(symbol)
+        return funding['fundingRate']
+    except Exception as e:
+        print(f"Error fetching funding rate for {symbol}: {e}")
+        return 0
+
+def fetch_open_interest(symbol):
+    """
+    Iteration 17: OI Divergence
+    Fetch current open interest for the symbol.
+    """
+    try:
+        exchange = ccxt.binance({'options': {'defaultType': 'future'}})
+        oi_data = exchange.fetch_open_interest(symbol)
+        return oi_data['openInterestAmount']
+    except Exception as e:
+        print(f"Error fetching OI for {symbol}: {e}")
+        return 0
+
+
+
+
+def detect_anomalies(symbol, df, funding_rate):
+    """
+    Iteration 17: Whale & Funding Spike Alerts
+    """
+    latest = df.iloc[-1]
+    avg_volume = df['volume'].rolling(20).mean().iloc[-1]
+    
+    # 1. Whale Alert: Volume > 5x Average
+    if latest['volume'] > avg_volume * 5:
+        msg = f"🐋 [WHALE ALERT] {symbol} 偵測到異常巨量交易！\n當前成交量：{latest['volume']:.2f} (均值: {avg_volume:.2f})"
+        send_telegram_msg(msg)
+        print(msg)
+
+    # 2. Funding Spike: Funding > 0.05%
+    if abs(funding_rate) > 0.0005:
+        msg = f"⚠️ [FUNDING SPIKE] {symbol} 資金費率劇烈波動：{funding_rate*100:.4f}%"
+        send_telegram_msg(msg)
+        print(msg)
+
+
+
+
 
 def calculate_rsi(df, period=14):
     delta = df['close'].diff()
@@ -238,14 +289,32 @@ def run_strategy():
             latest = df.iloc[-1]
             prev = df.iloc[-2]
 
-            # 3. Entry Logic (Iteration 16)
+            # 3. Iteration 17: Funding & OI Filters
+            funding_rate = fetch_funding_rate(symbol)
+            current_oi = fetch_open_interest(symbol)
+            
+            # Funding Filter: Avoid Longs if market is overheated (> 0.03% per 8h)
+            funding_ok = funding_rate < 0.0003
+            
+            # OI Divergence: Simple check (In a real scenario, we'd compare with prev OI)
+            # For this iteration, we log it and ensure it's not zero
+            oi_ok = current_oi > 0
+
+            # 4. Entry Logic (Iteration 17)
             adx_threshold = 18 if is_squeezed else params.get('adx_min', 25)
+
+            # 5. Anomaly Detection
+            detect_anomalies(symbol, df, funding_rate)
+
+
             adx_ok = latest['adx'] > adx_threshold
             
             # Long Entry
             long_signal = (
                 trend_4h == "Long" and
                 adx_ok and
+                funding_ok and
+                oi_ok and
                 latest['close'] > latest['ema_f'] and
                 latest['ema_f'] > latest['ema_s'] and
                 (is_squeezed and latest['close'] > latest['bb_upper'] or (prev['rsi'] < params['rsi_th'] and latest['rsi'] > params['rsi_th']))
@@ -257,7 +326,9 @@ def run_strategy():
                 'rsi': latest['rsi'],
                 'adx': latest['adx'],
                 'trend_4h': trend_4h,
-                'squeezed': is_squeezed
+                'squeezed': is_squeezed,
+                'funding': funding_rate,
+                'oi': current_oi
             }
 
             if long_signal:
