@@ -6,7 +6,7 @@ import json
 import shutil
 from datetime import datetime
 from dotenv import load_dotenv
-from src.notifier import send_telegram_msg, send_daily_summary, send_kill_switch_alert
+from src.notifier import send_telegram_msg, send_daily_summary, send_kill_switch_alert, send_rich_heartbeat
 from src.logger import log_trade
 from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands
 
@@ -174,11 +174,19 @@ def run_strategy():
             if params.get('macd_confirm', True):
                 macd_ok = latest['macd_hist'] > 0 and latest['macd_hist'] > prev['macd_hist']
 
+            # Store scan results for heartbeat
+            prices_rsi[symbol] = {
+                'price': latest['close'],
+                'rsi': latest['rsi'],
+                'adx': latest['adx']
+            }
+
             if adx_ok and volatility_ok and macd_ok and \
                latest['close'] > latest['ema_f'] and latest['ema_f'] > latest['ema_s'] and \
                prev['rsi'] < params['rsi_th'] and latest['rsi'] > params['rsi_th']:
 
                 if current_pos_count >= 3:
+                    send_telegram_msg(f"⚠️ [Iteration 15] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
                     continue
 
                 risk_amount = balance * 0.01
@@ -220,16 +228,31 @@ if __name__ == "__main__":
                 last_summary_date = now.date()
 
             stability_monitor()
-            prices_rsi = run_strategy()
+            scan_results = run_strategy()
             current_time = time.time()
+
             if current_time - last_heartbeat_time >= 900:
-                if prices_rsi:
-                    report = "📊 定時回報\n"
-                    for symbol, (price, rsi) in prices_rsi.items():
-                        report += f"{symbol}: {price:.2f} | RSI: {rsi:.2f}\n"
-                    report += f"版本: {STRATEGY_VERSION}\n狀態: 運行中"
-                    send_telegram_msg(report)
-                    last_heartbeat_time = current_time
+                # Collect active position data (Simulated for this iteration)
+                active_positions = []
+                symbols = ['BTC/USDT', 'SOL/USDT', 'ETH/USDT']
+                for s in symbols:
+                    state = load_order_state(s)
+                    if state and state.get('status') == 'Open':
+                        # In a real scenario, we'd fetch current price from exchange
+                        current_price = scan_results.get(s, {}).get('price', 0)
+                        entry_price = state.get('entry_price', 0)
+                        pnl = round(((current_price - entry_price) / entry_price) * 100, 2) if entry_price > 0 else 0
+                        active_positions.append({
+                            'symbol': s,
+                            'entry_price': entry_price,
+                            'current_price': current_price,
+                            'pnl': pnl,
+                            'scaled_out': state.get('scaled_out', False)
+                        })
+
+                active_count = len(active_positions)
+                send_rich_heartbeat(active_positions, scan_results, active_count, STRATEGY_VERSION)
+                last_heartbeat_time = current_time
         except Exception as e:
             print(f"Loop error: {e}")
         time.sleep(60)
