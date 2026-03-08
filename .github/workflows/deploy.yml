@@ -14,28 +14,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Deploy via SSH
+      - name: Deploy to GCE
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
+          host: ${{ secrets.GCE_HOST }}
+          username: ${{ secrets.GCE_USER }}
+          key: ${{ secrets.GCE_SSH_KEY }}
+          port: 22
           script: |
             cd ~/ai_crypto_strategy
-            git fetch --all && git reset --hard origin/main
-
+            git pull origin main
+            
+            # Ensure environment variables are preserved
             printf "TELEGRAM_BOT_TOKEN=%s\n" "${{ secrets.TELEGRAM_BOT_TOKEN }}" > .env
             printf "TELEGRAM_CHAT_ID=%s\n" "${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
             printf "GEMINI_API_KEY=%s\n" "${{ secrets.GEMINI_API_KEY }}" >> .env
-
-            pip3 install -r requirements.txt
-
+            
             export PATH=$PATH:$HOME/.npm-global/bin:/usr/bin:/usr/local/bin
-            export PYTHONPATH=$PYTHONPATH:.
-
-            # PM2 Deployment Logic
             pm2 restart Iteration15_Bot || pm2 start "python3 -u -m src.market" --name "Iteration15_Bot"
             pm2 save
-
-            echo "✅ Deployment successful. PM2 Status:"
-            pm2 list
