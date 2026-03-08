@@ -22,7 +22,7 @@ def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=120):
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     return df
 
-def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True, adx_min=25, bb_std=2):
+def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True, adx_min=25, bb_std=2, df_4h=None):
     if df.empty: return {"score": 0, "profit": 0, "win_rate": 0, "max_dd": 0, "trades": 0}
 
     df['rsi'] = calculate_rsi(df)
@@ -34,6 +34,16 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
     df['adx'] = calculate_adx(df, 14)
     df['bb_upper'], df['bb_lower'], df['bb_bandwidth'], df['bb_percent_b'] = calculate_bollinger_bands(df, 20, bb_std)
     df['atr_ma24h'] = df['atr'].rolling(96).mean()
+    
+    # Bollinger Band Squeeze (5th percentile of bandwidth)
+    df['bw_min'] = df['bb_bandwidth'].rolling(100).quantile(0.05)
+
+    # 4H Trend Filter
+    if df_4h is not None:
+        df_4h['ema200'] = calculate_ema(df_4h, 200)
+        df = df.merge(df_4h[['timestamp', 'ema200']], on='timestamp', how='left').ffill()
+    else:
+        df['ema200'] = 0 # No filter if 4H data missing
 
     df = df.dropna().reset_index(drop=True)
     balance = initial_balance
@@ -44,30 +54,37 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
     sl_price = 0
     tp_price = 0
     pos_size = 0
+    entry_idx = 0
 
     for i in range(1, len(df)):
         latest = df.iloc[i]
         prev = df.iloc[i-1]
 
         if not in_position:
-            adx_ok = latest['adx'] > adx_min
-            volatility_ok = latest['atr'] <= (latest['atr_ma24h'] * 2)
+            is_squeezed = latest['bb_bandwidth'] < latest['bw_min']
+            adx_threshold = 18 if is_squeezed else adx_min
+            adx_ok = latest['adx'] > adx_threshold
+            
+            # 4H Trend Filter (Long Only)
+            trend_ok = latest['close'] > latest['ema200'] if latest['ema200'] > 0 else True
+            
             macd_ok = True
             if macd_confirm:
                 macd_ok = latest['macd_hist'] > 0 and latest['macd_hist'] > prev['macd_hist']
 
-            if adx_ok and volatility_ok and macd_ok and \
+            if trend_ok and adx_ok and macd_ok and \
                latest['close'] > latest['ema_f'] and \
                latest['ema_f'] > latest['ema_s'] and \
-               prev['rsi'] < rsi_th and latest['rsi'] > rsi_th:
+               (is_squeezed and latest['close'] > latest['bb_upper'] or (prev['rsi'] < rsi_th and latest['rsi'] > rsi_th)):
                 in_position = True
                 scaled_out = False
                 entry_price = latest['close']
+                entry_idx = i
                 sl_price = entry_price - (sl_mult * latest['atr'])
                 tp_price = entry_price + (sl_mult * 2 * latest['atr'])
 
-                # Risk-based sizing (1% risk)
-                risk_amount = balance * 0.01
+                # Risk-based sizing (1.5% risk)
+                risk_amount = balance * 0.015
                 sl_dist = entry_price - sl_price
                 pos_size = risk_amount / sl_dist if sl_dist > 0 else 0
 
@@ -85,7 +102,19 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
                 trades[-1]['scaled_out_price'] = exit_price
                 trades[-1]['status'] = 'ScaledOut'
 
-            # 2. Trailing Stop (EMA 20) or Initial SL (Breakeven if scaled out)
+            # 2. Time Stop (3 hours = 12 bars of 15m)
+            # If after 12 bars, price is within +/- 0.5% of entry, close position
+            if (i - entry_idx) >= 12 and abs(latest['close'] - entry_price) / entry_price < 0.005:
+                exit_price = latest['close']
+                remaining_size = pos_size * 0.5 if scaled_out else pos_size
+                profit = (exit_price - entry_price) * remaining_size
+                balance += profit
+                trades[-1].update({'exit_time': latest['timestamp'], 'exit_price': exit_price, 'profit': profit + (trades[-1].get('profit', 0) if scaled_out else 0), 'result': 'TimeStop'})
+                in_position = False
+                scaled_out = False
+                continue
+
+            # 3. Trailing Stop (EMA 20) or Initial SL (Breakeven if scaled out)
             current_sl = max(sl_price, latest['ema_trail']) if scaled_out else sl_price
 
             if latest['low'] <= current_sl:
