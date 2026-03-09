@@ -361,26 +361,24 @@ def run_strategy():
             ha_long = latest['ha_close'] > latest['ha_open'] and prev['ha_close'] > prev['ha_open']
             ha_short = latest['ha_close'] < latest['ha_open'] and prev['ha_close'] < prev['ha_open']
 
-            # 5. Entry Logic (Iteration 25: 1H EMA 20 Direction + 15m Squeeze)
-            df_1h = fetch_1h_data(symbol)
-            if df_1h.empty: continue
-            df_1h['ema20'] = calculate_ema(df_1h, 20)
-            latest_1h = df_1h.iloc[-1]
-            prev_1h = df_1h.iloc[-2]
-            ema20_up = latest_1h['ema20'] > prev_1h['ema20']
-            ema20_down = latest_1h['ema20'] < prev_1h['ema20']
+            # 5. Entry Logic (Iteration 26: Pullback Buy)
+            # Pre-requisite: 4H Trend Strong (EMA 200 above)
+            df_4h = fetch_4h_data(symbol)
+            if df_4h.empty: continue
+            df_4h['ema200'] = calculate_ema(df_4h, 200)
+            trend_4h_strong = latest['close'] > df_4h.iloc[-1]['ema200']
 
-            rsi_ok_long = latest['rsi'] < 80 and latest['rsi_slope'] > 0
-            rsi_ok_short = latest['rsi'] > 20 and latest['rsi_slope'] < 0
+            # Trigger: 15m RSI < 35 and Price < BB Lower
+            df['bb_upper'], df['bb_lower'], df['bb_mid'], _ = calculate_bollinger_bands(df, 20, 2)
+            latest = df.iloc[-1] # Refresh latest with BB
+            rsi_oversold = latest['rsi'] < 35
+            price_at_bb_lower = latest['low'] <= latest['bb_lower']
 
-            # Pullback Entry: 4H Trend Strong + 15m EMA 20/50 Golden Cross + Price near EMA 20
-            pullback_long = (trend_4h == "Long" and latest['ema20'] > latest['ema50'] and 
-                             latest['low'] <= latest['ema20'] * 1.002 and latest['close'] > latest['ema20'])
+            # Confirmation: RSI Hook Up and First Green Candle
+            rsi_hook_up = latest['rsi'] > prev['rsi']
+            first_green = latest['close'] > latest['open']
 
-            long_signal = (
-                trend_4h == "Long" and ema20_up and ha_long and rsi_ok_long and
-                ( (vol_ok and latest['close'] > prev['resistance_12h']) or pullback_long )
-            )
+            long_signal = trend_4h_strong and rsi_oversold and price_at_bb_lower and rsi_hook_up and first_green
 
             short_signal = (
                 trend_4h == "Short" and ha_short and rsi_ok_short and
@@ -510,43 +508,44 @@ def manage_positions(prices_rsi):
                 save_order_state(symbol, state)
                 continue
 
-        # Iteration 24: Stepped Scale-out (25% every 3% gain)
-        if side == 'LONG':
-            profit_pct = (current_price - entry_price) / entry_price * 100
-            scale_out_level = int(profit_pct / 3)
-            last_scale_level = state.get('last_scale_level', 0)
-            
-            if scale_out_level > last_scale_level and scale_out_level <= 4:
-                msg = f"✂️ [Iteration 24] {symbol} 階梯式減倉！\n獲利：{profit_pct:.2f}% | 執行第 {scale_out_level} 階段減倉 (25%)。"
-                send_telegram_msg(msg)
-                state['last_scale_level'] = scale_out_level
-                # In real exchange, we would execute a partial close order here
-                save_order_state(symbol, state)
+        # Iteration 26: Exit Logic (BB Mid/Upper)
+        # Fetch latest BB for exit
+        df_exit = fetch_15m_data(symbol)
+        df_exit['bb_upper'], df_exit['bb_lower'], df_exit['bb_mid'], _ = calculate_bollinger_bands(df_exit, 20, 2)
+        latest_exit = df_exit.iloc[-1]
 
-        # Iteration 23: Trailing Stop for SOL
-        if symbol == 'SOL/USDT' and side == 'LONG':
-            highest_price = max(state.get('highest_price', 0), current_price)
-            state['highest_price'] = highest_price
-            
-            # Trailing Stop: 2% from highest price
-            trailing_stop_price = highest_price * 0.98
-            if current_price <= trailing_stop_price:
-                profit = (current_price - entry_price) / entry_price * 100
-                msg = f"💰 [Iteration 23] {symbol} Trailing Stop 觸發！\n出場價格：{current_price:.2f} | 獲利：{profit:.2f}%"
+        if side == 'LONG':
+            # 1. SL (Iteration 26: 3.0x ATR)
+            sl_price = entry_price - (3.0 * prices_rsi[symbol]['atr'])
+            if current_price <= sl_price:
+                msg = f"❌ [Iteration 26] {symbol} 觸發止損！\n方向：{side}\n進場：{entry_price}\n止損：{sl_price}\n現價：{current_price}"
                 send_telegram_msg(msg)
                 state['status'] = 'Closed'
                 state['exit_price'] = current_price
                 state['exit_time'] = datetime.utcnow().isoformat()
+                state['exit_reason'] = 'SL'
                 save_order_state(symbol, state)
                 continue
-            else:
+
+            # 2. TP (Iteration 26: BB Mid/Upper)
+            if current_price >= latest_exit['bb_upper']:
+                msg = f"✅ [Iteration 26] {symbol} 觸及布林上軌，全額止盈！\n現價：{current_price}"
+                send_telegram_msg(msg)
+                state['status'] = 'Closed'
+                state['exit_price'] = current_price
+                state['exit_time'] = datetime.utcnow().isoformat()
+                state['exit_reason'] = 'TP_BB_Upper'
                 save_order_state(symbol, state)
+                continue
+            elif current_price >= latest_exit['bb_mid']:
+                # Optional: Partial profit taking at BB Mid could be implemented here
+                pass
 
 
 
 
 if __name__ == "__main__":
-    STRATEGY_VERSION = "Iteration 25 - Core Regression"
+    STRATEGY_VERSION = "Iteration 26 - Pullback Buy"
     last_heartbeat_time = 0
     last_summary_date = None
     send_telegram_msg(f"🤖 目標 100 萬監測站：啟動自我進化版循環 ({STRATEGY_VERSION})！")
