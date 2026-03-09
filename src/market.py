@@ -500,7 +500,7 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
-    STRATEGY_VERSION = "[Iteration 23 - Pro Alpha]"
+    STRATEGY_VERSION = "Iteration 23 - Pro Alpha"
     last_heartbeat_time = 0
     last_summary_date = None
     send_telegram_msg(f"🤖 目標 100 萬監測站：啟動自我進化版循環 ({STRATEGY_VERSION})！")
