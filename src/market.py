@@ -82,6 +82,21 @@ def fetch_4h_data(symbol='BTC/USDT'):
         return pd.DataFrame()
 
 
+
+def fetch_1h_data(symbol='BTC/USDT'):
+    try:
+        exchange = ccxt.binance()
+        timeframe = '1h'
+        limit = 100
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        return df
+    except Exception as e:
+        print(f"Error fetching 1h data for {symbol}: {e}")
+        return pd.DataFrame()
+
+
 def fetch_funding_rate(symbol):
     """
     Iteration 17: Funding Rate Filter
@@ -293,6 +308,17 @@ def run_strategy():
     balance = get_account_balance()
     risk_pct = params.get('risk_pct', 0.015) # Default 1.5%
 
+    # Iteration 23: BTC Sentiment Filter
+    df_btc_1h = fetch_1h_data('BTC/USDT')
+    btc_sentiment_ok = False
+    if not df_btc_1h.empty:
+        btc_ema50 = calculate_ema(df_btc_1h, 50).iloc[-1]
+        btc_price = df_btc_1h.iloc[-1]['close']
+        btc_sentiment_ok = btc_price > btc_ema50
+        print(f"📊 [BTC Sentiment] Price: {btc_price:.2f}, EMA50: {btc_ema50:.2f}, OK: {btc_sentiment_ok}")
+
+    potential_signals = []
+
     for symbol in symbols:
         try:
             # 1. Fetch 15m and 4h data
@@ -366,39 +392,111 @@ def run_strategy():
             }
 
             if long_signal or short_signal:
-                if current_pos_count >= 3:
-                    send_telegram_msg(f"⚠️ [Iteration 21] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
-                    continue
-
                 side = 'LONG' if long_signal else 'SHORT'
-                risk_amount = balance * risk_pct
-                sl_distance = params['sl_mult'] * latest['atr']
-                position_size = risk_amount / sl_distance if sl_distance > 0 else 0
+                # Iteration 23: BTC Sentiment & Funding Rate Filter
+                if side == 'LONG':
+                    if not btc_sentiment_ok:
+                        print(f"🚫 [Iteration 23] {symbol} Long signal ignored: BTC Sentiment Bearish.")
+                        continue
+                    
+                    if symbol in ['DOGE/USDT', 'XRP/USDT']:
+                        funding_rate = fetch_funding_rate(symbol)
+                        if funding_rate > 0.0005:
+                            print(f"🚫 [Iteration 23] {symbol} Long signal ignored: Funding Rate too high ({funding_rate*100:.4f}%).")
+                            continue
 
-                msg = (
-                    f"🎯 [Iteration 21] 12h突破+回踩進場 ({side})\n"
-                    f"----------------------------\n"
-                    f"幣種：{symbol} | 價格：{latest['close']:.2f}\n"
-                    f"支撐(12h)：{latest['support_12h']:.2f} | 壓力(12h)：{latest['resistance_12h']:.2f}\n"
-                    f"趨勢 (HA)：{prices_rsi[symbol]['ha_trend']} | RSI斜率：{latest['rsi_slope']:.2f}\n"
-                    f"倉位：{position_size:.4f} (Risk {risk_pct*100:.1f}%)\n"
-                    f"----------------------------\n"
-                    f"🛡️ 策略：4H趨勢強勁時允許 EMA20 回踩進場。"
-                )
-                send_telegram_msg(msg)
-                save_order_state(symbol, {
-                    'entry_price': latest['close'],
-                    'pos_size': position_size,
+                # Calculate Volume Growth Rate for Correlation Detection
+                vol_growth = (latest['volume'] - avg_vol_5) / avg_vol_5 if avg_vol_5 > 0 else 0
+                
+                potential_signals.append({
+                    'symbol': symbol,
                     'side': side,
-                    'status': 'Open',
-                    'entry_time': datetime.utcnow().isoformat(),
-                    'iteration': '21',
-                    'support': latest['support_12h'],
-                    'resistance': latest['resistance_12h']
+                    'vol_growth': vol_growth,
+                    'latest': latest,
+                    'prices_rsi': prices_rsi[symbol]
                 })
         except Exception as e:
             print(f"Error in strategy execution for {symbol}: {e}")
+
+    # Iteration 23: Correlation Detection - Select top 2 by Volume Growth
+    potential_signals = sorted(potential_signals, key=lambda x: x['vol_growth'], reverse=True)[:2]
+
+    for signal in potential_signals:
+        symbol = signal['symbol']
+        side = signal['side']
+        latest = signal['latest']
+        
+        if current_pos_count >= 3:
+            send_telegram_msg(f"⚠️ [Iteration 23] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
+            continue
+
+        risk_amount = balance * risk_pct
+        sl_distance = params['sl_mult'] * latest['atr']
+        position_size = risk_amount / sl_distance if sl_distance > 0 else 0
+
+        msg = (
+            f"🎯 [Iteration 23] 12h突破+回踩進場 ({side})\n"
+            f"----------------------------\n"
+            f"幣種：{symbol} | 價格：{latest['close']:.2f}\n"
+            f"BTC 背景：{'看多' if btc_sentiment_ok else '看空'}\n"
+            f"支撐(12h)：{latest['support_12h']:.2f} | 壓力(12h)：{latest['resistance_12h']:.2f}\n"
+            f"趨勢 (HA)：{signal['prices_rsi']['ha_trend']} | 量能增長：{signal['vol_growth']*100:.1f}%\n"
+            f"倉位：{position_size:.4f} (Risk {risk_pct*100:.1f}%)\n"
+            f"----------------------------\n"
+            f"🛡️ 策略：BTC 趨勢過濾 + 相關性檢測 (Top 2 Vol Growth)。"
+        )
+        send_telegram_msg(msg)
+        save_order_state(symbol, {
+            'entry_price': latest['close'],
+            'pos_size': position_size,
+            'side': side,
+            'status': 'Open',
+            'entry_time': datetime.utcnow().isoformat(),
+            'iteration': '23',
+            'support': latest['support_12h'],
+            'resistance': latest['resistance_12h'],
+            'highest_price': latest['close'] # For Trailing Stop
+        })
     return prices_rsi
+
+
+
+def manage_positions(prices_rsi):
+    params = load_params()
+    symbols = ['SOL/USDT', 'DOGE/USDT', 'XRP/USDT', 'DOT/USDT', 'AVAX/USDT']
+    
+    for symbol in symbols:
+        state = load_order_state(symbol)
+        if not state or state.get('status') != 'Open':
+            continue
+            
+        current_price = prices_rsi.get(symbol, {}).get('price', 0)
+        if current_price == 0:
+            continue
+            
+        entry_price = state['entry_price']
+        side = state['side']
+        
+        # Iteration 23: Trailing Stop for SOL
+        if symbol == 'SOL/USDT' and side == 'LONG':
+            highest_price = max(state.get('highest_price', 0), current_price)
+            state['highest_price'] = highest_price
+            
+            # Trailing Stop: 2% from highest price
+            trailing_stop_price = highest_price * 0.98
+            if current_price <= trailing_stop_price:
+                profit = (current_price - entry_price) / entry_price * 100
+                msg = f"💰 [Iteration 23] {symbol} Trailing Stop 觸發！\n出場價格：{current_price:.2f} | 獲利：{profit:.2f}%"
+                send_telegram_msg(msg)
+                state['status'] = 'Closed'
+                state['exit_price'] = current_price
+                state['exit_time'] = datetime.utcnow().isoformat()
+                save_order_state(symbol, state)
+                continue
+            else:
+                save_order_state(symbol, state)
+
+
 
 
 if __name__ == "__main__":
@@ -420,12 +518,13 @@ if __name__ == "__main__":
 
             stability_monitor()
             scan_results = run_strategy()
+            manage_positions(scan_results)
             current_time = time.time()
 
             if current_time - last_heartbeat_time >= 900:
                 # Collect active position data (Simulated for this iteration)
                 active_positions = []
-                symbols = ['BTC/USDT', 'SOL/USDT', 'ETH/USDT']
+                symbols = ['SOL/USDT', 'DOGE/USDT', 'XRP/USDT', 'DOT/USDT', 'AVAX/USDT']
                 for s in symbols:
                     state = load_order_state(s)
                     if state and state.get('status') == 'Open':
