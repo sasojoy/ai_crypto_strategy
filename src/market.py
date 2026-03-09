@@ -6,7 +6,7 @@ import json
 import shutil
 from datetime import datetime
 from dotenv import load_dotenv
-from src.notifier import send_telegram_msg, send_daily_summary, send_kill_switch_alert, send_rich_heartbeat, send_entry_notification, send_hourly_audit, send_daily_performance
+from src.notifier import send_telegram_msg, send_kill_switch_alert, send_rich_heartbeat, send_entry_notification, send_hourly_audit, send_daily_performance
 from src.logger import log_trade
 from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels, calculate_rsi_slope
 
@@ -389,16 +389,14 @@ def run_strategy():
 
             long_signal = trend_4h_strong and rsi_oversold and (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green
 
-            short_signal = (
-                trend_4h == "Short" and ha_short and rsi_ok_short and
-                (vol_ok and latest['close'] < prev['support_12h'])
-            )
+            short_signal = False # Iteration 29/30/31 focus on Long Pullback Strategy
 
             # Store scan results for heartbeat
             prices_rsi[symbol] = {
                 'price': latest['close'],
                 'rsi': latest['rsi'],
                 'adx': latest['adx'],
+                'atr': latest['atr'],
                 'trend_4h': trend_4h,
                 'support': latest['support_12h'],
                 'resistance': latest['resistance_12h'],

@@ -58,15 +58,9 @@ jobs:
               echo "Deploying market monitor with PM2..."
               export PYTHONPATH=$PYTHONPATH:.
 
-              # 4. PM2 Deployment Logic
-              $PM2_BIN delete Iteration15_Bot || true
-              $PM2_BIN delete Iteration20_Bot || true
-              $PM2_BIN delete Iteration23_Pro_Alpha || true
-              $PM2_BIN delete Iteration24_Pro_Alpha || true
-              $PM2_BIN delete Iteration25_Core_Regression || true
-              $PM2_BIN delete Iteration26_Pullback_Buy || true
-              $PM2_BIN delete Iteration27_Capital_Accelerator || true
-              $PM2_BIN restart Iteration28_Transparent_Commander || $PM2_BIN start "python3 -u -m src.market" --name "Iteration28_Transparent_Commander"
+              # 4. PM2 Deployment Logic (Iteration 32: Physical Reset)
+              $PM2_BIN delete all || true
+              $PM2_BIN start src/market.py --name "Iteration31_Stable" --interpreter python3
               $PM2_BIN save
 
               echo "✅ PM2 Status Verification:"
