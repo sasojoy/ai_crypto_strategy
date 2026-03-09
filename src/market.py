@@ -8,7 +8,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from src.notifier import send_telegram_msg, send_daily_summary, send_kill_switch_alert, send_rich_heartbeat
 from src.logger import log_trade
-from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels
+from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels, calculate_rsi_slope
 
 # Load environment variables
 load_dotenv()
@@ -44,12 +44,11 @@ def get_top_relative_strength_symbols():
         for item in top_20_vol:
             item['rs'] = item['price'] / btc_price
             
-        # 4. For simplicity in this iteration, we pick top 5 by RS
-        # In a live environment, we would check the RS trend (e.g., RS > SMA(RS, 20))
-        top_5_rs = sorted(top_20_vol, key=lambda x: x['rs'], reverse=True)[:5]
-        selected_symbols = [x['symbol'] for x in top_5_rs]
+        # 4. Iteration 21: Pick top 10 by Volume
+        top_10_vol = sorted(top_20_vol, key=lambda x: x['volume'], reverse=True)[:10]
+        selected_symbols = [x['symbol'] for x in top_10_vol]
         
-        print(f"🔍 [Iteration 16] Selected Symbols: {selected_symbols}")
+        print(f"🔍 [Iteration 21] Selected Symbols (Top 10 Vol): {selected_symbols}")
         return selected_symbols
     except Exception as e:
         print(f"Error in symbol selection: {e}")
@@ -311,14 +310,17 @@ def run_strategy():
             df['adx'] = calculate_adx(df, 14)
             df['bb_upper'], df['bb_lower'], _, _ = calculate_bollinger_bands(df, 20, params.get('bb_std', 2))
             
-            # Heikin-Ashi (Iteration 20)
+            # Heikin-Ashi (Iteration 21)
             ha = calculate_heikin_ashi(df)
             df = pd.concat([df, ha], axis=1)
             
-            # S/R Levels (Iteration 20)
-            df['support'], df['resistance'] = calculate_sr_levels(df, window=192)
+            # S/R Levels (Iteration 21: 12h)
+            df['support_12h'], df['resistance_12h'] = calculate_sr_levels(df, window=48)
+            df['rsi_slope'] = calculate_rsi_slope(df)
+            df['ema20'] = calculate_ema(df, 20)
+            df['ema50'] = calculate_ema(df, 50)
 
-            # 4H Trend Filter (Strict Iteration 20)
+            # 4H Trend Filter (Strict Iteration 21)
             df_4h['ema200'] = calculate_ema(df_4h, 200)
             latest_4h = df_4h.iloc[-1]
             trend_4h = "Long" if latest_4h['close'] > latest_4h['ema200'] else "Short"
@@ -334,26 +336,22 @@ def run_strategy():
             ha_long = latest['ha_close'] > latest['ha_open'] and prev['ha_close'] > prev['ha_open']
             ha_short = latest['ha_close'] < latest['ha_open'] and prev['ha_close'] < prev['ha_open']
 
-            # 5. Entry Logic (Iteration 20: High-Precision)
-            # Long: 4H Trend Long + HA Long + Vol OK + Price > Resistance (Breakout)
+            # 5. Entry Logic (Iteration 21: 12h Breakout + Pullback)
+            rsi_ok_long = latest['rsi'] < 80 and latest['rsi_slope'] > 0
+            rsi_ok_short = latest['rsi'] > 20 and latest['rsi_slope'] < 0
+
+            # Pullback Entry: 4H Trend Strong + 15m EMA 20/50 Golden Cross + Price near EMA 20
+            pullback_long = (trend_4h == "Long" and latest['ema20'] > latest['ema50'] and 
+                             latest['low'] <= latest['ema20'] * 1.002 and latest['close'] > latest['ema20'])
+
             long_signal = (
-                trend_4h == "Long" and
-                ha_long and
-                vol_ok and
-                latest['close'] > prev['resistance'] and
-                latest['close'] > latest['ema_f'] and
-                latest['rsi'] > 60
+                trend_4h == "Long" and ha_long and rsi_ok_long and
+                ( (vol_ok and latest['close'] > prev['resistance_12h']) or pullback_long )
             )
 
-            # Short: 4H Trend Short + HA Short + Vol OK + Price < Support (Breakout)
-            # Note: User requested to disable Short if it lowers win rate, but we'll implement it strictly first.
             short_signal = (
-                trend_4h == "Short" and
-                ha_short and
-                vol_ok and
-                latest['close'] < prev['support'] and
-                latest['close'] < latest['ema_f'] and
-                latest['rsi'] < 40
+                trend_4h == "Short" and ha_short and rsi_ok_short and
+                (vol_ok and latest['close'] < prev['support_12h'])
             )
 
             # Store scan results for heartbeat
@@ -362,14 +360,14 @@ def run_strategy():
                 'rsi': latest['rsi'],
                 'adx': latest['adx'],
                 'trend_4h': trend_4h,
-                'support': latest['support'],
-                'resistance': latest['resistance'],
+                'support': latest['support_12h'],
+                'resistance': latest['resistance_12h'],
                 'ha_trend': "Bullish" if ha_long else ("Bearish" if ha_short else "Neutral")
             }
 
             if long_signal or short_signal:
                 if current_pos_count >= 3:
-                    send_telegram_msg(f"⚠️ [Iteration 20] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
+                    send_telegram_msg(f"⚠️ [Iteration 21] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
                     continue
 
                 side = 'LONG' if long_signal else 'SHORT'
@@ -378,14 +376,14 @@ def run_strategy():
                 position_size = risk_amount / sl_distance if sl_distance > 0 else 0
 
                 msg = (
-                    f"🎯 [Iteration 20] 高精度進場 ({side})\n"
+                    f"🎯 [Iteration 21] 12h突破+回踩進場 ({side})\n"
                     f"----------------------------\n"
                     f"幣種：{symbol} | 價格：{latest['close']:.2f}\n"
-                    f"支撐：{latest['support']:.2f} | 壓力：{latest['resistance']:.2f}\n"
-                    f"趨勢 (HA)：{prices_rsi[symbol]['ha_trend']} | 成交量：爆量確認\n"
+                    f"支撐(12h)：{latest['support_12h']:.2f} | 壓力(12h)：{latest['resistance_12h']:.2f}\n"
+                    f"趨勢 (HA)：{prices_rsi[symbol]['ha_trend']} | RSI斜率：{latest['rsi_slope']:.2f}\n"
                     f"倉位：{position_size:.4f} (Risk {risk_pct*100:.1f}%)\n"
                     f"----------------------------\n"
-                    f"🛡️ 嚴格過濾：4H EMA 200 方向一致性確認。"
+                    f"🛡️ 策略：4H趨勢強勁時允許 EMA20 回踩進場。"
                 )
                 send_telegram_msg(msg)
                 save_order_state(symbol, {
@@ -394,9 +392,9 @@ def run_strategy():
                     'side': side,
                     'status': 'Open',
                     'entry_time': datetime.utcnow().isoformat(),
-                    'iteration': '20',
-                    'support': latest['support'],
-                    'resistance': latest['resistance']
+                    'iteration': '21',
+                    'support': latest['support_12h'],
+                    'resistance': latest['resistance_12h']
                 })
         except Exception as e:
             print(f"Error in strategy execution for {symbol}: {e}")

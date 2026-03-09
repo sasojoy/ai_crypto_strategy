@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import os
-from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels
+from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels, calculate_rsi_slope
 
 def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=120):
     exchange = ccxt.binance()
@@ -33,14 +33,19 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
     df['ema_trail_short'] = calculate_ema(df, 10)
     df['atr'] = calculate_atr(df, 14)
     df['adx'] = calculate_adx(df, 14)
+    _, _, df['macd_hist'] = calculate_macd(df)
     df['bb_upper'], df['bb_lower'], _, _ = calculate_bollinger_bands(df, 20, bb_std)
 
     
-    # Iteration 20 Indicators
+    # Iteration 21 Indicators
     ha = calculate_heikin_ashi(df)
     df = pd.concat([df, ha], axis=1)
-    df['support'], df['resistance'] = calculate_sr_levels(df, window=192)
+    # 12h Breakout (48 * 15m = 12h)
+    df['support_12h'], df['resistance_12h'] = calculate_sr_levels(df, window=48)
     df['avg_vol_5'] = df['volume'].rolling(5).mean().shift(1)
+    df['rsi_slope'] = calculate_rsi_slope(df)
+    df['ema20'] = calculate_ema(df, 20)
+    df['ema50'] = calculate_ema(df, 50)
 
     # 4H Trend Filter
     if df_4h is not None:
@@ -73,24 +78,23 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
             ha_long = latest['ha_close'] > latest['ha_open'] and prev['ha_close'] > prev['ha_open']
             ha_short = latest['ha_close'] < latest['ha_open'] and prev['ha_close'] < prev['ha_open']
 
-            # Breakout of 48h Resistance + RSI Confirmation + EMA_F Confirmation
+            # Iteration 21: 12h Breakout + RSI Slope + Pullback Entry
+            rsi_ok_long = latest['rsi'] < 80 and latest['rsi_slope'] > 0
+            rsi_ok_short = latest['rsi'] > 20 and latest['rsi_slope'] < 0
+            
+            # Pullback Entry: 4H Trend Strong + 15m EMA 20/50 Golden Cross + Price near EMA 20 + Vol Confirmation + HA Bullish + RSI OK
+            pullback_long = (trend_ok_long and latest['ema20'] > latest['ema50'] and 
+                             latest['low'] <= latest['ema20'] * 1.002 and latest['close'] > latest['ema20'] and
+                             latest['volume'] > latest['avg_vol_5'] and ha_long and latest['rsi'] < 70)
+
             long_signal = (
-                trend_ok_long and
-                ha_long and
-                vol_ok and
-                latest['close'] > prev['resistance'] and
-                latest['close'] > latest['ema_f'] and
-                latest['rsi'] < 60
+                trend_ok_long and ha_long and rsi_ok_long and latest['macd_hist'] > 0 and
+                ( (vol_ok and latest['close'] > prev['resistance_12h']) or pullback_long )
             )
 
             short_signal = (
-                enable_short and
-                trend_ok_short and
-                ha_short and
-                vol_ok and
-                latest['close'] < prev['support'] and
-                latest['close'] < latest['ema_f'] and
-                latest['rsi'] < 40
+                enable_short and trend_ok_short and ha_short and rsi_ok_short and
+                (vol_ok and latest['close'] < prev['support_12h'])
             )
 
             if long_signal or short_signal:
@@ -105,47 +109,28 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
                 
                 sl_dist = sl_mult * latest['atr']
                 sl_price = entry_price - sl_dist if side == 'LONG' else entry_price + sl_dist
+                tp_price = entry_price + (sl_dist * 1.5) if side == 'LONG' else entry_price - (sl_dist * 1.5)
                 pos_size = risk_amount / sl_dist if sl_dist > 0 else 0
 
                 trades.append({'entry_time': latest['timestamp'], 'entry_price': entry_price, 'size': pos_size, 'side': side, 'status': 'Open'})
         else:
-            # 1. Scaling Out
+            # 1. Take Profit (Scale Out)
             if not scaled_out:
-                if side == 'LONG' and latest['high'] >= latest['bb_upper']:
+                if (side == 'LONG' and latest['high'] >= tp_price) or (side == 'SHORT' and latest['low'] <= tp_price):
                     scaled_out = True
-                    exit_price = latest['bb_upper']
-                    profit = (exit_price - entry_price) * (pos_size * 0.5)
+                    exit_price = tp_price
+                    profit = abs(exit_price - entry_price) * (pos_size * 0.5)
                     balance += profit
                     sl_price = entry_price # Move to Breakeven
-                    trades[-1].update({'scaled_out_time': latest['timestamp'], 'scaled_out_price': exit_price, 'status': 'ScaledOut'})
-                elif side == 'SHORT' and latest['low'] <= latest['bb_lower']:
-                    scaled_out = True
-                    exit_price = latest['bb_lower']
-                    profit = (entry_price - exit_price) * (pos_size * 0.7) # Short scale out 70%
-                    balance += profit
-                    sl_price = entry_price # Move to Breakeven
-                    trades[-1].update({'scaled_out_time': latest['timestamp'], 'scaled_out_price': exit_price, 'status': 'ScaledOut'})
+                    trades[-1].update({'scaled_out_time': latest['timestamp'], 'scaled_out_price': exit_price, 'status': 'ScaledOut', 'profit': profit})
 
-            # 2. Time Stop
-            if (i - entry_idx) >= 12 and abs(latest['close'] - entry_price) / entry_price < 0.005:
-                exit_price = latest['close']
-                if side == 'LONG':
-                    rem_size = pos_size * 0.5 if scaled_out else pos_size
-                    profit = (exit_price - entry_price) * rem_size
-                else:
-                    rem_size = pos_size * 0.3 if scaled_out else pos_size
-                    profit = (entry_price - exit_price) * rem_size
-                balance += profit
-                trades[-1].update({'exit_time': latest['timestamp'], 'exit_price': exit_price, 'profit': profit + (trades[-1].get('profit', 0) if scaled_out else 0), 'result': 'TimeStop'})
-                in_position = False
-                continue
-
-            # 3. Trailing Stop or SL
+            # 2. Trailing Stop or SL
             if side == 'LONG':
                 current_sl = max(sl_price, latest['ema_trail_long']) if scaled_out else sl_price
                 if latest['low'] <= current_sl:
                     exit_price = current_sl
-                    profit = (exit_price - entry_price) * (pos_size * 0.5 if scaled_out else pos_size)
+                    rem_size = pos_size * 0.5 if scaled_out else pos_size
+                    profit = (exit_price - entry_price) * rem_size
                     balance += profit
                     trades[-1].update({'exit_time': latest['timestamp'], 'exit_price': exit_price, 'profit': profit + (trades[-1].get('profit', 0) if scaled_out else 0), 'result': 'Exit'})
                     in_position = False
@@ -153,7 +138,8 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
                 current_sl = min(sl_price, latest['ema_trail_short']) if scaled_out else sl_price
                 if latest['high'] >= current_sl:
                     exit_price = current_sl
-                    profit = (entry_price - exit_price) * (pos_size * 0.3 if scaled_out else pos_size)
+                    rem_size = pos_size * 0.5 if scaled_out else pos_size
+                    profit = (entry_price - exit_price) * rem_size
                     balance += profit
                     trades[-1].update({'exit_time': latest['timestamp'], 'exit_price': exit_price, 'profit': profit + (trades[-1].get('profit', 0) if scaled_out else 0), 'result': 'Exit'})
                     in_position = False

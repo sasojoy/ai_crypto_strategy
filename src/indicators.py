@@ -72,3 +72,7 @@ def calculate_sr_levels(df, window=192): # 48 hours for 15m data
     resistance = df['high'].rolling(window=window).max()
     return support, resistance
 
+def calculate_rsi_slope(df, window=3):
+    rsi = calculate_rsi(df)
+    return rsi.diff(window)
+
