@@ -167,3 +167,17 @@ python3 -u -m src.market
 ### 📊 Performance Summary (Iteration 18)
 - **Test Period (30d)**: Net Profit $66.25, Win Rate 27.27%.
 - **Status**: Bi-directional trading enabled. Shorting logic provides hedging during bearish regimes.
+
+## ❄️ Iteration 19: Compounding Snowball & Risk Shield
+### Core Enhancements
+1. **Dynamic Equity-Based Risking**: Replaces fixed risk with a percentage of total equity. As the account grows, position sizes scale automatically to maximize compounding effects.
+2. **Circuit Breaker (熔斷機制)**:
+   - **Daily Loss Limit**: If daily loss exceeds 5% of total equity, all trading is suspended for 24 hours.
+   - **Consecutive SL Protection**: Triggers a rollback if 3 consecutive stop-losses occur.
+3. **Multi-Strategy Voting**:
+   - **Mean Reversion (MR)**: Added RSI-based mean reversion logic (Long if RSI < 20 & Price < BB Lower).
+   - **Voting Mechanism**: Trades are executed if the trend strategy confirms the move or if a strong mean reversion signal aligns with the 4H trend.
+
+### 📊 Performance Summary (Iteration 19)
+- **Compounding vs Simple**: Compounding logic implemented in `src/market.py` and verified in `src/evaluate.py`.
+- **Risk Management**: Circuit breaker active to prevent catastrophic drawdowns.

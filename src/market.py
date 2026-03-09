@@ -178,21 +178,50 @@ def get_active_positions_count():
 def stability_monitor():
     """
     穩定性監控器 (Circuit Breaker)
-    若出現連續 3 筆止損，或帳戶淨值單日下跌超過 5%，自動回滾。
+    Iteration 19: 
+    1. 若出現連續 3 筆止損，自動回滾。
+    2. 若當日虧損超過總資金的 5%，觸發 24 小時熔斷。
     """
     history_file = 'data/trade_history.json'
-    if not os.path.exists(history_file): return
+    circuit_breaker_file = 'data/circuit_breaker.json'
+    
+    if os.path.exists(circuit_breaker_file):
+        with open(circuit_breaker_file, 'r') as f:
+            cb_data = json.load(f)
+            if time.time() < cb_data.get('resume_time', 0):
+                print(f"⏳ [CIRCUIT BREAKER] 系統熔斷中，預計 {datetime.fromtimestamp(cb_data['resume_time'])} 恢復。")
+                return False # 暫停交易
+
+    if not os.path.exists(history_file): return True
 
     try:
         with open(history_file, 'r') as f:
             trades = json.load(f)
 
+        # 1. 連續止損檢查
         last_3_trades = trades[-3:]
         if len(last_3_trades) == 3 and all(t['result'] == 'SL' for t in last_3_trades):
             trigger_rollback("連續 3 筆止損")
-            return
+            return True
+
+        # 2. 當日虧損檢查 (Iteration 19)
+        today_str = datetime.utcnow().strftime('%Y-%m-%d')
+        today_trades = [t for t in trades if t.get('exit_time', '').startswith(today_str)]
+        today_pnl = sum(t.get('profit', 0) for t in today_trades)
+        balance = get_account_balance()
+        
+        if today_pnl < -(balance * 0.05):
+            resume_time = time.time() + 86400 # 24小時
+            with open(circuit_breaker_file, 'w') as f:
+                json.dump({'resume_time': resume_time, 'reason': 'Daily Loss > 5%'}, f)
+            msg = f"🛑 [CIRCUIT BREAKER] 當日虧損 ({today_pnl:.2f}) 超過 5%，啟動 24 小時強制冷卻。"
+            send_telegram_msg(msg)
+            print(msg)
+            return False
+            
     except Exception as e:
         print(f"Stability monitor error: {e}")
+    return True
 
 def trigger_rollback(reason):
     params = load_params()
@@ -260,7 +289,10 @@ def run_strategy():
     symbols = get_top_relative_strength_symbols()
     prices_rsi = {}
     current_pos_count = get_active_positions_count()
+    
+    # Iteration 19: Dynamic Equity-Based Risking
     balance = get_account_balance()
+    risk_pct = params.get('risk_pct', 0.015) # Default 1.5%
 
     for symbol in symbols:
         try:
@@ -312,8 +344,14 @@ def run_strategy():
             # 5. Anomaly Detection
             detect_anomalies(symbol, df, funding_rate)
 
-            # Long Entry Signal
-            long_signal = (
+            # 6. Iteration 19: Mean Reversion Logic (Voting)
+            # Long Mean Reversion: RSI < 20 and Price < BB Lower
+            long_mr_signal = latest['rsi'] < 20 and latest['close'] < latest['bb_lower']
+            # Short Mean Reversion: RSI > 80 and Price > BB Upper
+            short_mr_signal = latest['rsi'] > 80 and latest['close'] > latest['bb_upper']
+
+            # Trend Signals
+            long_trend_signal = (
                 trend_4h == "Long" and
                 adx_ok_long and
                 long_funding_ok and
@@ -323,8 +361,7 @@ def run_strategy():
                 (is_squeezed and latest['close'] > latest['bb_upper'] or (prev['rsi'] < params['rsi_th'] and latest['rsi'] > params['rsi_th']))
             )
 
-            # Short Entry Signal (Iteration 18)
-            short_signal = (
+            short_trend_signal = (
                 trend_4h == "Short" and
                 adx_ok_short and
                 short_funding_ok and
@@ -334,6 +371,10 @@ def run_strategy():
                 (is_squeezed and latest['close'] < latest['bb_lower'] or (prev['rsi'] > (100 - params['rsi_th']) and latest['rsi'] < (100 - params['rsi_th'])))
             )
 
+            # Voting Mechanism: Trend OR Strong Mean Reversion
+            long_signal = long_trend_signal or (long_mr_signal and trend_4h == "Long")
+            short_signal = short_trend_signal or (short_mr_signal and trend_4h == "Short")
+
             # Store scan results for heartbeat
             prices_rsi[symbol] = {
                 'price': latest['close'],
@@ -342,41 +383,35 @@ def run_strategy():
                 'trend_4h': trend_4h,
                 'squeezed': is_squeezed,
                 'funding': funding_rate,
-                'oi': current_oi
+                'oi': current_oi,
+                'mr_signal': "Long" if long_mr_signal else ("Short" if short_mr_signal else "None")
             }
 
             if long_signal or short_signal:
                 if current_pos_count >= 3:
-                    send_telegram_msg(f"⚠️ [Iteration 18] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
+                    send_telegram_msg(f"⚠️ [Iteration 19] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
                     continue
 
                 side = 'LONG' if long_signal else 'SHORT'
-                risk_amount = balance * 0.015
+                # Iteration 19: Dynamic Risking
+                risk_amount = balance * risk_pct
                 sl_distance = params['sl_mult'] * latest['atr']
                 position_size = risk_amount / sl_distance if sl_distance > 0 else 0
 
                 target_desc = "BB Upper" if side == 'LONG' else "BB Lower"
                 trail_desc = "EMA 20" if side == 'LONG' else "EMA 10 (Sensitive)"
+                strategy_type = "Trend+MR" if (long_mr_signal or short_mr_signal) else "Trend"
 
                 msg = (
-                    f"🚀 [Iteration 18] 全天候對沖進場 ({side})
-"
-                    f"----------------------------
-"
-                    f"幣種：{symbol} | 價格：{latest['close']:.2f}
-"
-                    f"趨勢 (4H)：{trend_4h} | 擠壓狀態：{is_squeezed}
-"
-                    f"倉位：{position_size:.4f} (Risk 1.5%)
-"
-                    f"----------------------------
-"
-                    f"🎯 獲利計畫：
-"
-                    f"1. 觸及 {target_desc} 減倉 70% (Short) / 50% (Long) 並移至保本。
-"
-                    f"2. 啟動 {trail_desc} 追蹤止損。
-"
+                    f"🚀 [Iteration 19] 複利雪球進場 ({side})\n"
+                    f"----------------------------\n"
+                    f"幣種：{symbol} | 價格：{latest['close']:.2f}\n"
+                    f"策略：{strategy_type} | 趨勢 (4H)：{trend_4h}\n"
+                    f"倉位：{position_size:.4f} (Risk {risk_pct*100:.1f}% of ${balance:.0f})\n"
+                    f"----------------------------\n"
+                    f"🎯 獲利計畫：\n"
+                    f"1. 觸及 {target_desc} 減倉 70% (Short) / 50% (Long) 並移至保本。\n"
+                    f"2. 啟動 {trail_desc} 追蹤止損。\n"
                     f"3. 時間止損：3 小時內未脫離成本區則強制平倉。"
                 )
                 send_telegram_msg(msg)
@@ -386,7 +421,8 @@ def run_strategy():
                     'side': side,
                     'status': 'Open',
                     'entry_time': datetime.utcnow().isoformat(),
-                    'iteration': '18'
+                    'iteration': '19',
+                    'balance_at_entry': balance
                 })
         except Exception as e:
             print(f"Error in strategy execution for {symbol}: {e}")

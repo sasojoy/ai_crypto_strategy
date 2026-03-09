@@ -23,7 +23,7 @@ def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=120):
     return df
 
 
-def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True, adx_min=25, bb_std=2, df_4h=None):
+def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True, adx_min=25, bb_std=2, df_4h=None, compounding=True):
     if df.empty: return {"score": 0, "profit": 0, "win_rate": 0, "max_dd": 0, "trades": 0}
 
     df['rsi'] = calculate_rsi(df)
@@ -67,21 +67,31 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
             # Long Entry Logic
             adx_ok_long = latest['adx'] > (18 if is_squeezed else adx_min)
             trend_ok_long = latest['close'] > latest['ema200'] if latest['ema200'] > 0 else True
+            
+            # Iteration 19: Mean Reversion Signal
+            long_mr_signal = latest['rsi'] < 20 and latest['close'] < latest['bb_lower']
+            
             long_signal = (
-                trend_ok_long and adx_ok_long and
+                (trend_ok_long and adx_ok_long and
                 latest['close'] > latest['ema_f'] and
                 latest['ema_f'] > latest['ema_s'] and
-                (is_squeezed and latest['close'] > latest['bb_upper'] or (prev['rsi'] < rsi_th and latest['rsi'] > rsi_th))
+                (is_squeezed and latest['close'] > latest['bb_upper'] or (prev['rsi'] < rsi_th and latest['rsi'] > rsi_th)))
+                or (long_mr_signal and trend_ok_long)
             )
 
             # Short Entry Logic (Iteration 18)
             adx_ok_short = latest['adx'] > 30
             trend_ok_short = latest['close'] < latest['ema200'] if latest['ema200'] > 0 else True
+            
+            # Iteration 19: Mean Reversion Signal
+            short_mr_signal = latest['rsi'] > 80 and latest['close'] > latest['bb_upper']
+
             short_signal = (
-                trend_ok_short and adx_ok_short and
+                (trend_ok_short and adx_ok_short and
                 latest['close'] < latest['ema_f'] and
                 latest['ema_f'] < latest['ema_s'] and
-                (is_squeezed and latest['close'] < latest['bb_lower'] or (prev['rsi'] > (100-rsi_th) and latest['rsi'] < (100-rsi_th)))
+                (is_squeezed and latest['close'] < latest['bb_lower'] or (prev['rsi'] > (100-rsi_th) and latest['rsi'] < (100-rsi_th))))
+                or (short_mr_signal and trend_ok_short)
             )
 
             if long_signal or short_signal:
@@ -91,7 +101,10 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
                 entry_price = latest['close']
                 entry_idx = i
                 
-                risk_amount = balance * 0.015
+                # Iteration 19: Compounding vs Simple Interest
+                risk_basis = balance if compounding else initial_balance
+                risk_amount = risk_basis * 0.015
+                
                 sl_dist = sl_mult * latest['atr']
                 sl_price = entry_price - sl_dist if side == 'LONG' else entry_price + sl_dist
                 pos_size = risk_amount / sl_dist if sl_dist > 0 else 0
