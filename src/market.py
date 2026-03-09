@@ -44,10 +44,10 @@ def get_top_relative_strength_symbols():
         for item in top_20_vol:
             item['rs'] = item['price'] / btc_price
             
-        # 4. Iteration 25 Core Regression: Focus on High Liquidity
-        selected_symbols = ['SOL/USDT', 'ETH/USDT']
+        # 4. Iteration 27 Capital Accelerator: High Win Rate Symbols
+        selected_symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT']
         
-        print(f"🎯 [Iteration 25 Core] Monitoring Selected Symbols: {selected_symbols}")
+        print(f"🎯 [Iteration 27 Accel] Monitoring Selected Symbols: {selected_symbols}")
         return selected_symbols
     except Exception as e:
         print(f"Error in symbol selection: {e}")
@@ -474,7 +474,7 @@ def run_strategy():
 
 def manage_positions(prices_rsi):
     params = load_params()
-    symbols = ['SOL/USDT', 'ETH/USDT']
+    symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT']
     
     for symbol in symbols:
         state = load_order_state(symbol)
@@ -515,8 +515,20 @@ def manage_positions(prices_rsi):
         latest_exit = df_exit.iloc[-1]
 
         if side == 'LONG':
-            # 1. SL (Iteration 26: 3.0x ATR)
-            sl_price = entry_price - (3.0 * prices_rsi[symbol]['atr'])
+            # Iteration 27: Pyramiding (Add 30% if profit > 1% and RSI < 50)
+            profit_pct = (current_price - entry_price) / entry_price * 100
+            rsi = prices_rsi.get(symbol, {}).get('rsi', 50)
+            if profit_pct > 1.0 and rsi < 50 and not state.get('pyramided'):
+                msg = f"🚀 [Iteration 27] {symbol} 獲利 > 1% 且 RSI {rsi:.1f} < 50，執行 30% 加倉！\n止損同步上移至保本價。"
+                send_telegram_msg(msg)
+                state['pyramided'] = True
+                state['pos_size'] = state.get('pos_size', 0) * 1.3
+                state['entry_price'] = (entry_price + current_price * 0.3) / 1.3 # Weighted average
+                state['sl_price'] = entry_price # Move SL to break-even
+                save_order_state(symbol, state)
+
+            # 1. SL (Iteration 26: 3.0x ATR or Break-even)
+            sl_price = state.get('sl_price', entry_price - (3.0 * prices_rsi[symbol]['atr']))
             if current_price <= sl_price:
                 msg = f"❌ [Iteration 26] {symbol} 觸發止損！\n方向：{side}\n進場：{entry_price}\n止損：{sl_price}\n現價：{current_price}"
                 send_telegram_msg(msg)
@@ -545,7 +557,7 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
-    STRATEGY_VERSION = "Iteration 26 - Pullback Buy"
+    STRATEGY_VERSION = "Iteration 27 - Capital Accelerator"
     last_heartbeat_time = 0
     last_summary_date = None
     send_telegram_msg(f"🤖 目標 100 萬監測站：啟動自我進化版循環 ({STRATEGY_VERSION})！")
@@ -569,7 +581,7 @@ if __name__ == "__main__":
             if current_time - last_heartbeat_time >= 900:
                 # Collect active position data (Simulated for this iteration)
                 active_positions = []
-                symbols = ['SOL/USDT', 'ETH/USDT']
+                symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT']
                 for s in symbols:
                     state = load_order_state(s)
                     if state and state.get('status') == 'Open':
