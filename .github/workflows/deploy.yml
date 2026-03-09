@@ -61,7 +61,8 @@ jobs:
               # 4. PM2 Deployment Logic
               $PM2_BIN delete Iteration15_Bot || true
               $PM2_BIN delete Iteration20_Bot || true
-              $PM2_BIN restart Iteration23_Pro_Alpha || $PM2_BIN start "python3 -u -m src.market" --name "Iteration23_Pro_Alpha"
+              $PM2_BIN delete Iteration23_Pro_Alpha || true
+              $PM2_BIN restart Iteration24_Pro_Alpha || $PM2_BIN start "python3 -u -m src.market" --name "Iteration24_Pro_Alpha"
               $PM2_BIN save
 
               echo "✅ PM2 Status Verification:"

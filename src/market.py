@@ -340,8 +340,8 @@ def run_strategy():
             ha = calculate_heikin_ashi(df)
             df = pd.concat([df, ha], axis=1)
             
-            # S/R Levels (Iteration 21: 12h)
-            df['support_12h'], df['resistance_12h'] = calculate_sr_levels(df, window=48)
+            # S/R Levels (Iteration 24: 12-candle High/Low)
+            df['support_12h'], df['resistance_12h'] = calculate_sr_levels(df, window=12)
             df['rsi_slope'] = calculate_rsi_slope(df)
             df['ema20'] = calculate_ema(df, 20)
             df['ema50'] = calculate_ema(df, 50)
@@ -418,8 +418,14 @@ def run_strategy():
         except Exception as e:
             print(f"Error in strategy execution for {symbol}: {e}")
 
-    # Iteration 23: Correlation Detection - Select top 2 by Volume Growth
-    potential_signals = sorted(potential_signals, key=lambda x: x['vol_growth'], reverse=True)[:2]
+    # Iteration 24: Prioritize DOGE/XRP if they have strong trends
+    def signal_priority(x):
+        score = x['vol_growth']
+        if x['symbol'] in ['DOGE/USDT', 'XRP/USDT']:
+            score += 1.0 # Boost priority for strong trend coins
+        return score
+
+    potential_signals = sorted(potential_signals, key=signal_priority, reverse=True)[:2]
 
     for signal in potential_signals:
         symbol = signal['symbol']
@@ -476,7 +482,38 @@ def manage_positions(prices_rsi):
             
         entry_price = state['entry_price']
         side = state['side']
+        adx = prices_rsi.get(symbol, {}).get('adx', 0)
         
+        # Iteration 24: Zombie Position Cleanup (ADX < 20 & 4h sideways)
+        # Sideways check: price within 0.5% of entry for > 4 hours
+        entry_time = datetime.fromisoformat(state['entry_time'])
+        hours_held = (datetime.utcnow() - entry_time).total_seconds() / 3600
+        
+        if adx < 20 and hours_held > 4:
+            price_diff_pct = abs(current_price - entry_price) / entry_price
+            if price_diff_pct < 0.005:
+                msg = f"🧟 [Iteration 24] {symbol} 僵屍倉位清理！\n原因：ADX {adx:.1f} < 20 且橫盤 {hours_held:.1f} 小時。\n現價平倉釋放保證金。"
+                send_telegram_msg(msg)
+                state['status'] = 'Closed'
+                state['exit_price'] = current_price
+                state['exit_time'] = datetime.utcnow().isoformat()
+                state['exit_reason'] = 'Zombie Cleanup'
+                save_order_state(symbol, state)
+                continue
+
+        # Iteration 24: Stepped Scale-out (25% every 3% gain)
+        if side == 'LONG':
+            profit_pct = (current_price - entry_price) / entry_price * 100
+            scale_out_level = int(profit_pct / 3)
+            last_scale_level = state.get('last_scale_level', 0)
+            
+            if scale_out_level > last_scale_level and scale_out_level <= 4:
+                msg = f"✂️ [Iteration 24] {symbol} 階梯式減倉！\n獲利：{profit_pct:.2f}% | 執行第 {scale_out_level} 階段減倉 (25%)。"
+                send_telegram_msg(msg)
+                state['last_scale_level'] = scale_out_level
+                # In real exchange, we would execute a partial close order here
+                save_order_state(symbol, state)
+
         # Iteration 23: Trailing Stop for SOL
         if symbol == 'SOL/USDT' and side == 'LONG':
             highest_price = max(state.get('highest_price', 0), current_price)
@@ -500,7 +537,7 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
-    STRATEGY_VERSION = "Iteration 23 - Pro Alpha"
+    STRATEGY_VERSION = "Iteration 24 - Pro Alpha"
     last_heartbeat_time = 0
     last_summary_date = None
     send_telegram_msg(f"🤖 目標 100 萬監測站：啟動自我進化版循環 ({STRATEGY_VERSION})！")

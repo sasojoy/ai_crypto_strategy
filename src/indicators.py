@@ -67,7 +67,7 @@ def calculate_heikin_ashi(df):
     ha_df['ha_low'] = ha_df[['ha_open', 'ha_close', 'low']].min(axis=1)
     return ha_df[['ha_open', 'ha_high', 'ha_low', 'ha_close']]
 
-def calculate_sr_levels(df, window=192): # 48 hours for 15m data
+def calculate_sr_levels(df, window=12): # Iteration 24: Use last 12 candles for more reactive S/R
     support = df['low'].rolling(window=window).min()
     resistance = df['high'].rolling(window=window).max()
     return support, resistance
