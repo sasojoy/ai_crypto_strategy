@@ -8,7 +8,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from src.notifier import send_telegram_msg, send_daily_summary, send_kill_switch_alert, send_rich_heartbeat
 from src.logger import log_trade
-from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands
+from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels
 
 # Load environment variables
 load_dotenv()
@@ -301,79 +301,60 @@ def run_strategy():
             df_4h = fetch_4h_data(symbol)
             if df.empty or df_4h.empty: continue
 
-            # 2. Calculate Indicators
+            # 2. Calculate Indicators (Iteration 20 Upgrades)
             df['rsi'] = calculate_rsi(df)
             df['ema_f'] = calculate_ema(df, params['ema_f'])
             df['ema_s'] = calculate_ema(df, params['ema_s'])
             df['ema_trail_long'] = calculate_ema(df, 20)
-            df['ema_trail_short'] = calculate_ema(df, 10) # Sensitive for shorts
+            df['ema_trail_short'] = calculate_ema(df, 10)
             df['atr'] = calculate_atr(df, 14)
-            _, _, df['macd_hist'] = calculate_macd(df)
             df['adx'] = calculate_adx(df, 14)
-            df['bb_upper'], df['bb_lower'], df['bb_bandwidth'], df['bb_percent_b'] = calculate_bollinger_bands(df, 20, params.get('bb_std', 2))
+            df['bb_upper'], df['bb_lower'], _, _ = calculate_bollinger_bands(df, 20, params.get('bb_std', 2))
+            
+            # Heikin-Ashi (Iteration 20)
+            ha = calculate_heikin_ashi(df)
+            df = pd.concat([df, ha], axis=1)
+            
+            # S/R Levels (Iteration 20)
+            df['support'], df['resistance'] = calculate_sr_levels(df, window=192)
 
-            # 4H Trend Filter
+            # 4H Trend Filter (Strict Iteration 20)
             df_4h['ema200'] = calculate_ema(df_4h, 200)
-            trend_4h = "Long" if df_4h.iloc[-1]['close'] > df_4h.iloc[-1]['ema200'] else "Short"
-
-            # Bollinger Band Squeeze (5th percentile of bandwidth)
-            df['bw_min'] = df['bb_bandwidth'].rolling(100).quantile(0.05)
-            is_squeezed = df.iloc[-1]['bb_bandwidth'] < df.iloc[-1]['bw_min']
+            latest_4h = df_4h.iloc[-1]
+            trend_4h = "Long" if latest_4h['close'] > latest_4h['ema200'] else "Short"
 
             latest = df.iloc[-1]
             prev = df.iloc[-2]
 
-            # 3. Iteration 17 & 18: Funding & OI Filters
-            funding_rate = fetch_funding_rate(symbol)
-            current_oi = fetch_open_interest(symbol)
+            # 3. Volume Confirmation (Iteration 20)
+            avg_vol_5 = df['volume'].rolling(5).mean().shift(1).iloc[-1]
+            vol_ok = latest['volume'] > (avg_vol_5 * 1.5)
 
-            # Funding Filter: Avoid Longs if overheated (> 0.03%), Avoid Shorts if oversold (< -0.01%)
-            long_funding_ok = funding_rate < 0.0003
-            short_funding_ok = funding_rate > -0.0001 # 防止軋空風險
+            # 4. Heikin-Ashi Trend (Iteration 20)
+            ha_long = latest['ha_close'] > latest['ha_open'] and prev['ha_close'] > prev['ha_open']
+            ha_short = latest['ha_close'] < latest['ha_open'] and prev['ha_close'] < prev['ha_open']
 
-            # OI Divergence: Price Down + OI Up for Short
-            oi_ok = current_oi > 0
-
-            # 4. Entry Logic (Iteration 18: Bi-directional)
-            adx_threshold_long = 18 if is_squeezed else params.get('adx_min', 25)
-            adx_threshold_short = 30 # 做空需要更強動能
-            
-            adx_ok_long = latest['adx'] > adx_threshold_long
-            adx_ok_short = latest['adx'] > adx_threshold_short
-
-            # 5. Anomaly Detection
-            detect_anomalies(symbol, df, funding_rate)
-
-            # 6. Iteration 19: Mean Reversion Logic (Voting)
-            # Long Mean Reversion: RSI < 20 and Price < BB Lower
-            long_mr_signal = latest['rsi'] < 20 and latest['close'] < latest['bb_lower']
-            # Short Mean Reversion: RSI > 80 and Price > BB Upper
-            short_mr_signal = latest['rsi'] > 80 and latest['close'] > latest['bb_upper']
-
-            # Trend Signals
-            long_trend_signal = (
+            # 5. Entry Logic (Iteration 20: High-Precision)
+            # Long: 4H Trend Long + HA Long + Vol OK + Price > Resistance (Breakout)
+            long_signal = (
                 trend_4h == "Long" and
-                adx_ok_long and
-                long_funding_ok and
-                oi_ok and
+                ha_long and
+                vol_ok and
+                latest['close'] > prev['resistance'] and
                 latest['close'] > latest['ema_f'] and
-                latest['ema_f'] > latest['ema_s'] and
-                (is_squeezed and latest['close'] > latest['bb_upper'] or (prev['rsi'] < params['rsi_th'] and latest['rsi'] > params['rsi_th']))
+                latest['rsi'] > 60
             )
 
-            short_trend_signal = (
+            # Short: 4H Trend Short + HA Short + Vol OK + Price < Support (Breakout)
+            # Note: User requested to disable Short if it lowers win rate, but we'll implement it strictly first.
+            short_signal = (
                 trend_4h == "Short" and
-                adx_ok_short and
-                short_funding_ok and
-                oi_ok and
+                ha_short and
+                vol_ok and
+                latest['close'] < prev['support'] and
                 latest['close'] < latest['ema_f'] and
-                latest['ema_f'] < latest['ema_s'] and
-                (is_squeezed and latest['close'] < latest['bb_lower'] or (prev['rsi'] > (100 - params['rsi_th']) and latest['rsi'] < (100 - params['rsi_th'])))
+                latest['rsi'] < 40
             )
-
-            # Voting Mechanism: Trend OR Strong Mean Reversion
-            long_signal = long_trend_signal or (long_mr_signal and trend_4h == "Long")
-            short_signal = short_trend_signal or (short_mr_signal and trend_4h == "Short")
 
             # Store scan results for heartbeat
             prices_rsi[symbol] = {
@@ -381,38 +362,30 @@ def run_strategy():
                 'rsi': latest['rsi'],
                 'adx': latest['adx'],
                 'trend_4h': trend_4h,
-                'squeezed': is_squeezed,
-                'funding': funding_rate,
-                'oi': current_oi,
-                'mr_signal': "Long" if long_mr_signal else ("Short" if short_mr_signal else "None")
+                'support': latest['support'],
+                'resistance': latest['resistance'],
+                'ha_trend': "Bullish" if ha_long else ("Bearish" if ha_short else "Neutral")
             }
 
             if long_signal or short_signal:
                 if current_pos_count >= 3:
-                    send_telegram_msg(f"⚠️ [Iteration 19] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
+                    send_telegram_msg(f"⚠️ [Iteration 20] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
                     continue
 
                 side = 'LONG' if long_signal else 'SHORT'
-                # Iteration 19: Dynamic Risking
                 risk_amount = balance * risk_pct
                 sl_distance = params['sl_mult'] * latest['atr']
                 position_size = risk_amount / sl_distance if sl_distance > 0 else 0
 
-                target_desc = "BB Upper" if side == 'LONG' else "BB Lower"
-                trail_desc = "EMA 20" if side == 'LONG' else "EMA 10 (Sensitive)"
-                strategy_type = "Trend+MR" if (long_mr_signal or short_mr_signal) else "Trend"
-
                 msg = (
-                    f"🚀 [Iteration 19] 複利雪球進場 ({side})\n"
+                    f"🎯 [Iteration 20] 高精度進場 ({side})\n"
                     f"----------------------------\n"
                     f"幣種：{symbol} | 價格：{latest['close']:.2f}\n"
-                    f"策略：{strategy_type} | 趨勢 (4H)：{trend_4h}\n"
-                    f"倉位：{position_size:.4f} (Risk {risk_pct*100:.1f}% of ${balance:.0f})\n"
+                    f"支撐：{latest['support']:.2f} | 壓力：{latest['resistance']:.2f}\n"
+                    f"趨勢 (HA)：{prices_rsi[symbol]['ha_trend']} | 成交量：爆量確認\n"
+                    f"倉位：{position_size:.4f} (Risk {risk_pct*100:.1f}%)\n"
                     f"----------------------------\n"
-                    f"🎯 獲利計畫：\n"
-                    f"1. 觸及 {target_desc} 減倉 70% (Short) / 50% (Long) 並移至保本。\n"
-                    f"2. 啟動 {trail_desc} 追蹤止損。\n"
-                    f"3. 時間止損：3 小時內未脫離成本區則強制平倉。"
+                    f"🛡️ 嚴格過濾：4H EMA 200 方向一致性確認。"
                 )
                 send_telegram_msg(msg)
                 save_order_state(symbol, {
@@ -421,8 +394,9 @@ def run_strategy():
                     'side': side,
                     'status': 'Open',
                     'entry_time': datetime.utcnow().isoformat(),
-                    'iteration': '19',
-                    'balance_at_entry': balance
+                    'iteration': '20',
+                    'support': latest['support'],
+                    'resistance': latest['resistance']
                 })
         except Exception as e:
             print(f"Error in strategy execution for {symbol}: {e}")

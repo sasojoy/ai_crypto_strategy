@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import os
-from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands
+from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels
 
 def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=120):
     exchange = ccxt.binance()
@@ -23,7 +23,7 @@ def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=120):
     return df
 
 
-def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True, adx_min=25, bb_std=2, df_4h=None, compounding=True):
+def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl_mult=2, macd_confirm=True, adx_min=25, bb_std=2, df_4h=None, compounding=True, enable_short=True):
     if df.empty: return {"score": 0, "profit": 0, "win_rate": 0, "max_dd": 0, "trades": 0}
 
     df['rsi'] = calculate_rsi(df)
@@ -32,12 +32,15 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
     df['ema_trail_long'] = calculate_ema(df, 20)
     df['ema_trail_short'] = calculate_ema(df, 10)
     df['atr'] = calculate_atr(df, 14)
-    _, _, df['macd_hist'] = calculate_macd(df)
     df['adx'] = calculate_adx(df, 14)
-    df['bb_upper'], df['bb_lower'], df['bb_bandwidth'], df['bb_percent_b'] = calculate_bollinger_bands(df, 20, bb_std)
+    df['bb_upper'], df['bb_lower'], _, _ = calculate_bollinger_bands(df, 20, bb_std)
+
     
-    # Bollinger Band Squeeze (5th percentile of bandwidth)
-    df['bw_min'] = df['bb_bandwidth'].rolling(100).quantile(0.05)
+    # Iteration 20 Indicators
+    ha = calculate_heikin_ashi(df)
+    df = pd.concat([df, ha], axis=1)
+    df['support'], df['resistance'] = calculate_sr_levels(df, window=192)
+    df['avg_vol_5'] = df['volume'].rolling(5).mean().shift(1)
 
     # 4H Trend Filter
     if df_4h is not None:
@@ -62,36 +65,32 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
         prev = df.iloc[i-1]
 
         if not in_position:
-            is_squeezed = latest['bb_bandwidth'] < latest['bw_min']
-            
-            # Long Entry Logic
-            adx_ok_long = latest['adx'] > (18 if is_squeezed else adx_min)
+            # Iteration 20 Logic
             trend_ok_long = latest['close'] > latest['ema200'] if latest['ema200'] > 0 else True
-            
-            # Iteration 19: Mean Reversion Signal
-            long_mr_signal = latest['rsi'] < 20 and latest['close'] < latest['bb_lower']
-            
-            long_signal = (
-                (trend_ok_long and adx_ok_long and
-                latest['close'] > latest['ema_f'] and
-                latest['ema_f'] > latest['ema_s'] and
-                (is_squeezed and latest['close'] > latest['bb_upper'] or (prev['rsi'] < rsi_th and latest['rsi'] > rsi_th)))
-                or (long_mr_signal and trend_ok_long)
-            )
-
-            # Short Entry Logic (Iteration 18)
-            adx_ok_short = latest['adx'] > 30
             trend_ok_short = latest['close'] < latest['ema200'] if latest['ema200'] > 0 else True
             
-            # Iteration 19: Mean Reversion Signal
-            short_mr_signal = latest['rsi'] > 80 and latest['close'] > latest['bb_upper']
+            vol_ok = latest['volume'] > (latest['avg_vol_5'] * 1.5)
+            ha_long = latest['ha_close'] > latest['ha_open'] and prev['ha_close'] > prev['ha_open']
+            ha_short = latest['ha_close'] < latest['ha_open'] and prev['ha_close'] < prev['ha_open']
+
+            # Breakout of 48h Resistance + RSI Confirmation + EMA_F Confirmation
+            long_signal = (
+                trend_ok_long and
+                ha_long and
+                vol_ok and
+                latest['close'] > prev['resistance'] and
+                latest['close'] > latest['ema_f'] and
+                latest['rsi'] < 60
+            )
 
             short_signal = (
-                (trend_ok_short and adx_ok_short and
+                enable_short and
+                trend_ok_short and
+                ha_short and
+                vol_ok and
+                latest['close'] < prev['support'] and
                 latest['close'] < latest['ema_f'] and
-                latest['ema_f'] < latest['ema_s'] and
-                (is_squeezed and latest['close'] < latest['bb_lower'] or (prev['rsi'] > (100-rsi_th) and latest['rsi'] < (100-rsi_th))))
-                or (short_mr_signal and trend_ok_short)
+                latest['rsi'] < 40
             )
 
             if long_signal or short_signal:
@@ -101,7 +100,6 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
                 entry_price = latest['close']
                 entry_idx = i
                 
-                # Iteration 19: Compounding vs Simple Interest
                 risk_basis = balance if compounding else initial_balance
                 risk_amount = risk_basis * 0.015
                 
@@ -243,3 +241,64 @@ def generate_backtest_plot(df, trades, initial_balance=10000):
     plt.close()
     print(f"Backtest plot saved to backtest_result.png. Sharpe Ratio: {sharpe:.2f}")
     return sharpe
+
+if __name__ == "__main__":
+    import json
+    with open('config/params.json', 'r') as f:
+        params = json.load(f)
+    
+    symbol = 'BTC/USDT'
+    print(f"🚀 Running Iteration 20 Backtest for {symbol}...")
+    
+    df_all = fetch_backtest_data(symbol, days=120)
+    if not df_all.empty:
+        test_cutoff = df_all['timestamp'].max() - timedelta(days=30)
+        df_test = df_all[df_all['timestamp'] > test_cutoff].copy()
+        
+        # Iteration 20: High-Precision Backtest
+        result = run_evaluation(
+            df_test, 
+            compounding=True,
+            rsi_th=params['rsi_th'],
+            ema_f=params['ema_f'],
+            ema_s=params['ema_s'],
+            sl_mult=params['sl_mult'],
+            enable_short=True # Try with short first
+        )
+        
+        # If win rate < 50%, try disabling short
+        if result['win_rate'] < 0.5:
+            print("⚠️ Win rate < 50% with Shorting. Retrying with Long-Only...")
+            result = run_evaluation(
+                df_test, 
+                compounding=True,
+                rsi_th=params['rsi_th'],
+                ema_f=params['ema_f'],
+                ema_s=params['ema_s'],
+                sl_mult=params['sl_mult'],
+                enable_short=False
+            )
+
+        print("\n" + "="*30)
+        print("📊 ITERATION 20 RESULTS")
+        print("="*30)
+        print(f"Win Rate: {result['win_rate']*100:.2f}%")
+        
+        # Calculate Profit Factor
+        trades_df = pd.DataFrame(result['trades_list'])
+        if not trades_df.empty and 'profit' in trades_df.columns:
+            gross_profit = trades_df[trades_df['profit'] > 0]['profit'].sum()
+            gross_loss = abs(trades_df[trades_df['profit'] < 0]['profit'].sum())
+            profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
+        else:
+            profit_factor = 0
+            
+        print(f"Profit Factor: {profit_factor:.2f}")
+        print(f"Total Trades: {result['trades']}")
+        print(f"Total Net Profit: ${result['profit']:.2f}")
+        
+        sharpe = generate_backtest_plot(result['df'], result['trades_list'])
+        print(f"Sharpe Ratio: {sharpe:.2f}")
+        print("="*30)
+    else:
+        print("❌ Error: No data fetched.")

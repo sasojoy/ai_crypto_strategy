@@ -51,3 +51,24 @@ def calculate_bollinger_bands(df, period=20, std_dev=2):
     bandwidth = (upper_band - lower_band) / sma
     percent_b = (df['close'] - lower_band) / (upper_band - lower_band)
     return upper_band, lower_band, bandwidth, percent_b
+
+
+def calculate_heikin_ashi(df):
+    ha_df = df.copy()
+    ha_df['ha_close'] = (df['open'] + df['high'] + df['low'] + df['close']) / 4
+    
+    ha_open = np.zeros(len(df))
+    ha_open[0] = (df['open'].iloc[0] + df['close'].iloc[0]) / 2
+    for i in range(1, len(df)):
+        ha_open[i] = (ha_open[i-1] + ha_df['ha_close'].iloc[i-1]) / 2
+    ha_df['ha_open'] = ha_open
+    
+    ha_df['ha_high'] = ha_df[['ha_open', 'ha_close', 'high']].max(axis=1)
+    ha_df['ha_low'] = ha_df[['ha_open', 'ha_close', 'low']].min(axis=1)
+    return ha_df[['ha_open', 'ha_high', 'ha_low', 'ha_close']]
+
+def calculate_sr_levels(df, window=192): # 48 hours for 15m data
+    support = df['low'].rolling(window=window).min()
+    resistance = df['high'].rolling(window=window).max()
+    return support, resistance
+
