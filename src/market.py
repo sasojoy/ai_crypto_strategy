@@ -557,18 +557,28 @@ def manage_positions(prices_rsi):
                 state['highest_price'] = current_price
                 save_order_state(symbol, state)
                 # In real exchange, execute partial close order here
-            elif current_price >= latest_exit['bb_mid']:
-                # Optional: Partial profit taking at BB Mid could be implemented here
-                pass
+            
+            # 3. Time-based Exit (Iteration 30: 48h)
+            entry_time = datetime.fromisoformat(state['entry_time'])
+            if (datetime.utcnow() - entry_time).total_seconds() >= 172800: # 48 hours
+                if current_price > entry_price:
+                    msg = f"⏳ [Iteration 30] {symbol} 持倉超過 48 小時且獲利為正，強行平倉釋放資金！"
+                    send_telegram_msg(msg)
+                    state['status'] = 'Closed'
+                    state['exit_price'] = current_price
+                    state['exit_time'] = datetime.utcnow().isoformat()
+                    state['exit_reason'] = 'Time_Exit'
+                    save_order_state(symbol, state)
+                    continue
 
 
 
 
 if __name__ == "__main__":
-    STRATEGY_VERSION = "Iteration 29 - Profit Liberation"
+    STRATEGY_VERSION = "Iteration 30 - Industrial Validation"
     last_heartbeat_time = 0
     last_summary_date = None
-    send_telegram_msg(f"🤖 【利潤解放】Iteration 29 啟動！\n🚀 優化止損與止盈邏輯，擴大監控至 5 大幣種。")
+    send_telegram_msg(f"🤖 【工業化驗證】Iteration 30 啟動！\n🛡️ 180 天壓力測試通過，加入 48h 時間止盈機制。")
 
     while True:
         try:
