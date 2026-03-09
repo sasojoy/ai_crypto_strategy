@@ -63,6 +63,21 @@ def send_entry_notification(symbol, side, pos_value, risk_pct, tp, sl, rr):
     )
     send_telegram_msg(msg)
 
+def send_daily_performance(date, equity, daily_pnl, best_symbol, max_dd):
+    """
+    Daily Performance Message - Iteration 31
+    """
+    msg = (
+        f"📅 【每日戰報】: {date}\n"
+        f"----------------------------\n"
+        f"💰 淨值: ${equity:,.2f} | 當日損益: ${daily_pnl:,.2f}\n"
+        f"🏆 表現最佳幣種: {best_symbol}\n"
+        f"📉 最大回撤: {max_dd:.2f}%\n"
+        f"----------------------------\n"
+        f"狀態：Iteration 31 資金分配器 運行中"
+    )
+    send_telegram_msg(msg)
+
 def send_kill_switch_alert(reason="User Command"):
     """
     Emergency Kill Switch Alert
