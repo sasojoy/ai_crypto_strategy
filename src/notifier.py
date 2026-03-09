@@ -28,7 +28,7 @@ def send_telegram_msg(message):
 
 def send_hourly_audit(equity, realized_pnl, active_positions):
     """
-    Hourly Audit - Iteration 28
+    Hourly Audit - Iteration 32 Optimized
     """
     msg = (
         f"📜 【交易歷史摘要】\n"
@@ -38,12 +38,15 @@ def send_hourly_audit(equity, realized_pnl, active_positions):
     )
     for pos in active_positions:
         if pos['status'] == 'Open':
-            msg += f"   • {pos['symbol']}: {pos['pnl']:.2f}%\n"
+            pnl = pos.get('pnl', 0)
+            size = pos.get('size_usd', 0)
+            entry = pos.get('entry_price', 0)
+            msg += f"   • {pos['symbol']}: {pnl:+.2f}% | 價值: ${size:,.2f} | 入場: {entry:.4f}\n"
     
     msg += (
         f"📈 帳戶總淨值: ${equity:,.2f}\n"
         f"----------------------------\n"
-        f"狀態：Iteration 28 透明化指揮官 運行中"
+        f"狀態：Iteration 31 資金分配器 運行中"
     )
     send_telegram_msg(msg)
 

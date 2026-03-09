@@ -625,7 +625,9 @@ if __name__ == "__main__":
                         active_positions.append({
                             'symbol': s,
                             'status': state.get('status'),
-                            'pnl': pnl
+                            'pnl': pnl,
+                            'size_usd': state.get('pos_size', 0) * current_price,
+                            'entry_price': entry_price
                         })
                 
                 # Simulated equity (Reset to 1000 + realized)
