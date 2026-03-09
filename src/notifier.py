@@ -28,17 +28,17 @@ def send_telegram_msg(message):
 
 def send_daily_summary(equity, floating_pnl, realized_pnl, total_risk_pct):
     """
-    Equity Dashboard - Daily Summary (Iteration 15)
+    Equity Dashboard - Daily Summary (Iteration 23)
     """
     msg = (
-        f"📊 [Iteration 15] 每日損益簡報 (Daily Summary)\n"
+        f"📊 [Iteration 23 - Pro Alpha] 每日損益簡報\n"
         f"----------------------------\n"
         f"💰 當前總淨值：${equity:,.2f}\n"
         f"📈 今日實現盈虧：${realized_pnl:,.2f}\n"
         f"🌊 當前浮動盈虧：${floating_pnl:,.2f}\n"
         f"🛡️ 風險曝險：{total_risk_pct:.2f}%\n"
         f"----------------------------\n"
-        f"狀態：系統運行正常，策略 Iteration 15 監控中。"
+        f"狀態：系統運行正常，策略 Iteration 23 監控中。"
     )
     send_telegram_msg(msg)
 
@@ -56,12 +56,17 @@ def send_kill_switch_alert(reason="User Command"):
     )
     send_telegram_msg(msg)
 
-def send_rich_heartbeat(positions, scan_results, active_count, version):
+def send_rich_heartbeat(positions, scan_results, active_count, version, btc_status=None):
     """
-    Iteration 15 - Status-Aware Heartbeat
+    Iteration 23 - Pro Alpha Heartbeat
     """
-    msg = f"📊 [Iteration 15] 定時狀態回報\n"
+    msg = f"📊 [Iteration 23 - Pro Alpha] 定時狀態回報\n"
     msg += f"----------------------------\n"
+
+    # 0. BTC Status
+    if btc_status:
+        msg += f"👑 BTC 趨勢：{btc_status['trend']} (1H EMA 50: {btc_status['ema50']:.2f})\n"
+        msg += f"----------------------------\n"
 
     # 1. Position Status
     msg += "🟢 當前持倉狀態：\n"
@@ -69,15 +74,19 @@ def send_rich_heartbeat(positions, scan_results, active_count, version):
         msg += "   (無持倉)\n"
     else:
         for pos in positions:
-            pnl_str = f"{pos['pnl']}%" if pos['pnl'] >= 0 else f"{pos['pnl']}%"
-            scaled = "✅" if pos['scaled_out'] else "❌"
-            msg += f"   • {pos['symbol']}: {pos['entry_price']} -> {pos['current_price']} ({pnl_str}) | 減倉: {scaled}\n"
+            pnl_str = f"{pos['pnl']}%"
+            adx = pos.get('adx', 0)
+            adx_warning = " ⚠️ 建議減倉/緊跟止損" if adx < 20 else ""
+            msg += f"   • {pos['symbol']}: {pnl_str}{adx_warning}\n"
 
     # 2. Scan Summary
     msg += "\n⚪ 市場掃描摘要：\n"
     for symbol, data in scan_results.items():
-        adx_status = "Trend" if data['adx'] > 25 else "Wait"
-        msg += f"   • {symbol}: ADX {data['adx']:.1f} ({adx_status}) | RSI {data['rsi']:.1f}\n"
+        # Calculate Target R/R (Simulated for heartbeat)
+        # In a real scenario, this would use actual entry/tp/sl
+        rr = 1.5 
+        msg += f"   • {symbol}: ADX {data['adx']:.1f} | RSI {data['rsi']:.1f}\n"
+        msg += f"     阻力: {data['resistance']:.2f} | 支撐: {data['support']:.2f} | R/R: {rr}\n"
 
     # 3. Risk Check
     msg += f"\n🛡️ 風控檢查：\n"

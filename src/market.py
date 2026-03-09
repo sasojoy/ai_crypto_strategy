@@ -500,7 +500,7 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
-    STRATEGY_VERSION = "V8.3-Self-Evolving"
+    STRATEGY_VERSION = "[Iteration 23 - Pro Alpha]"
     last_heartbeat_time = 0
     last_summary_date = None
     send_telegram_msg(f"🤖 目標 100 萬監測站：啟動自我進化版循環 ({STRATEGY_VERSION})！")
@@ -537,11 +537,24 @@ if __name__ == "__main__":
                             'entry_price': entry_price,
                             'current_price': current_price,
                             'pnl': pnl,
+                            'adx': scan_results.get(s, {}).get('adx', 0),
                             'scaled_out': state.get('scaled_out', False)
                         })
 
                 active_count = len(active_positions)
-                send_rich_heartbeat(active_positions, scan_results, active_count, STRATEGY_VERSION)
+                
+                # BTC Status for Heartbeat
+                df_btc_1h = fetch_1h_data('BTC/USDT')
+                btc_status = None
+                if not df_btc_1h.empty:
+                    btc_ema50 = calculate_ema(df_btc_1h, 50).iloc[-1]
+                    btc_price = df_btc_1h.iloc[-1]['close']
+                    btc_status = {
+                        'trend': 'Bullish' if btc_price > btc_ema50 else 'Bearish',
+                        'ema50': btc_ema50
+                    }
+
+                send_rich_heartbeat(active_positions, scan_results, active_count, STRATEGY_VERSION, btc_status)
                 last_heartbeat_time = current_time
         except Exception as e:
             print(f"Loop error: {e}")
