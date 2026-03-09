@@ -44,11 +44,10 @@ def get_top_relative_strength_symbols():
         for item in top_20_vol:
             item['rs'] = item['price'] / btc_price
             
-        # 4. Iteration 21 Elite List: Top 5 Backtested Performers
-        # Selected based on Win Rate > 40% and Positive Profit
-        selected_symbols = ['SOL/USDT', 'DOGE/USDT', 'XRP/USDT', 'DOT/USDT', 'AVAX/USDT']
+        # 4. Iteration 25 Core Regression: Focus on High Liquidity
+        selected_symbols = ['SOL/USDT', 'ETH/USDT']
         
-        print(f"🎯 [Iteration 21 Elite] Monitoring Selected Symbols: {selected_symbols}")
+        print(f"🎯 [Iteration 25 Core] Monitoring Selected Symbols: {selected_symbols}")
         return selected_symbols
     except Exception as e:
         print(f"Error in symbol selection: {e}")
@@ -354,15 +353,23 @@ def run_strategy():
             latest = df.iloc[-1]
             prev = df.iloc[-2]
 
-            # 3. Volume Confirmation (Iteration 20)
+            # 3. Volume Confirmation (Iteration 25: 2.5x)
             avg_vol_5 = df['volume'].rolling(5).mean().shift(1).iloc[-1]
-            vol_ok = latest['volume'] > (avg_vol_5 * 1.5)
+            vol_ok = latest['volume'] > (avg_vol_5 * 2.5)
 
             # 4. Heikin-Ashi Trend (Iteration 20)
             ha_long = latest['ha_close'] > latest['ha_open'] and prev['ha_close'] > prev['ha_open']
             ha_short = latest['ha_close'] < latest['ha_open'] and prev['ha_close'] < prev['ha_open']
 
-            # 5. Entry Logic (Iteration 21: 12h Breakout + Pullback)
+            # 5. Entry Logic (Iteration 25: 1H EMA 20 Direction + 15m Squeeze)
+            df_1h = fetch_1h_data(symbol)
+            if df_1h.empty: continue
+            df_1h['ema20'] = calculate_ema(df_1h, 20)
+            latest_1h = df_1h.iloc[-1]
+            prev_1h = df_1h.iloc[-2]
+            ema20_up = latest_1h['ema20'] > prev_1h['ema20']
+            ema20_down = latest_1h['ema20'] < prev_1h['ema20']
+
             rsi_ok_long = latest['rsi'] < 80 and latest['rsi_slope'] > 0
             rsi_ok_short = latest['rsi'] > 20 and latest['rsi_slope'] < 0
 
@@ -371,7 +378,7 @@ def run_strategy():
                              latest['low'] <= latest['ema20'] * 1.002 and latest['close'] > latest['ema20'])
 
             long_signal = (
-                trend_4h == "Long" and ha_long and rsi_ok_long and
+                trend_4h == "Long" and ema20_up and ha_long and rsi_ok_long and
                 ( (vol_ok and latest['close'] > prev['resistance_12h']) or pullback_long )
             )
 
@@ -469,7 +476,7 @@ def run_strategy():
 
 def manage_positions(prices_rsi):
     params = load_params()
-    symbols = ['SOL/USDT', 'DOGE/USDT', 'XRP/USDT', 'DOT/USDT', 'AVAX/USDT']
+    symbols = ['SOL/USDT', 'ETH/USDT']
     
     for symbol in symbols:
         state = load_order_state(symbol)
@@ -484,15 +491,17 @@ def manage_positions(prices_rsi):
         side = state['side']
         adx = prices_rsi.get(symbol, {}).get('adx', 0)
         
-        # Iteration 24: Zombie Position Cleanup (ADX < 20 & 4h sideways)
+        # Iteration 25: Zombie Position Cleanup (ADX < 15 & Loss & 4h sideways)
         # Sideways check: price within 0.5% of entry for > 4 hours
         entry_time = datetime.fromisoformat(state['entry_time'])
         hours_held = (datetime.utcnow() - entry_time).total_seconds() / 3600
         
-        if adx < 20 and hours_held > 4:
+        is_loss = (side == 'LONG' and current_price < entry_price) or (side == 'SHORT' and current_price > entry_price)
+
+        if adx < 15 and hours_held > 4 and is_loss:
             price_diff_pct = abs(current_price - entry_price) / entry_price
             if price_diff_pct < 0.005:
-                msg = f"🧟 [Iteration 24] {symbol} 僵屍倉位清理！\n原因：ADX {adx:.1f} < 20 且橫盤 {hours_held:.1f} 小時。\n現價平倉釋放保證金。"
+                msg = f"🧟 [Iteration 25] {symbol} 僵屍倉位清理！\n原因：ADX {adx:.1f} < 15 且虧損橫盤 {hours_held:.1f} 小時。\n現價平倉釋放保證金。"
                 send_telegram_msg(msg)
                 state['status'] = 'Closed'
                 state['exit_price'] = current_price
@@ -537,7 +546,7 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
-    STRATEGY_VERSION = "Iteration 24 - Pro Alpha"
+    STRATEGY_VERSION = "Iteration 25 - Core Regression"
     last_heartbeat_time = 0
     last_summary_date = None
     send_telegram_msg(f"🤖 目標 100 萬監測站：啟動自我進化版循環 ({STRATEGY_VERSION})！")
@@ -561,7 +570,7 @@ if __name__ == "__main__":
             if current_time - last_heartbeat_time >= 900:
                 # Collect active position data (Simulated for this iteration)
                 active_positions = []
-                symbols = ['SOL/USDT', 'DOGE/USDT', 'XRP/USDT', 'DOT/USDT', 'AVAX/USDT']
+                symbols = ['SOL/USDT', 'ETH/USDT']
                 for s in symbols:
                     state = load_order_state(s)
                     if state and state.get('status') == 'Open':

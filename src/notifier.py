@@ -28,17 +28,17 @@ def send_telegram_msg(message):
 
 def send_daily_summary(equity, floating_pnl, realized_pnl, total_risk_pct):
     """
-    Equity Dashboard - Daily Summary (Iteration 24)
+    Equity Dashboard - Daily Summary (Iteration 25)
     """
     msg = (
-        f"📊 [Iteration 24 - Pro Alpha] 每日損益簡報\n"
+        f"📊 [Iteration 25 - Core Regression] 每日損益簡報\n"
         f"----------------------------\n"
         f"💰 當前總淨值：${equity:,.2f}\n"
         f"📈 今日實現盈虧：${realized_pnl:,.2f}\n"
         f"🌊 當前浮動盈虧：${floating_pnl:,.2f}\n"
         f"🛡️ 風險曝險：{total_risk_pct:.2f}%\n"
         f"----------------------------\n"
-        f"狀態：系統運行正常，策略 Iteration 24 監控中。"
+        f"狀態：系統運行正常，策略 Iteration 25 監控中。"
     )
     send_telegram_msg(msg)
 
@@ -58,9 +58,9 @@ def send_kill_switch_alert(reason="User Command"):
 
 def send_rich_heartbeat(positions, scan_results, active_count, version, btc_status=None):
     """
-    Iteration 24 - Pro Alpha Heartbeat
+    Iteration 25 - Core Regression Heartbeat
     """
-    msg = f"📊 [Iteration 24 - Pro Alpha] 定時狀態回報\n"
+    msg = f"📊 [Iteration 25 - Core Regression] 定時狀態回報\n"
     msg += f"----------------------------\n"
 
     # 0. BTC Status
