@@ -65,7 +65,8 @@ jobs:
               $PM2_BIN delete Iteration24_Pro_Alpha || true
               $PM2_BIN delete Iteration25_Core_Regression || true
               $PM2_BIN delete Iteration26_Pullback_Buy || true
-              $PM2_BIN restart Iteration27_Capital_Accelerator || $PM2_BIN start "python3 -u -m src.market" --name "Iteration27_Capital_Accelerator"
+              $PM2_BIN delete Iteration27_Capital_Accelerator || true
+              $PM2_BIN restart Iteration28_Transparent_Commander || $PM2_BIN start "python3 -u -m src.market" --name "Iteration28_Transparent_Commander"
               $PM2_BIN save
 
               echo "✅ PM2 Status Verification:"

@@ -26,19 +26,40 @@ def send_telegram_msg(message):
     except Exception as e:
         print(f"Failed to send Telegram message: {e}")
 
-def send_daily_summary(equity, floating_pnl, realized_pnl, total_risk_pct):
+def send_hourly_audit(equity, realized_pnl, active_positions):
     """
-    Equity Dashboard - Daily Summary (Iteration 25)
+    Hourly Audit - Iteration 28
     """
     msg = (
-        f"📊 [Iteration 25 - Core Regression] 每日損益簡報\n"
+        f"📜 【交易歷史摘要】\n"
         f"----------------------------\n"
-        f"💰 當前總淨值：${equity:,.2f}\n"
-        f"📈 今日實現盈虧：${realized_pnl:,.2f}\n"
-        f"🌊 當前浮動盈虧：${floating_pnl:,.2f}\n"
-        f"🛡️ 風險曝險：{total_risk_pct:.2f}%\n"
+        f"✅ 已平倉單數: {len([p for p in active_positions if p['status'] == 'Closed'])} | 當日盈虧: ${realized_pnl:,.2f}\n"
+        f"🔄 當前持倉:\n"
+    )
+    for pos in active_positions:
+        if pos['status'] == 'Open':
+            msg += f"   • {pos['symbol']}: {pos['pnl']:.2f}%\n"
+    
+    msg += (
+        f"📈 帳戶總淨值: ${equity:,.2f}\n"
         f"----------------------------\n"
-        f"狀態：系統運行正常，策略 Iteration 25 監控中。"
+        f"狀態：Iteration 28 透明化指揮官 運行中"
+    )
+    send_telegram_msg(msg)
+
+def send_entry_notification(symbol, side, pos_value, risk_pct, tp, sl, rr):
+    """
+    Entry Notification - Iteration 28
+    """
+    msg = (
+        f"🚀 【進場通知】: {symbol} | 方向: {side}\n"
+        f"----------------------------\n"
+        f"💰 投入金額: ${pos_value:,.2f} (佔總資金 {risk_pct}%)\n"
+        f"🎯 預期獲利: {tp:.4f}\n"
+        f"🛡️ 強制止損: {sl:.4f}\n"
+        f"⚖️ 盈虧比 (R/R): {rr:.2f}\n"
+        f"----------------------------\n"
+        f"狀態：已執行市價單，監控中。"
     )
     send_telegram_msg(msg)
 

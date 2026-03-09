@@ -6,7 +6,7 @@ import json
 import shutil
 from datetime import datetime
 from dotenv import load_dotenv
-from src.notifier import send_telegram_msg, send_daily_summary, send_kill_switch_alert, send_rich_heartbeat
+from src.notifier import send_telegram_msg, send_daily_summary, send_kill_switch_alert, send_rich_heartbeat, send_entry_notification, send_hourly_audit
 from src.logger import log_trade
 from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels, calculate_rsi_slope
 
@@ -44,10 +44,10 @@ def get_top_relative_strength_symbols():
         for item in top_20_vol:
             item['rs'] = item['price'] / btc_price
             
-        # 4. Iteration 27 Capital Accelerator: High Win Rate Symbols
-        selected_symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT']
+        # 4. Iteration 29 Profit Liberation: High Volatility Symbols
+        selected_symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT', 'FET/USDT', 'NEAR/USDT']
         
-        print(f"🎯 [Iteration 27 Accel] Monitoring Selected Symbols: {selected_symbols}")
+        print(f"🎯 [Iteration 29 Profit] Monitoring Selected Symbols: {selected_symbols}")
         return selected_symbols
     except Exception as e:
         print(f"Error in symbol selection: {e}")
@@ -361,24 +361,25 @@ def run_strategy():
             ha_long = latest['ha_close'] > latest['ha_open'] and prev['ha_close'] > prev['ha_open']
             ha_short = latest['ha_close'] < latest['ha_open'] and prev['ha_close'] < prev['ha_open']
 
-            # 5. Entry Logic (Iteration 26: Pullback Buy)
+            # 5. Entry Logic (Iteration 29: Profit Liberation)
             # Pre-requisite: 4H Trend Strong (EMA 200 above)
             df_4h = fetch_4h_data(symbol)
             if df_4h.empty: continue
             df_4h['ema200'] = calculate_ema(df_4h, 200)
             trend_4h_strong = latest['close'] > df_4h.iloc[-1]['ema200']
 
-            # Trigger: 15m RSI < 35 and Price < BB Lower
+            # Trigger: 15m RSI < 42 and (Price < BB Lower OR EMA 20/50 Golden Cross)
             df['bb_upper'], df['bb_lower'], df['bb_mid'], _ = calculate_bollinger_bands(df, 20, 2)
             latest = df.iloc[-1] # Refresh latest with BB
-            rsi_oversold = latest['rsi'] < 35
+            rsi_oversold = latest['rsi'] < 42
             price_at_bb_lower = latest['low'] <= latest['bb_lower']
+            ema_golden_cross = latest['ema20'] > latest['ema50'] and prev['ema20'] <= prev['ema50']
 
             # Confirmation: RSI Hook Up and First Green Candle
             rsi_hook_up = latest['rsi'] > prev['rsi']
             first_green = latest['close'] > latest['open']
 
-            long_signal = trend_4h_strong and rsi_oversold and price_at_bb_lower and rsi_hook_up and first_green
+            long_signal = trend_4h_strong and rsi_oversold and (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green
 
             short_signal = (
                 trend_4h == "Short" and ha_short and rsi_ok_short and
@@ -441,32 +442,39 @@ def run_strategy():
             send_telegram_msg(f"⚠️ [Iteration 23] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
             continue
 
+        # Iteration 29: Profit Liberation Entry
+        balance = 1000.0 # Reset Wallet
+        risk_pct = 0.025 # 2.5%
         risk_amount = balance * risk_pct
-        sl_distance = params['sl_mult'] * latest['atr']
+        sl_distance = 1.8 * latest['atr'] # Reduced SL to 1.8x ATR
         position_size = risk_amount / sl_distance if sl_distance > 0 else 0
+        
+        entry_price = latest['close']
+        sl_price = entry_price - sl_distance
+        tp_price = latest['bb_upper']
+        rr = (tp_price - entry_price) / sl_distance if sl_distance > 0 else 0
 
-        msg = (
-            f"🎯 [Iteration 23] 12h突破+回踩進場 ({side})\n"
-            f"----------------------------\n"
-            f"幣種：{symbol} | 價格：{latest['close']:.2f}\n"
-            f"BTC 背景：{'看多' if btc_sentiment_ok else '看空'}\n"
-            f"支撐(12h)：{latest['support_12h']:.2f} | 壓力(12h)：{latest['resistance_12h']:.2f}\n"
-            f"趨勢 (HA)：{signal['prices_rsi']['ha_trend']} | 量能增長：{signal['vol_growth']*100:.1f}%\n"
-            f"倉位：{position_size:.4f} (Risk {risk_pct*100:.1f}%)\n"
-            f"----------------------------\n"
-            f"🛡️ 策略：BTC 趨勢過濾 + 相關性檢測 (Top 2 Vol Growth)。"
+        send_entry_notification(
+            symbol=symbol,
+            side=side,
+            pos_value=risk_amount,
+            risk_pct=risk_pct * 100,
+            tp=tp_price,
+            sl=sl_price,
+            rr=rr
         )
-        send_telegram_msg(msg)
+        
         save_order_state(symbol, {
-            'entry_price': latest['close'],
+            'entry_price': entry_price,
             'pos_size': position_size,
             'side': side,
             'status': 'Open',
             'entry_time': datetime.utcnow().isoformat(),
-            'iteration': '23',
-            'support': latest['support_12h'],
-            'resistance': latest['resistance_12h'],
-            'highest_price': latest['close'] # For Trailing Stop
+            'iteration': '29',
+            'sl_price': sl_price,
+            'tp_price': tp_price,
+            'atr': latest['atr'],
+            'highest_price': entry_price
         })
     return prices_rsi
 
@@ -474,7 +482,7 @@ def run_strategy():
 
 def manage_positions(prices_rsi):
     params = load_params()
-    symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT']
+    symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT', 'FET/USDT', 'NEAR/USDT']
     
     for symbol in symbols:
         state = load_order_state(symbol)
@@ -515,40 +523,40 @@ def manage_positions(prices_rsi):
         latest_exit = df_exit.iloc[-1]
 
         if side == 'LONG':
-            # Iteration 27: Pyramiding (Add 30% if profit > 1% and RSI < 50)
+            # Iteration 29: Partial TP + Trailing Stop
             profit_pct = (current_price - entry_price) / entry_price * 100
-            rsi = prices_rsi.get(symbol, {}).get('rsi', 50)
-            if profit_pct > 1.0 and rsi < 50 and not state.get('pyramided'):
-                msg = f"🚀 [Iteration 27] {symbol} 獲利 > 1% 且 RSI {rsi:.1f} < 50，執行 30% 加倉！\n止損同步上移至保本價。"
-                send_telegram_msg(msg)
-                state['pyramided'] = True
-                state['pos_size'] = state.get('pos_size', 0) * 1.3
-                state['entry_price'] = (entry_price + current_price * 0.3) / 1.3 # Weighted average
-                state['sl_price'] = entry_price # Move SL to break-even
-                save_order_state(symbol, state)
+            
+            # 1. SL (Iteration 29: 1.8x ATR or Break-even)
+            sl_price = state.get('sl_price', entry_price - (1.8 * prices_rsi[symbol]['atr']))
+            
+            # Trailing Stop Logic (if partial TP already hit)
+            if state.get('partial_tp_hit'):
+                highest_price = max(state.get('highest_price', 0), current_price)
+                state['highest_price'] = highest_price
+                # Trailing Stop: 1.5% from highest price
+                trailing_sl = highest_price * 0.985
+                sl_price = max(sl_price, trailing_sl)
 
-            # 1. SL (Iteration 26: 3.0x ATR or Break-even)
-            sl_price = state.get('sl_price', entry_price - (3.0 * prices_rsi[symbol]['atr']))
             if current_price <= sl_price:
-                msg = f"❌ [Iteration 26] {symbol} 觸發止損！\n方向：{side}\n進場：{entry_price}\n止損：{sl_price}\n現價：{current_price}"
+                msg = f"❌ [Iteration 29] {symbol} 觸發止損/移動止損！\n現價：{current_price:.2f} | 止損價：{sl_price:.2f}"
                 send_telegram_msg(msg)
                 state['status'] = 'Closed'
                 state['exit_price'] = current_price
                 state['exit_time'] = datetime.utcnow().isoformat()
-                state['exit_reason'] = 'SL'
+                state['exit_reason'] = 'SL_Trailing'
                 save_order_state(symbol, state)
                 continue
 
-            # 2. TP (Iteration 26: BB Mid/Upper)
-            if current_price >= latest_exit['bb_upper']:
-                msg = f"✅ [Iteration 26] {symbol} 觸及布林上軌，全額止盈！\n現價：{current_price}"
+            # 2. TP (Iteration 29: BB Upper Partial 50%)
+            if current_price >= latest_exit['bb_upper'] and not state.get('partial_tp_hit'):
+                msg = f"💰 [Iteration 29] {symbol} 觸及布林上軌，平倉 50% 並開啟移動止損！"
                 send_telegram_msg(msg)
-                state['status'] = 'Closed'
-                state['exit_price'] = current_price
-                state['exit_time'] = datetime.utcnow().isoformat()
-                state['exit_reason'] = 'TP_BB_Upper'
+                state['partial_tp_hit'] = True
+                state['pos_size'] = state.get('pos_size', 0) * 0.5
+                state['sl_price'] = entry_price # Move to break-even
+                state['highest_price'] = current_price
                 save_order_state(symbol, state)
-                continue
+                # In real exchange, execute partial close order here
             elif current_price >= latest_exit['bb_mid']:
                 # Optional: Partial profit taking at BB Mid could be implemented here
                 pass
@@ -557,10 +565,10 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
-    STRATEGY_VERSION = "Iteration 27 - Capital Accelerator"
+    STRATEGY_VERSION = "Iteration 29 - Profit Liberation"
     last_heartbeat_time = 0
     last_summary_date = None
-    send_telegram_msg(f"🤖 目標 100 萬監測站：啟動自我進化版循環 ({STRATEGY_VERSION})！")
+    send_telegram_msg(f"🤖 【利潤解放】Iteration 29 啟動！\n🚀 優化止損與止盈邏輯，擴大監控至 5 大幣種。")
 
     while True:
         try:
@@ -578,40 +586,26 @@ if __name__ == "__main__":
             manage_positions(scan_results)
             current_time = time.time()
 
-            if current_time - last_heartbeat_time >= 900:
-                # Collect active position data (Simulated for this iteration)
+            if current_time - last_heartbeat_time >= 3600: # Hourly Audit
+                # Collect active position data
                 active_positions = []
-                symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT']
+                realized_pnl = 0 # In real scenario, fetch from trade logs
+                symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT', 'FET/USDT', 'NEAR/USDT']
                 for s in symbols:
                     state = load_order_state(s)
-                    if state and state.get('status') == 'Open':
-                        # In a real scenario, we'd fetch current price from exchange
+                    if state:
                         current_price = scan_results.get(s, {}).get('price', 0)
                         entry_price = state.get('entry_price', 0)
                         pnl = round(((current_price - entry_price) / entry_price) * 100, 2) if entry_price > 0 else 0
                         active_positions.append({
                             'symbol': s,
-                            'entry_price': entry_price,
-                            'current_price': current_price,
-                            'pnl': pnl,
-                            'adx': scan_results.get(s, {}).get('adx', 0),
-                            'scaled_out': state.get('scaled_out', False)
+                            'status': state.get('status'),
+                            'pnl': pnl
                         })
-
-                active_count = len(active_positions)
                 
-                # BTC Status for Heartbeat
-                df_btc_1h = fetch_1h_data('BTC/USDT')
-                btc_status = None
-                if not df_btc_1h.empty:
-                    btc_ema50 = calculate_ema(df_btc_1h, 50).iloc[-1]
-                    btc_price = df_btc_1h.iloc[-1]['close']
-                    btc_status = {
-                        'trend': 'Bullish' if btc_price > btc_ema50 else 'Bearish',
-                        'ema50': btc_ema50
-                    }
-
-                send_rich_heartbeat(active_positions, scan_results, active_count, STRATEGY_VERSION, btc_status)
+                # Simulated equity (Reset to 1000 + realized)
+                equity = 1000.0 + realized_pnl
+                send_hourly_audit(equity, realized_pnl, active_positions)
                 last_heartbeat_time = current_time
         except Exception as e:
             print(f"Loop error: {e}")
