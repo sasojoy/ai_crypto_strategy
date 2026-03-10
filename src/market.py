@@ -8,7 +8,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from src.notifier import send_telegram_msg, send_kill_switch_alert, send_rich_heartbeat, send_entry_notification, send_hourly_audit, send_daily_performance
 from src.logger import log_trade
-from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels, calculate_rsi_slope
+from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels, calculate_rsi_slope, calculate_stoch_rsi
 
 # Load environment variables
 load_dotenv()
@@ -131,6 +131,58 @@ def create_order_with_hard_sl(symbol, side, qty, entry_price, sl_price, tp_price
         print(error_msg)
         send_telegram_msg(error_msg)
         return None, None
+
+def cancel_sl_order(symbol, sl_order_id):
+    """
+    Iteration 43: Cancel Exchange-side SL
+    """
+    if not sl_order_id: return
+    try:
+        exchange = ccxt.binance({
+            'apiKey': os.getenv('BINANCE_API_KEY'),
+            'secret': os.getenv('BINANCE_SECRET'),
+            'options': {'defaultType': 'future'}
+        })
+        print(f"🧹 [Iteration 43] Cancelling SL Order {sl_order_id} for {symbol}")
+        exchange.cancel_order(sl_order_id, symbol)
+    except Exception as e:
+        print(f"⚠️ [Iteration 43] Failed to cancel SL order {sl_order_id}: {e}")
+
+def move_sl_to_breakeven(symbol, qty, entry_price, old_sl_order_id):
+    """
+    Iteration 45: Break-even Stop (Exchange-side)
+    """
+    try:
+        exchange = ccxt.binance({
+            'apiKey': os.getenv('BINANCE_API_KEY'),
+            'secret': os.getenv('BINANCE_SECRET'),
+            'options': {'defaultType': 'future'}
+        })
+        
+        # 1. Cancel old SL
+        if old_sl_order_id:
+            try:
+                exchange.cancel_order(old_sl_order_id, symbol)
+            except: pass
+            
+        # 2. Create new SL at entry + small buffer for fees
+        be_price = entry_price * 1.001 # 0.1% buffer for fees
+        print(f"🛡️ [Iteration 45] Moving SL to Break-even for {symbol} at {be_price}")
+        
+        new_sl_order = exchange.create_order(
+            symbol=symbol,
+            type='STOP_MARKET',
+            side='sell', # Assuming LONG for now as per strategy focus
+            amount=qty,
+            params={
+                'stopPrice': be_price,
+                'reduceOnly': True
+            }
+        )
+        return new_sl_order['id']
+    except Exception as e:
+        print(f"⚠️ [Iteration 45] Failed to move SL to break-even for {symbol}: {e}")
+        return old_sl_order_id
 
 
 
@@ -498,9 +550,28 @@ def run_strategy():
             rsi_hook_up = latest['rsi'] > prev['rsi']
             first_green = latest['close'] > latest['open']
 
-            # Iteration 41: Combined Signal
+            # Iteration 45: Squeeze Filter
+            # Bandwidth < 100-period average * 0.8
+            bandwidth_avg_100 = df['bandwidth'].rolling(100).mean().iloc[-1]
+            squeeze_active = latest['bandwidth'] < (bandwidth_avg_100 * 0.8) if bandwidth_avg_100 > 0 else False
+
+            # Iteration 45: StochRSI Confirmation
+            # RSI < 38 and StochRSI K cross D in oversold area (< 20)
+            df['stoch_k'], df['stoch_d'] = calculate_stoch_rsi(df)
+            latest_stoch_k = df['stoch_k'].iloc[-1]
+            latest_stoch_d = df['stoch_d'].iloc[-1]
+            prev_stoch_k = df['stoch_k'].iloc[-2]
+            prev_stoch_d = df['stoch_d'].iloc[-2]
+            
+            stoch_oversold = latest_stoch_k < 20 and latest_stoch_d < 20
+            stoch_golden_cross = prev_stoch_k <= prev_stoch_d and latest_stoch_k > latest_stoch_d
+            stoch_rsi_ok = stoch_oversold and stoch_golden_cross
+            rsi_oversold_45 = latest['rsi'] < 38
+
+            # Iteration 45: Combined Signal
             long_signal = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
-                          (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green
+                          (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green and \
+                          squeeze_active and stoch_rsi_ok and rsi_oversold_45
 
             # Iteration 39: Two-Stage Stop-Loss Protection (Tier 2)
             if long_signal and symbol not in ['SOL/USDT', 'BTC/USDT']:
@@ -688,6 +759,7 @@ def manage_positions(prices_rsi):
         # Iteration 32: Ghost Position Cleanup
         if state.get('pos_size', 0) <= 0:
             print(f"👻 [GHOST CLEANUP] {symbol} has zero quantity. Closing state.")
+            cancel_sl_order(symbol, state.get('sl_order_id'))
             state['status'] = 'Closed'
             state['exit_reason'] = 'Ghost Cleanup'
             save_order_state(symbol, state)
@@ -713,6 +785,7 @@ def manage_positions(prices_rsi):
             if price_diff_pct < 0.005:
                 msg = f"🧟 [Iteration 25] {symbol} 僵屍倉位清理！\n原因：ADX {adx:.1f} < 15 且虧損橫盤 {hours_held:.1f} 小時。\n現價平倉釋放保證金。"
                 send_telegram_msg(msg)
+                cancel_sl_order(symbol, state.get('sl_order_id'))
                 state['status'] = 'Closed'
                 state['exit_price'] = current_price
                 state['exit_time'] = datetime.utcnow().isoformat()
@@ -741,6 +814,7 @@ def manage_positions(prices_rsi):
                 if current_price <= chandelier_sl:
                     msg = f"📉 [Iteration 40] {symbol} 觸發 0.5% 回調止盈 (Chandelier Exit)！\n最高獲利：{highest_pnl:.2f}% | 當前獲利：{profit_pct:.2f}%"
                     send_telegram_msg(msg)
+                    cancel_sl_order(symbol, state.get('sl_order_id'))
                     state['status'] = 'Closed'
                     state['exit_price'] = current_price
                     state['exit_time'] = datetime.utcnow().isoformat()
@@ -757,6 +831,7 @@ def manage_positions(prices_rsi):
                 if retracement >= 0.20:
                     msg = f"🛡️ [Iteration 37] {symbol} 獲利回撤保護觸發！\n最高獲利：{highest_pnl:.2f}% | 當前獲利：{profit_pct:.2f}% | 回撤：{retracement*100:.1f}%"
                     send_telegram_msg(msg)
+                    cancel_sl_order(symbol, state.get('sl_order_id'))
                     state['status'] = 'Closed'
                     state['exit_price'] = current_price
                     state['exit_time'] = datetime.utcnow().isoformat()
@@ -781,6 +856,7 @@ def manage_positions(prices_rsi):
             if current_price <= sl_price:
                 msg = f"❌ [Iteration 29] {symbol} 觸發止損/移動止損！\n現價：{current_price:.2f} | 止損價：{sl_price:.2f}"
                 send_telegram_msg(msg)
+                cancel_sl_order(symbol, state.get('sl_order_id'))
                 state['status'] = 'Closed'
                 state['exit_price'] = current_price
                 state['exit_time'] = datetime.utcnow().isoformat()
@@ -794,9 +870,10 @@ def manage_positions(prices_rsi):
                 save_order_state(symbol, state)
                 continue
 
-            # 2. TP (Iteration 29: BB Upper Partial 50%)
-            if current_price >= latest_exit['bb_upper'] and not state.get('partial_tp_hit'):
-                msg = f"💰 [Iteration 29] {symbol} 觸及布林上軌，平倉 50% 並開啟移動止損！"
+            # 2. TP (Iteration 45: 1.5% Profit Partial TP + Break-even Stop)
+            profit_pct_45 = (current_price - entry_price) / entry_price * 100
+            if profit_pct_45 >= 1.5 and not state.get('partial_tp_hit'):
+                msg = f"💰 [Iteration 45] {symbol} 獲利達 1.5%，平倉 50% 並將止損移至保本價！"
                 send_telegram_msg(msg)
                 
                 # Iteration 32: Financial Tracking for Partial TP
@@ -805,12 +882,16 @@ def manage_positions(prices_rsi):
                 update_balance(pnl_amount)
                 record_trade_history(symbol, side, current_price, partial_qty, pnl_amount, 'Partial_TP')
                 
-                state['partial_tp_hit'] = True
-                state['pos_size'] = state.get('pos_size', 0) * 0.5
-                state['sl_price'] = entry_price # Move to break-even
-                state['highest_price'] = current_price
-                save_order_state(symbol, state)
+                # Iteration 45: Exchange-side Partial Close & SL Update
                 # In real exchange, execute partial close order here
+                new_sl_id = move_sl_to_breakeven(symbol, partial_qty, entry_price, state.get('sl_order_id'))
+                
+                state['partial_tp_hit'] = True
+                state['pos_size'] = partial_qty
+                state['sl_price'] = entry_price * 1.001
+                state['highest_price'] = current_price
+                state['sl_order_id'] = new_sl_id
+                save_order_state(symbol, state)
             
             # 3. Time-based Exit (Iteration 30: 48h)
             entry_time = datetime.fromisoformat(state['entry_time'])
@@ -818,6 +899,7 @@ def manage_positions(prices_rsi):
                 if current_price > entry_price:
                     msg = f"⏳ [Iteration 30] {symbol} 持倉超過 48 小時且獲利為正，強行平倉釋放資金！"
                     send_telegram_msg(msg)
+                    cancel_sl_order(symbol, state.get('sl_order_id'))
                     state['status'] = 'Closed'
                     state['exit_price'] = current_price
                     state['exit_time'] = datetime.utcnow().isoformat()

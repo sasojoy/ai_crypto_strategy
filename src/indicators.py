@@ -76,3 +76,13 @@ def calculate_rsi_slope(df, window=3):
     rsi = calculate_rsi(df)
     return rsi.diff(window)
 
+
+def calculate_stoch_rsi(df, period=14, smooth_k=3, smooth_d=3):
+    rsi = calculate_rsi(df, period)
+    rsi_min = rsi.rolling(window=period).min()
+    rsi_max = rsi.rolling(window=period).max()
+    stoch_rsi = (rsi - rsi_min) / (rsi_max - rsi_min)
+    k = stoch_rsi.rolling(window=smooth_k).mean() * 100
+    d = k.rolling(window=smooth_d).mean() * 100
+    return k, d
+

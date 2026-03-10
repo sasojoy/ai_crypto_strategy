@@ -11,7 +11,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import os
 import json
-from src.market import calculate_rsi, calculate_ema, calculate_atr, calculate_bollinger_bands, calculate_macd
+from src.market import calculate_rsi, calculate_ema, calculate_atr, calculate_bollinger_bands, calculate_macd, calculate_stoch_rsi
 
 def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=60):
     exchange = ccxt.binance()
@@ -36,10 +36,11 @@ def run_backtest_v42(df, symbol, btc_df, initial_balance=1000, mode='v42'):
     df['ema50'] = calculate_ema(df, 50)
     df['ema200_15m'] = calculate_ema(df, 200)
     df['atr'] = calculate_atr(df, 14)
-    df['bb_upper'], df['bb_lower'], df['bb_mid'], _ = calculate_bollinger_bands(df, 20, 2)
+    df['bb_upper'], df['bb_lower'], df['bandwidth'], _ = calculate_bollinger_bands(df, 20, 2)
     df['ema200_4h'] = calculate_ema(df, 200 * 16)
     df['ema200_1h'] = calculate_ema(df, 200 * 4)
     _, _, df['macd_hist'] = calculate_macd(df)
+    df['stoch_k'], df['stoch_d'] = calculate_stoch_rsi(df)
     
     df = df.dropna().reset_index(drop=True)
     
@@ -102,7 +103,28 @@ def run_backtest_v42(df, symbol, btc_df, initial_balance=1000, mode='v42'):
             
             double_div = macd_bullish_div and rsi_bullish_div
 
-            if mode == 'v42':
+            if mode == 'v45':
+                # Iteration 45: Squeeze Filter
+                bandwidth_avg_100 = df['bandwidth'].iloc[i-100:i].mean()
+                squeeze_active = current_row['bandwidth'] < (bandwidth_avg_100 * 0.8) if bandwidth_avg_100 > 0 else False
+                
+                # Iteration 45: StochRSI Confirmation
+                stoch_oversold = current_row['stoch_k'] < 20 and current_row['stoch_d'] < 20
+                stoch_golden_cross = prev_row['stoch_k'] <= prev_row['stoch_d'] and current_row['stoch_k'] > current_row['stoch_d']
+                stoch_rsi_ok = stoch_oversold and stoch_golden_cross
+                rsi_oversold_45 = current_row['rsi'] < 38
+                
+                # Hybrid Trigger from v42
+                extreme_mode = current_row['rsi'] < 30
+                structural_mode = current_row['rsi'] < 38 and double_div
+                hybrid_trigger = extreme_mode or structural_mode
+                
+                # Volume Exhaustion from v42
+                avg_vol_5 = df['volume'].iloc[i-5:i].mean()
+                vol_exhaustion = current_row['volume'] < (avg_vol_5 * 1.2)
+                
+                entry_allowed = trend_4h_strong and trend_1h_strong and hybrid_trigger and squeeze_active and stoch_rsi_ok and rsi_oversold_45
+            elif mode == 'v42':
                 extreme_mode = current_row['rsi'] < 30
                 structural_mode = current_row['rsi'] < 38 and double_div
                 hybrid_trigger = extreme_mode or structural_mode
@@ -181,9 +203,15 @@ def run_backtest_v42(df, symbol, btc_df, initial_balance=1000, mode='v42'):
                 exit_triggered = True
                 exit_reason = "SL"
             
-            if not exit_triggered and current_price >= tp_price and not partial_tp_hit:
-                sl_price = max(sl_price, entry_price)
-                partial_tp_hit = True
+            if not exit_triggered and not partial_tp_hit:
+                if mode == 'v45':
+                    if profit_pct >= 1.5:
+                        sl_price = entry_price * 1.001
+                        partial_tp_hit = True
+                else:
+                    if current_price >= tp_price:
+                        sl_price = max(sl_price, entry_price)
+                        partial_tp_hit = True
             
             if partial_tp_hit:
                 trailing_sl = highest_price * 0.985
