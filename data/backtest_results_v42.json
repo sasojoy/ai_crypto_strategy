@@ -1,0 +1,100 @@
+{
+    "BTC/USDT": {
+        "v41": {
+            "net_profit_pct": 0.8949846789304047,
+            "win_rate": 40.0,
+            "total_trades": 5,
+            "final_balance": 1008.949846789304
+        },
+        "v42": {
+            "net_profit_pct": 0.8949846789304047,
+            "win_rate": 40.0,
+            "total_trades": 5,
+            "final_balance": 1008.949846789304
+        }
+    },
+    "ETH/USDT": {
+        "v41": {
+            "net_profit_pct": 1.1405880358476452,
+            "win_rate": 50.0,
+            "total_trades": 4,
+            "final_balance": 1011.4058803584765
+        },
+        "v42": {
+            "net_profit_pct": 2.2063494852692314,
+            "win_rate": 66.66666666666666,
+            "total_trades": 3,
+            "final_balance": 1022.0634948526923
+        }
+    },
+    "SOL/USDT": {
+        "v41": {
+            "net_profit_pct": 5.304922840479731,
+            "win_rate": 75.0,
+            "total_trades": 4,
+            "final_balance": 1053.0492284047973
+        },
+        "v42": {
+            "net_profit_pct": 1.5375796390493406,
+            "win_rate": 50.0,
+            "total_trades": 2,
+            "final_balance": 1015.3757963904934
+        }
+    },
+    "NEAR/USDT": {
+        "v41": {
+            "net_profit_pct": -3.1716591718171117,
+            "win_rate": 0.0,
+            "total_trades": 4,
+            "final_balance": 968.2834082818289
+        },
+        "v42": {
+            "net_profit_pct": -3.1716591718171117,
+            "win_rate": 0.0,
+            "total_trades": 4,
+            "final_balance": 968.2834082818289
+        }
+    },
+    "AVAX/USDT": {
+        "v41": {
+            "net_profit_pct": -0.7364341085271235,
+            "win_rate": 0.0,
+            "total_trades": 1,
+            "final_balance": 992.6356589147288
+        },
+        "v42": {
+            "net_profit_pct": -0.7364341085271235,
+            "win_rate": 0.0,
+            "total_trades": 1,
+            "final_balance": 992.6356589147288
+        }
+    },
+    "FET/USDT": {
+        "v41": {
+            "net_profit_pct": -0.9986013986014086,
+            "win_rate": 0.0,
+            "total_trades": 1,
+            "final_balance": 990.0139860139859
+        },
+        "v42": {
+            "net_profit_pct": -0.9986013986014086,
+            "win_rate": 0.0,
+            "total_trades": 1,
+            "final_balance": 990.0139860139859
+        }
+    },
+    "ARB/USDT": {
+        "v41": {
+            "net_profit_pct": -0.8286386710385273,
+            "win_rate": 0.0,
+            "total_trades": 2,
+            "final_balance": 991.7136132896147
+        },
+        "v42": {
+            "net_profit_pct": -0.8286386710385273,
+            "win_rate": 0.0,
+            "total_trades": 2,
+            "final_balance": 991.7136132896147
+        }
+    }
+}

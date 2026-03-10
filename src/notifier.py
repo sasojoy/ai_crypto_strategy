@@ -106,9 +106,9 @@ def get_progress_bar(current, target, length=10):
 
 def send_rich_heartbeat(positions, scan_results, active_count, version, btc_status=None):
     """
-    Iteration 41 - Hybrid Trigger System
+    Iteration 43 - Hard SL & Auto-Recovery System
     """
-    msg = f"📊 【混合進場偵察 - Iteration 41】\n"
+    msg = f"📊 【異常恢復偵察 - Iteration 43】\n"
     msg += f"----------------------------\n"
 
     # 0. BTC Status & Market Rating
@@ -186,7 +186,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: {version} | 狀態: 混合進場監控中"
+    msg += f"版本: {version} | 狀態: 異常恢復監控中"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")

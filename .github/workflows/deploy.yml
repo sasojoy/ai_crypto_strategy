@@ -22,22 +22,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             set -e
-            cd ~/ai_crypto_strategyOpenHands, 
-根據 v37 的回測結果，雖然 MDD 有所改善，但勝率過低導致系統仍在失血。請立即執行 Iteration 38：
-
-1. 提高進場嚴苛度：
-   - 將 RSI 進場門檻從 42 降至 35。
-   - 增加過濾條件：進場時的成交量必須低於過去 5 根 K 線的平均成交量 (代表拋壓枯竭)。
-
-2. 重新校準 ATR 指標：
-   - 止損設為 1.5 * ATR (更緊湊)。
-   - 止盈設為 3.0 * ATR 或觸及布林上軌。
-
-3. 調低 Spike Guard 門檻：
-   - 將 atr_spike_factor 從 1.5 降至 1.2，加強亂流保護。
-
-4. 再次運行回測：
-   - 跑完後回報 NEAR 和 SOL 的 Win Rate 是否提升至 30% 以上。
+            cd ~/ai_crypto_strategy
             git fetch --all && git reset --hard origin/main
 
             printf "TELEGRAM_BOT_TOKEN=%s\n" "${{ secrets.TELEGRAM_BOT_TOKEN }}" > .env
@@ -73,14 +58,14 @@ jobs:
               echo "Deploying market monitor with PM2..."
               export PYTHONPATH=$PYTHONPATH:.
 
-              # 4. PM2 Deployment Logic (Iteration 32: Physical Reset)
+              # 4. PM2 Deployment Logic (Iteration 43: Hard SL & Auto-Recovery)
               $PM2_BIN delete all || true
-              $PM2_BIN start src/market.py --name "Iteration31_Stable" --interpreter python3
+              $PM2_BIN start src/market.py --name "Iteration43_Stable" --interpreter python3
               $PM2_BIN save
 
               echo "✅ PM2 Status Verification:"
-              $PM2_BIN list > pm2_status.tmp
-              cat pm2_status.tmp
+              $PM2_BIN list
+              $PM2_BIN log --lines 100
 
               echo "🔍 Recent Trading Logs:"
               if [ -f "logs/trading.log" ]; then

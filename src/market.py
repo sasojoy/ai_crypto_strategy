@@ -19,11 +19,11 @@ def load_params():
 
 def get_top_relative_strength_symbols():
     """
-    Iteration 41: Watchlist Expansion
-    Monitor top assets for Hybrid Trigger strategy.
+    Iteration 42: Capital Re-allocation
+    Focus on high-conviction assets (BTC, ETH, SOL) and reduce exposure to experimental ones.
     """
-    selected_symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'LINK/USDT', 'MATIC/USDT', 'FET/USDT', 'RNDR/USDT', 'ARB/USDT']
-    print(f"🎯 [Iteration 41 Expansion] Monitoring Selected Symbols: {selected_symbols}")
+    selected_symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+    print(f"🎯 [Iteration 42 Re-allocation] Monitoring Selected Symbols: {selected_symbols}")
     return selected_symbols
 
 def fetch_15m_data(symbol='BTC/USDT'):
@@ -94,6 +94,43 @@ def fetch_open_interest(symbol):
     except Exception as e:
         print(f"Error fetching OI for {symbol}: {e}")
         return 0
+
+def create_order_with_hard_sl(symbol, side, qty, entry_price, sl_price, tp_price):
+    """
+    Iteration 43: Exchange-side Hard SL
+    Submits entry order and stop-loss order to Binance Futures.
+    """
+    try:
+        exchange = ccxt.binance({
+            'apiKey': os.getenv('BINANCE_API_KEY'),
+            'secret': os.getenv('BINANCE_SECRET'),
+            'options': {'defaultType': 'future'}
+        })
+        
+        # 1. Entry Order (Market)
+        print(f"🚀 [Iteration 43] Submitting Entry Order: {symbol} {side} {qty}")
+        entry_order = exchange.create_market_order(symbol, side.lower(), qty)
+        
+        # 2. Hard Stop Loss Order (Stop Market)
+        sl_side = 'sell' if side == 'LONG' else 'buy'
+        print(f"🛡️ [Iteration 43] Submitting Hard SL Order: {symbol} {sl_side} at {sl_price}")
+        sl_order = exchange.create_order(
+            symbol=symbol,
+            type='STOP_MARKET',
+            side=sl_side,
+            amount=qty,
+            params={
+                'stopPrice': sl_price,
+                'reduceOnly': True
+            }
+        )
+        
+        return entry_order, sl_order
+    except Exception as e:
+        error_msg = f"❌ [Iteration 43] Order Execution Failed for {symbol}: {str(e)}"
+        print(error_msg)
+        send_telegram_msg(error_msg)
+        return None, None
 
 
 
@@ -386,14 +423,24 @@ def run_strategy():
             ha_long = latest['ha_close'] > latest['ha_open'] and prev['ha_close'] > prev['ha_open']
             ha_short = latest['ha_close'] < latest['ha_open'] and prev['ha_close'] < prev['ha_open']
 
-            # 5. Entry Logic (Iteration 31: Capital Allocator)
-            # Pre-requisite: BTC Crash Filter (1H Drop > 2%)
-            df_btc_1h = fetch_1h_data('BTC/USDT')
-            if not df_btc_1h.empty:
-                btc_1h_change = (df_btc_1h.iloc[-1]['close'] - df_btc_1h.iloc[-2]['close']) / df_btc_1h.iloc[-2]['close'] * 100
-                if btc_1h_change < -2.0:
-                    print(f"🚫 [Iteration 31] {symbol} Entry ignored: BTC Crashing ({btc_1h_change:.2f}%).")
-                    continue
+            # 5. Entry Logic (Iteration 42: Waterfall Guard & Double Divergence)
+            # Waterfall Guard: BTC 15m Drop > 1.2%
+            df_btc_15m = fetch_15m_data('BTC/USDT')
+            if not df_btc_15m.empty:
+                btc_15m_change = (df_btc_15m.iloc[-1]['close'] - df_btc_15m.iloc[-2]['close']) / df_btc_15m.iloc[-2]['close'] * 100
+                if btc_15m_change < -1.2:
+                    # Store waterfall trigger time in a temporary file
+                    with open('data/waterfall_guard.txt', 'w') as f:
+                        f.write(datetime.utcnow().isoformat())
+                    print(f"🌊 [Waterfall Guard] BTC 15m Drop {btc_15m_change:.2f}% detected. Pausing entries.")
+            
+            # Check if Waterfall Guard is active (2 hours)
+            if os.path.exists('data/waterfall_guard.txt'):
+                with open('data/waterfall_guard.txt', 'r') as f:
+                    trigger_time = datetime.fromisoformat(f.read().strip())
+                    if (datetime.utcnow() - trigger_time).total_seconds() < 7200:
+                        print(f"🚫 [Waterfall Guard] Entries paused for {symbol}.")
+                        continue
 
             # Pre-requisite: 4H Trend Strong (EMA 200 above)
             df_4h = fetch_4h_data(symbol)
@@ -401,27 +448,31 @@ def run_strategy():
             df_4h['ema200'] = calculate_ema(df_4h, 200)
             trend_4h_strong = latest['close'] > df_4h.iloc[-1]['ema200']
 
-            # Iteration 41: Hybrid Trigger System
             # 1. MTF Filter (1H EMA 200)
             df_1h = fetch_1h_data(symbol)
             if df_1h.empty:
-                print(f"⚠️ [Iteration 41] {symbol} 1H data empty. Skipping.")
+                print(f"⚠️ [Iteration 42] {symbol} 1H data empty. Skipping.")
                 continue
             df_1h['ema200'] = calculate_ema(df_1h, 200)
             trend_1h_strong = latest['close'] > df_1h.iloc[-1]['ema200']
 
-            # 2. MACD Divergence (Bullish)
-            # Price down, MACD Histogram up in last 5 bars
+            # 2. Double Divergence (MACD + RSI)
             _, _, macd_hist = calculate_macd(df)
             price_down = latest['close'] < df['close'].iloc[-6]
             macd_up = macd_hist.iloc[-1] > macd_hist.iloc[-6]
             macd_bullish_div = price_down and macd_up
+            
+            # RSI Bullish Divergence: Price lower, RSI higher than 5 bars ago
+            rsi_up = latest['rsi'] > df['rsi'].iloc[-6]
+            rsi_bullish_div = price_down and rsi_up
+            
+            double_div = macd_bullish_div and rsi_bullish_div
 
-            # Iteration 41: Hybrid Logic
-            # A. Extreme Mode: RSI < 30 (No MACD Div needed)
-            # B. Structural Mode: RSI < 38 + MACD Div
+            # Iteration 42: Hybrid Logic
+            # A. Extreme Mode: RSI < 30 (No Div needed)
+            # B. Structural Mode: RSI < 38 + Double Divergence
             extreme_mode = latest['rsi'] < 30
-            structural_mode = latest['rsi'] < 38 and macd_bullish_div
+            structural_mode = latest['rsi'] < 38 and double_div
             
             hybrid_trigger = extreme_mode or structural_mode
 
@@ -468,21 +519,33 @@ def run_strategy():
             atr_avg = df['atr'].rolling(window=100).mean().iloc[-1]
             atr_spike = latest['atr'] > (atr_avg * 1.2) if atr_avg > 0 else False
 
+            # Iteration 42: Capital Re-allocation Weights
+            asset_weights = {
+                'BTC/USDT': 1.0,
+                'ETH/USDT': 1.2,
+                'SOL/USDT': 1.0,
+                'NEAR/USDT': 0.3,
+                'AVAX/USDT': 0.3,
+                'FET/USDT': 0.3,
+                'ARB/USDT': 0.3
+            }
+            asset_weight = asset_weights.get(symbol, 0.3)
+
             # Iteration 37: Distance-Based Sizing Calculation for Report
             price = latest['close']
             ema200 = df_4h.iloc[-1]['ema200']
             dist_ema200_pct = abs(price - ema200) / ema200 * 100 if ema200 > 0 else 0
             
-            base_risk = 0.025
+            base_risk = 0.025 * asset_weight # Apply Iteration 42 Weight
             if dist_ema200_pct < 1.5:
-                adj_risk = 0.03
-                weight_str = "+20%"
+                adj_risk = base_risk * 1.2
+                weight_str = f"{asset_weight}x (+20%)"
             elif dist_ema200_pct > 5.0:
-                adj_risk = 0.015
-                weight_str = "-40%"
+                adj_risk = base_risk * 0.6
+                weight_str = f"{asset_weight}x (-40%)"
             else:
                 adj_risk = base_risk
-                weight_str = "正常"
+                weight_str = f"{asset_weight}x"
 
             if atr_spike:
                 adj_risk /= 2
@@ -553,25 +616,9 @@ def run_strategy():
             send_telegram_msg(f"⚠️ [Iteration 23] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
             continue
 
-        # Iteration 37: Dynamic Asset Allocation
+        # Iteration 42: Dynamic Asset Allocation (Using pre-calculated adj_risk)
         balance = get_account_balance()
-        
-        # 1. Distance-Based Sizing
-        ema200 = prices_rsi[symbol]['ema200']
-        dist_ema200_pct = prices_rsi[symbol]['dist_ema200_pct']
-        
-        if dist_ema200_pct < 1.5:
-            risk_pct = 0.03 # Increase to 3%
-        elif dist_ema200_pct > 5.0:
-            risk_pct = 0.015 # Decrease to 1.5%
-        else:
-            risk_pct = 0.025 # Base 2.5%
-
-        # 2. ATR Spike Guard
-        if prices_rsi[symbol]['atr_spike']:
-            print(f"⚠️ [ATR Spike Guard] {symbol} ATR is high. Halving position size.")
-            risk_pct /= 2
-
+        risk_pct = prices_rsi[symbol].get('expected_risk_pct', 0.025)
         risk_amount = balance * risk_pct
         
         # Volatility Sizing: Adjust SL distance based on ATR (Iteration 38: 1.5 * ATR)
@@ -597,29 +644,34 @@ def run_strategy():
         tp_price = min(tp_price_atr, latest['bb_upper'])
         rr = (tp_price - entry_price) / sl_distance if sl_distance > 0 else 0
 
-        send_entry_notification(
-            symbol=symbol,
-            side=side,
-            pos_value=risk_amount,
-            risk_pct=risk_pct * 100,
-            tp=tp_price,
-            sl=sl_price,
-            rr=rr
-        )
+        # Iteration 43: Exchange-side Hard SL
+        entry_order, sl_order = create_order_with_hard_sl(symbol, side, position_qty, entry_price, sl_price, tp_price)
         
-        save_order_state(symbol, {
-            'entry_price': entry_price,
-            'pos_size': position_qty,
-            'side': side,
-            'status': 'Open',
-            'entry_time': datetime.utcnow().isoformat(),
-            'iteration': '39',
-            'sl_price': sl_price,
-            'tp_price': tp_price,
-            'atr': latest['atr'],
-            'highest_price': entry_price,
-            'entry_rsi': latest['rsi']
-        })
+        if entry_order:
+            send_entry_notification(
+                symbol=symbol,
+                side=side,
+                pos_value=risk_amount,
+                risk_pct=risk_pct * 100,
+                tp=tp_price,
+                sl=sl_price,
+                rr=rr
+            )
+            
+            save_order_state(symbol, {
+                'entry_price': entry_price,
+                'pos_size': position_qty,
+                'side': side,
+                'status': 'Open',
+                'entry_time': datetime.utcnow().isoformat(),
+                'iteration': '43',
+                'sl_price': sl_price,
+                'tp_price': tp_price,
+                'atr': latest['atr'],
+                'highest_price': entry_price,
+                'entry_rsi': latest['rsi'],
+                'sl_order_id': sl_order['id'] if sl_order else None
+            })
     return prices_rsi
 
 
@@ -783,7 +835,7 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
-    send_telegram_msg("🚀 [System Heartbeat] Iteration 41_Hybrid_Trigger 正在 GCE 啟動。混合進場機制與監控清單擴展已就緒。")
+    send_telegram_msg("🚀 [System Heartbeat] Iteration 43_Hard_SL_Auto_Recovery 正在 GCE 啟動。交易所硬止損與全域異常恢復機制已就緒。")
     import sys
     if "--check-accounting" in sys.argv:
         print("📊 [ACCOUNTING CHECK]")
@@ -807,10 +859,10 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 41 - Hybrid Trigger"
+    STRATEGY_VERSION = "Iteration 43 - Hard SL & Auto-Recovery"
     last_heartbeat_time = 0
     last_summary_date = None
-    send_telegram_msg("🚀 Iteration 41_Hybrid_Trigger 已於遠端正式啟動，混合進場機制與監控清單擴展已就緒。")
+    send_telegram_msg("🚀 Iteration 43_Hard_SL_Auto_Recovery 已於遠端正式啟動，交易所硬止損與全域異常恢復機制已就緒。")
 
     while True:
         try:
@@ -833,7 +885,8 @@ if __name__ == "__main__":
             manage_positions(scan_results)
             current_time = time.time()
 
-            if current_time - last_heartbeat_time >= 3600: # Hourly Audit
+            # Iteration 43: 30-minute Heartbeat
+            if current_time - last_heartbeat_time >= 1800:
                 # Collect active position data
                 active_positions = []
                 
