@@ -533,6 +533,14 @@ def manage_positions(prices_rsi):
         if not state or state.get('status') != 'Open':
             continue
             
+        # Iteration 32: Ghost Position Cleanup
+        if state.get('pos_size', 0) <= 0:
+            print(f"👻 [GHOST CLEANUP] {symbol} has zero quantity. Closing state.")
+            state['status'] = 'Closed'
+            state['exit_reason'] = 'Ghost Cleanup'
+            save_order_state(symbol, state)
+            continue
+
         current_price = prices_rsi.get(symbol, {}).get('price', 0)
         if current_price == 0:
             continue
@@ -638,6 +646,29 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
+    import sys
+    if "--check-accounting" in sys.argv:
+        print("📊 [ACCOUNTING CHECK]")
+        balance = get_account_balance()
+        print(f"Total Balance: ${balance:.2f}")
+        if os.path.exists('data/trade_history.csv'):
+            df = pd.read_csv('data/trade_history.csv')
+            print(f"Total Trades: {len(df)}")
+            print(f"Total PnL from History: ${df['pnl'].sum():.2f}")
+        else:
+            print("No trade history found.")
+        
+        symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT', 'FET/USDT', 'NEAR/USDT']
+        active_found = False
+        for s in symbols:
+            state = load_order_state(s)
+            if state and state.get('status') == 'Open':
+                print(f"📍 Active Position: {s} | Size: {state.get('pos_size', 0):.4f} | Entry: {state.get('entry_price', 0):.4f}")
+                active_found = True
+        if not active_found:
+            print("No active positions.")
+        sys.exit(0)
+
     STRATEGY_VERSION = "Iteration 31 - Capital Allocator"
     last_heartbeat_time = 0
     last_summary_date = None
@@ -674,13 +705,23 @@ if __name__ == "__main__":
                     with open('data/balance.json', 'r') as f:
                         balance_data = json.load(f)
                 
-                realized_pnl = balance_data.get('realized_pnl', 0.0)
+                # Iteration 32: Calculate Daily PnL from CSV
+                daily_pnl = 0
+                if os.path.exists('data/trade_history.csv'):
+                    try:
+                        df_history = pd.read_csv('data/trade_history.csv')
+                        today_str = datetime.utcnow().strftime('%Y-%m-%d')
+                        df_today = df_history[df_history['timestamp'].str.startswith(today_str)]
+                        daily_pnl = df_today['pnl'].sum()
+                    except Exception as e:
+                        print(f"Error calculating daily PnL: {e}")
+
                 equity = balance_data.get('total_balance', 1000.0)
                 
                 symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT', 'FET/USDT', 'NEAR/USDT']
                 for s in symbols:
                     state = load_order_state(s)
-                    if state and state.get('status') == 'Open':
+                    if state and state.get('status') == 'Open' and state.get('pos_size', 0) > 0:
                         current_price = scan_results.get(s, {}).get('price', 0)
                         entry_price = state.get('entry_price', 0)
                         pnl = round(((current_price - entry_price) / entry_price) * 100, 2) if entry_price > 0 else 0
@@ -692,7 +733,7 @@ if __name__ == "__main__":
                             'entry_price': entry_price
                         })
                 
-                send_hourly_audit(equity, realized_pnl, active_positions)
+                send_hourly_audit(equity, daily_pnl, active_positions)
                 last_heartbeat_time = current_time
         except Exception as e:
             print(f"Loop error: {e}")
