@@ -425,7 +425,9 @@ def run_strategy():
                 'trend_4h': trend_4h,
                 'support': latest['support_12h'],
                 'resistance': latest['resistance_12h'],
-                'ha_trend': "Bullish" if ha_long else ("Bearish" if ha_short else "Neutral")
+                'ha_trend': "Bullish" if ha_long else ("Bearish" if ha_short else "Neutral"),
+                'bb_lower': latest['bb_lower'],
+                'ema200': df_4h.iloc[-1]['ema200']
             }
 
             if long_signal or short_signal:
@@ -735,6 +737,19 @@ if __name__ == "__main__":
                         })
                 
                 send_hourly_audit(equity, daily_pnl, active_positions)
+                
+                # Iteration 34: Rich Heartbeat with Strategy Recon
+                df_btc = fetch_1h_data('BTC/USDT')
+                if not df_btc.empty:
+                    btc_price = df_btc.iloc[-1]['close']
+                    btc_ema50 = calculate_ema(df_btc, 50).iloc[-1]
+                    btc_status = {
+                        'price': btc_price,
+                        'ema50': btc_ema50,
+                        'is_bullish': btc_price > btc_ema50
+                    }
+                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 34", btc_status)
+                
                 last_heartbeat_time = current_time
         except Exception as e:
             print(f"Loop error: {e}")

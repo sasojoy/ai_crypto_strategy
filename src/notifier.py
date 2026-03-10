@@ -97,14 +97,19 @@ def send_kill_switch_alert(reason="User Command"):
 
 def send_rich_heartbeat(positions, scan_results, active_count, version, btc_status=None):
     """
-    Iteration 25 - Core Regression Heartbeat
+    Iteration 34 - Comprehensive Strategy Recon
     """
-    msg = f"📊 [Iteration 25 - Core Regression] 定時狀態回報\n"
+    msg = f"📊 【綜合策略偵察 - Iteration 34】\n"
     msg += f"----------------------------\n"
 
-    # 0. BTC Status
+    # 0. BTC Status & Market Rating
     if btc_status:
-        msg += f"👑 BTC 趨勢：{btc_status['trend']} (1H EMA 50: {btc_status['ema50']:.2f})\n"
+        # Market Rating Logic
+        # Bullish: Price > EMA50 and EMA50 > EMA200 (simplified here as we only have EMA50 in btc_status usually)
+        # For now, use the 'OK' status from market.py
+        rating = "多頭排列 📈" if btc_status.get('is_bullish', True) else "震盪洗盤 🌪️"
+        msg += f"👑 大盤環境評級：{rating}\n"
+        msg += f"   (BTC Price: {btc_status['price']:.0f} | EMA50: {btc_status['ema50']:.0f})\n"
         msg += f"----------------------------\n"
 
     # 1. Position Status
@@ -114,18 +119,38 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     else:
         for pos in positions:
             pnl_str = f"{pos['pnl']}%"
-            adx = pos.get('adx', 0)
-            adx_warning = " ⚠️ 建議減倉/緊跟止損" if adx < 20 else ""
-            msg += f"   • {pos['symbol']}: {pnl_str}{adx_warning}\n"
+            msg += f"   • {pos['symbol']}: {pnl_str}\n"
 
-    # 2. Scan Summary
-    msg += "\n⚪ 市場掃描摘要：\n"
+    # 2. Scan Summary & Entry Readiness
+    msg += "\n⚪ 進場完成度 (15m 戰備)：\n"
     for symbol, data in scan_results.items():
-        # Calculate Target R/R (Simulated for heartbeat)
-        # In a real scenario, this would use actual entry/tp/sl
-        rr = 1.5 
-        msg += f"   • {symbol}: ADX {data['adx']:.1f} | RSI {data['rsi']:.1f}\n"
-        msg += f"     阻力: {data['resistance']:.2f} | 支撐: {data['support']:.2f} | R/R: {rr}\n"
+        # data should contain: rsi, price, bb_lower, ema200, etc.
+        score = 0
+        details = []
+        
+        # Condition 1: EMA200 Above
+        if data.get('price', 0) > data.get('ema200', 0):
+            score += 34
+            details.append("EMA200以上 ✅")
+        else:
+            details.append("EMA200以上 ❌")
+            
+        # Condition 2: RSI < 42
+        if data.get('rsi', 50) < 42:
+            score += 33
+            details.append("RSI < 42 ✅")
+        else:
+            details.append("RSI < 42 ❌")
+            
+        # Condition 3: Touch BB Lower
+        if data.get('price', 0) <= data.get('bb_lower', 0) * 1.001: # 0.1% buffer
+            score += 33
+            details.append("觸及布林下軌 ✅")
+        else:
+            details.append("觸及布林下軌 ❌")
+            
+        msg += f"   • {symbol} 進場評分: {score}%\n"
+        msg += f"     ({ ' | '.join(details) })\n"
 
     # 3. Risk Check
     msg += f"\n🛡️ 風控檢查：\n"
