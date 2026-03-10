@@ -105,8 +105,27 @@ python3 -u -m src.market
 ## 📈 策略演進紀錄
 所有的優化細節都會自動記錄在 [STRATEGY_RELEASE_NOTES.md](./STRATEGY_RELEASE_NOTES.md)。
 
+## 🛡️ Iteration 32: Financial Logic Correction & Recovery
+### Core Enhancements
+1. **Financial Hard Reset**: Reset `data/balance.json` to $1000.0 and cleared `data/trade_history.csv` for a clean recovery phase.
+2. **No-Leverage Position Sizing**:
+   - **Formula**: `position_qty = (balance * 2.5%) / (1.8 * ATR)`
+   - **Constraint**: Added a **95% Balance Cap** to ensure no single position exceeds the total account value, effectively eliminating unintended leverage.
+3. **Robust PnL Tracking**:
+   - **Real-time Updates**: `total_balance` and `realized_pnl` are updated immediately upon every full or partial close.
+   - **Ghost Position Cleanup**: Automatically identifies and closes positions with zero or negative quantity to prevent accounting errors.
+4. **Deployment Visibility**:
+   - **Status Reporting**: GitHub Actions now captures and displays `pm2 list` and the last 20 lines of `logs/trading.log` directly in the deployment logs.
+   - **Startup Notification**: The system sends a Telegram alert upon successful remote startup, confirming that accounting and quantity checks are active.
+
+### 📊 Current Status (Recovery Phase)
+- **Initial Balance**: $1000.00
+- **Active Symbols**: `['SOL/USDT']` (Minimal startup for stability)
+- **Risk per Trade**: 2.5% (Volatility-adjusted)
+- **Leverage**: 0x (Spot-equivalent sizing)
+
 ---
-*Last Updated: 2026-03-05*
+*Last Updated: 2026-03-09*
 \n\n## 🛡️ Security Notice\n**IMPORTANT**: When configuring your Binance API keys, ensure that only **'Enable Spot & Margin Trading'** is checked. **DO NOT** enable 'Enable Withdrawals'. This project only requires trading permissions.
 ## 📊 Backtest Results (Iteration 15)
 - **Period**: Last 120 days (BTC/USDT)
