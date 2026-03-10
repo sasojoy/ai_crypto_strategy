@@ -19,39 +19,12 @@ def load_params():
 
 def get_top_relative_strength_symbols():
     """
-    Iteration 16: Dynamic Symbol Selection
-    Select top 5 symbols based on Relative Strength vs BTC and 24h Volume > $100M.
+    Iteration 32: Minimal Startup
+    Monitor only SOL/USDT for recovery testing.
     """
-    try:
-        exchange = ccxt.binance({'options': {'defaultType': 'future'}})
-        tickers = exchange.fetch_tickers()
-        
-        # 1. Filter for USDT perpetuals with Volume > $100M
-        usdt_perps = []
-        for symbol, ticker in tickers.items():
-            if symbol.endswith('/USDT:USDT') and ticker['quoteVolume'] > 100000000:
-                usdt_perps.append({
-                    'symbol': symbol.replace(':USDT', ''),
-                    'volume': ticker['quoteVolume'],
-                    'price': ticker['last']
-                })
-        
-        # 2. Sort by volume and take top 20
-        top_20_vol = sorted(usdt_perps, key=lambda x: x['volume'], reverse=True)[:20]
-        
-        # 3. Calculate Relative Strength vs BTC
-        btc_price = tickers['BTC/USDT:USDT']['last']
-        for item in top_20_vol:
-            item['rs'] = item['price'] / btc_price
-            
-        # 4. Iteration 29 Profit Liberation: High Volatility Symbols
-        selected_symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT', 'FET/USDT', 'NEAR/USDT']
-        
-        print(f"🎯 [Iteration 29 Profit] Monitoring Selected Symbols: {selected_symbols}")
-        return selected_symbols
-    except Exception as e:
-        print(f"Error in symbol selection: {e}")
-        return ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
+    selected_symbols = ['SOL/USDT']
+    print(f"🎯 [Iteration 32 Recovery] Monitoring Selected Symbols: {selected_symbols}")
+    return selected_symbols
 
 def fetch_15m_data(symbol='BTC/USDT'):
     exchange = ccxt.binance()
@@ -250,7 +223,59 @@ def trigger_rollback(reason):
         print("Rollback failed: Stable version not found.")
 
 def get_account_balance():
-    return 10000.0
+    """
+    Iteration 32: Read balance from data/balance.json
+    """
+    path = 'data/balance.json'
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            data = json.load(f)
+            return data.get('total_balance', 1000.0)
+    return 1000.0
+
+def update_balance(pnl_amount):
+    """
+    Iteration 32: Update balance and realized PnL
+    """
+    path = 'data/balance.json'
+    balance = get_account_balance()
+    new_balance = balance + pnl_amount
+    
+    # Load existing data to preserve other fields if any
+    data = {"total_balance": 1000.0, "realized_pnl": 0.0}
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            data = json.load(f)
+    
+    data['total_balance'] = new_balance
+    data['realized_pnl'] = data.get('realized_pnl', 0.0) + pnl_amount
+    
+    os.makedirs('data', exist_ok=True)
+    with open(path, 'w') as f:
+        json.dump(data, f)
+    
+    print(f"💰 [BALANCE UPDATE] PnL: ${pnl_amount:.2f} | New Balance: ${new_balance:.2f}")
+
+def record_trade_history(symbol, side, price, quantity, pnl, reason):
+    """
+    Iteration 32: Record trade to data/trade_history.csv
+    """
+    path = 'data/trade_history.csv'
+    timestamp = datetime.utcnow().isoformat()
+    df = pd.DataFrame([{
+        'timestamp': timestamp,
+        'symbol': symbol,
+        'side': side,
+        'price': price,
+        'quantity': quantity,
+        'pnl': pnl,
+        'reason': reason
+    }])
+    
+    if not os.path.exists(path):
+        df.to_csv(path, index=False)
+    else:
+        df.to_csv(path, mode='a', header=False, index=False)
 
 def log_slippage(symbol, expected_price, actual_price):
     slippage = abs(actual_price - expected_price) / expected_price
@@ -448,18 +473,27 @@ def run_strategy():
             send_telegram_msg(f"⚠️ [Iteration 23] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
             continue
 
-        # Iteration 31: Volatility Sizing
-        balance = 1000.0 # Reset Wallet
+        # Iteration 32: Volatility Sizing with No-Leverage Cap
+        balance = get_account_balance()
         risk_pct = 0.025 # 2.5%
         risk_amount = balance * risk_pct
         
         # Volatility Sizing: Adjust SL distance based on ATR
-        # High volatility (FET) -> Larger SL distance -> Smaller position size
-        # Low volatility (ETH) -> Smaller SL distance -> Larger position size
         sl_distance = 1.8 * latest['atr'] 
-        position_size = risk_amount / sl_distance if sl_distance > 0 else 0
+        
+        # Formula: Quantity = Risk Amount / SL Distance
+        position_qty = risk_amount / sl_distance if sl_distance > 0 else 0
         
         entry_price = latest['close']
+        
+        # Iteration 32: No-Leverage Constraint (Max 95% of balance)
+        max_position_value = balance * 0.95
+        current_position_value = position_qty * entry_price
+        
+        if current_position_value > max_position_value:
+            print(f"⚠️ [RISK] Position value ${current_position_value:.2f} exceeds cap. Reducing to ${max_position_value:.2f}")
+            position_qty = max_position_value / entry_price
+            current_position_value = max_position_value
         sl_price = entry_price - sl_distance
         tp_price = latest['bb_upper']
         rr = (tp_price - entry_price) / sl_distance if sl_distance > 0 else 0
@@ -476,7 +510,7 @@ def run_strategy():
         
         save_order_state(symbol, {
             'entry_price': entry_price,
-            'pos_size': position_size,
+            'pos_size': position_qty,
             'side': side,
             'status': 'Open',
             'entry_time': datetime.utcnow().isoformat(),
@@ -554,6 +588,12 @@ def manage_positions(prices_rsi):
                 state['exit_price'] = current_price
                 state['exit_time'] = datetime.utcnow().isoformat()
                 state['exit_reason'] = 'SL_Trailing'
+                
+                # Iteration 32: Financial Tracking
+                pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
+                update_balance(pnl_amount)
+                record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'SL_Trailing')
+                
                 save_order_state(symbol, state)
                 continue
 
@@ -561,6 +601,13 @@ def manage_positions(prices_rsi):
             if current_price >= latest_exit['bb_upper'] and not state.get('partial_tp_hit'):
                 msg = f"💰 [Iteration 29] {symbol} 觸及布林上軌，平倉 50% 並開啟移動止損！"
                 send_telegram_msg(msg)
+                
+                # Iteration 32: Financial Tracking for Partial TP
+                partial_qty = state.get('pos_size', 0) * 0.5
+                pnl_amount = (current_price - entry_price) * partial_qty
+                update_balance(pnl_amount)
+                record_trade_history(symbol, side, current_price, partial_qty, pnl_amount, 'Partial_TP')
+                
                 state['partial_tp_hit'] = True
                 state['pos_size'] = state.get('pos_size', 0) * 0.5
                 state['sl_price'] = entry_price # Move to break-even
@@ -578,6 +625,12 @@ def manage_positions(prices_rsi):
                     state['exit_price'] = current_price
                     state['exit_time'] = datetime.utcnow().isoformat()
                     state['exit_reason'] = 'Time_Exit'
+                    
+                    # Iteration 32: Financial Tracking
+                    pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
+                    update_balance(pnl_amount)
+                    record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'Time_Exit')
+                    
                     save_order_state(symbol, state)
                     continue
 
@@ -614,11 +667,20 @@ if __name__ == "__main__":
             if current_time - last_heartbeat_time >= 3600: # Hourly Audit
                 # Collect active position data
                 active_positions = []
-                realized_pnl = 0 # In real scenario, fetch from trade logs
+                
+                # Iteration 32: Fetch actual realized PnL and balance
+                balance_data = {"total_balance": 1000.0, "realized_pnl": 0.0}
+                if os.path.exists('data/balance.json'):
+                    with open('data/balance.json', 'r') as f:
+                        balance_data = json.load(f)
+                
+                realized_pnl = balance_data.get('realized_pnl', 0.0)
+                equity = balance_data.get('total_balance', 1000.0)
+                
                 symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT', 'FET/USDT', 'NEAR/USDT']
                 for s in symbols:
                     state = load_order_state(s)
-                    if state:
+                    if state and state.get('status') == 'Open':
                         current_price = scan_results.get(s, {}).get('price', 0)
                         entry_price = state.get('entry_price', 0)
                         pnl = round(((current_price - entry_price) / entry_price) * 100, 2) if entry_price > 0 else 0
@@ -630,8 +692,6 @@ if __name__ == "__main__":
                             'entry_price': entry_price
                         })
                 
-                # Simulated equity (Reset to 1000 + realized)
-                equity = 1000.0 + realized_pnl
                 send_hourly_audit(equity, realized_pnl, active_positions)
                 last_heartbeat_time = current_time
         except Exception as e:
