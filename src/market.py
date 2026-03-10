@@ -648,7 +648,7 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
-    send_telegram_msg("🚀 [System Heartbeat] Iteration 31_Stable 正在 GCE 啟動。會計與數量檢查已就緒。")
+    send_telegram_msg("🚀 [System Heartbeat] Iteration 35_Visual_Navigator 正在 GCE 啟動。數據視覺化與 TradingView 整合已就緒。")
     import sys
     if "--check-accounting" in sys.argv:
         print("📊 [ACCOUNTING CHECK]")
@@ -672,10 +672,10 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 31 - Capital Allocator"
+    STRATEGY_VERSION = "Iteration 35 - Visual Navigator"
     last_heartbeat_time = 0
     last_summary_date = None
-    send_telegram_msg("🚀 Iteration 31_Stable 已於遠端正式啟動，會計與數量檢查機制已就緒。")
+    send_telegram_msg("🚀 Iteration 35_Visual_Navigator 已於遠端正式啟動，數據視覺化與 TradingView 整合已就緒。")
 
     while True:
         try:
@@ -738,17 +738,26 @@ if __name__ == "__main__":
                 
                 send_hourly_audit(equity, daily_pnl, active_positions)
                 
-                # Iteration 34: Rich Heartbeat with Strategy Recon
+                # Iteration 35: Rich Heartbeat with Data Visualization
                 df_btc = fetch_1h_data('BTC/USDT')
                 if not df_btc.empty:
                     btc_price = df_btc.iloc[-1]['close']
                     btc_ema50 = calculate_ema(df_btc, 50).iloc[-1]
+                    
+                    # Fetch 24h volume change
+                    vol_change_24h = 0
+                    try:
+                        ticker = exchange.fetch_ticker('BTC/USDT')
+                        vol_change_24h = ticker.get('percentage', 0)
+                    except: pass
+                    
                     btc_status = {
                         'price': btc_price,
                         'ema50': btc_ema50,
-                        'is_bullish': btc_price > btc_ema50
+                        'is_bullish': btc_price > btc_ema50,
+                        'vol_change_24h': vol_change_24h
                     }
-                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 34", btc_status)
+                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 35", btc_status)
                 
                 last_heartbeat_time = current_time
         except Exception as e:

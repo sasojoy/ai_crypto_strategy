@@ -95,21 +95,29 @@ def send_kill_switch_alert(reason="User Command"):
     )
     send_telegram_msg(msg)
 
+def get_progress_bar(current, target, length=10):
+    """Generates an emoji progress bar for RSI proximity to target (42)"""
+    if current <= target: return "🟥" * length
+    # Calculate how close we are. If current is 70 and target is 42, we are far.
+    # If current is 43 and target is 42, we are very close.
+    ratio = max(0, min(1, (current - target) / 30)) # 30 is the range from 42 to 72
+    filled = length - int(ratio * length)
+    return "🟥" * filled + "⬜" * (length - filled)
+
 def send_rich_heartbeat(positions, scan_results, active_count, version, btc_status=None):
     """
-    Iteration 34 - Comprehensive Strategy Recon
+    Iteration 35 - Data Visualization Upgrade
     """
-    msg = f"📊 【綜合策略偵察 - Iteration 34】\n"
+    msg = f"📊 【數據視覺化偵察 - Iteration 35】\n"
     msg += f"----------------------------\n"
 
     # 0. BTC Status & Market Rating
     if btc_status:
-        # Market Rating Logic
-        # Bullish: Price > EMA50 and EMA50 > EMA200 (simplified here as we only have EMA50 in btc_status usually)
-        # For now, use the 'OK' status from market.py
         rating = "多頭排列 📈" if btc_status.get('is_bullish', True) else "震盪洗盤 🌪️"
+        vol_24h = btc_status.get('vol_change_24h', 0)
+        vol_icon = "🔥" if vol_24h > 10 else ("❄️" if vol_24h < -10 else "⚖️")
         msg += f"👑 大盤環境評級：{rating}\n"
-        msg += f"   (BTC Price: {btc_status['price']:.0f} | EMA50: {btc_status['ema50']:.0f})\n"
+        msg += f"   (BTC: {btc_status['price']:.0f} | 24H量: {vol_24h:+.1f}% {vol_icon})\n"
         msg += f"----------------------------\n"
 
     # 1. Position Status
@@ -124,39 +132,48 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     # 2. Scan Summary & Entry Readiness
     msg += "\n⚪ 進場完成度 (15m 戰備)：\n"
     for symbol, data in scan_results.items():
-        # data should contain: rsi, price, bb_lower, ema200, etc.
         score = 0
         details = []
         
         # Condition 1: EMA200 Above
         if data.get('price', 0) > data.get('ema200', 0):
             score += 34
-            details.append("EMA200以上 ✅")
+            details.append("EMA200 ✅")
         else:
-            details.append("EMA200以上 ❌")
+            details.append("EMA200 ❌")
             
         # Condition 2: RSI < 42
-        if data.get('rsi', 50) < 42:
+        rsi = data.get('rsi', 50)
+        if rsi < 42:
             score += 33
-            details.append("RSI < 42 ✅")
+            details.append("RSI ✅")
         else:
-            details.append("RSI < 42 ❌")
+            details.append("RSI ❌")
             
         # Condition 3: Touch BB Lower
-        if data.get('price', 0) <= data.get('bb_lower', 0) * 1.001: # 0.1% buffer
+        price = data.get('price', 0)
+        bb_lower = data.get('bb_lower', 0)
+        dist_bb = ((price - bb_lower) / bb_lower * 100) if bb_lower > 0 else 0
+        if price <= bb_lower * 1.001:
             score += 33
-            details.append("觸及布林下軌 ✅")
+            details.append("布林 ✅")
         else:
-            details.append("觸及布林下軌 ❌")
+            details.append("布林 ❌")
             
-        msg += f"   • {symbol} 進場評分: {score}%\n"
+        # TradingView Link
+        tv_symbol = symbol.replace('/', '').replace('USDT', 'USDT')
+        tv_link = f"https://www.tradingview.com/chart/?symbol=BINANCE:{tv_symbol}"
+        
+        msg += f"   • [{symbol}]({tv_link}) 評分: {score}%\n"
+        msg += f"     RSI ({rsi:.1f}/42): {get_progress_bar(rsi, 42)}\n"
+        msg += f"     布林距離: {dist_bb:+.2f}% {'🟢' if dist_bb < 0.5 else '⚪'}\n"
         msg += f"     ({ ' | '.join(details) })\n"
 
     # 3. Risk Check
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: {version} | 狀態: 守護中"
+    msg += f"版本: {version} | 狀態: 視覺化首航中"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")
