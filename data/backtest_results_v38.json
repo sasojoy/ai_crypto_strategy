@@ -1,50 +1,62 @@
 {
     "SOL/USDT": {
-        "v37": {
-            "net_profit_pct": -15.952290673685388,
-            "win_rate": 11.11111111111111,
-            "max_drawdown": -14.813123840071018,
-            "total_trades": 18,
-            "atr_spikes": 0
+        "strict": {
+            "net_profit_pct": 0.06158687962882823,
+            "win_rate": 50.0,
+            "max_drawdown": -0.6127313516545065,
+            "total_trades": 2,
+            "atr_spikes": 2,
+            "rsi_ok_vol_fail": 2,
+            "vol_ok_rsi_fail": 1
         },
-        "v38": {
-            "net_profit_pct": -5.713418516598518,
-            "win_rate": 12.5,
-            "max_drawdown": -4.435475936822091,
-            "total_trades": 8,
-            "atr_spikes": 2
+        "loose": {
+            "net_profit_pct": 0.10157607717677591,
+            "win_rate": 50.0,
+            "max_drawdown": -0.5730116425866227,
+            "total_trades": 2,
+            "atr_spikes": 2,
+            "rsi_ok_vol_fail": 1,
+            "vol_ok_rsi_fail": 3
         }
     },
     "NEAR/USDT": {
-        "v37": {
-            "net_profit_pct": -12.929195197230229,
-            "win_rate": 18.75,
-            "max_drawdown": -11.604908812557493,
-            "total_trades": 16,
-            "atr_spikes": 0
+        "strict": {
+            "net_profit_pct": -4.137010649679235,
+            "win_rate": 0.0,
+            "max_drawdown": -3.2994905679888884,
+            "total_trades": 4,
+            "atr_spikes": 1,
+            "rsi_ok_vol_fail": 8,
+            "vol_ok_rsi_fail": 2
         },
-        "v38": {
-            "net_profit_pct": 0.4991629296646011,
-            "win_rate": 33.33333333333333,
-            "max_drawdown": -1.7150722248109274,
-            "total_trades": 3,
-            "atr_spikes": 1
+        "loose": {
+            "net_profit_pct": -4.137010649679235,
+            "win_rate": 0.0,
+            "max_drawdown": -3.2994905679888884,
+            "total_trades": 4,
+            "atr_spikes": 1,
+            "rsi_ok_vol_fail": 8,
+            "vol_ok_rsi_fail": 3
         }
     },
     "BTC/USDT": {
-        "v37": {
-            "net_profit_pct": -8.601758345521135,
-            "win_rate": 10.0,
-            "max_drawdown": -7.63590017819694,
-            "total_trades": 10,
-            "atr_spikes": 0
+        "strict": {
+            "net_profit_pct": -2.6400554783266785,
+            "win_rate": 14.285714285714285,
+            "max_drawdown": -2.450806337753678,
+            "total_trades": 7,
+            "atr_spikes": 4,
+            "rsi_ok_vol_fail": 8,
+            "vol_ok_rsi_fail": 4
         },
-        "v38": {
-            "net_profit_pct": -3.4335940798414413,
-            "win_rate": 20.0,
-            "max_drawdown": -2.809600206909196,
-            "total_trades": 5,
-            "atr_spikes": 2
+        "loose": {
+            "net_profit_pct": -2.6355172117940926,
+            "win_rate": 12.5,
+            "max_drawdown": -2.446259249697567,
+            "total_trades": 8,
+            "atr_spikes": 5,
+            "rsi_ok_vol_fail": 6,
+            "vol_ok_rsi_fail": 4
         }
     }
 }

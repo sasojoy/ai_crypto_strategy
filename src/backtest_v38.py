@@ -24,7 +24,7 @@ def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=30):
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     return df
 
-def run_backtest_v38(df, initial_balance=1000, mode='v38'):
+def run_backtest_v38(df, initial_balance=1000, mode='v38', vol_buffer=1.0):
     # Indicators
     df['rsi'] = calculate_rsi(df)
     df['ema20'] = calculate_ema(df, 20)
@@ -48,6 +48,10 @@ def run_backtest_v38(df, initial_balance=1000, mode='v38'):
     partial_tp_hit = False
     atr_spike_count = 0
     
+    # Diagnostics
+    rsi_ok_vol_fail = 0
+    vol_ok_rsi_fail = 0
+    
     atr_avg_100 = df['atr'].rolling(window=100).mean()
 
     for i in range(5, len(df)):
@@ -58,10 +62,23 @@ def run_backtest_v38(df, initial_balance=1000, mode='v38'):
             # Entry Logic
             trend_4h_strong = current_row['close'] > current_row['ema200_4h']
             
+            avg_vol_5 = df['volume'].iloc[i-5:i].mean()
+            
             if mode == 'v38':
                 rsi_oversold = current_row['rsi'] < 35 # Tightened
-                avg_vol_5 = df['volume'].iloc[i-5:i].mean()
-                vol_exhaustion = current_row['volume'] < avg_vol_5
+                vol_exhaustion = current_row['volume'] < (avg_vol_5 * vol_buffer)
+                
+                # Diagnostic tracking (only when trend and other confirmations are met)
+                price_at_bb_lower = current_row['low'] <= current_row['bb_lower']
+                ema_golden_cross = current_row['ema20'] > current_row['ema50'] and prev_row['ema20'] <= prev_row['ema50']
+                rsi_hook_up = current_row['rsi'] > prev_row['rsi']
+                first_green = current_row['close'] > current_row['open']
+                
+                if trend_4h_strong and (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green:
+                    if rsi_oversold and not vol_exhaustion:
+                        rsi_ok_vol_fail += 1
+                    if not rsi_oversold and vol_exhaustion and current_row['rsi'] < 42:
+                        vol_ok_rsi_fail += 1
             else: # v37
                 rsi_oversold = current_row['rsi'] < 42
                 vol_exhaustion = True
@@ -155,7 +172,10 @@ def run_backtest_v38(df, initial_balance=1000, mode='v38'):
                 in_position = False
 
     if not trades:
-        return {"net_profit_pct": 0, "win_rate": 0, "max_drawdown": 0, "total_trades": 0, "atr_spikes": atr_spike_count}
+        return {
+            "net_profit_pct": 0, "win_rate": 0, "max_drawdown": 0, "total_trades": 0, 
+            "atr_spikes": atr_spike_count, "rsi_ok_vol_fail": rsi_ok_vol_fail, "vol_ok_rsi_fail": vol_ok_rsi_fail
+        }
 
     trades_df = pd.DataFrame(trades)
     net_profit_pct = (balance - initial_balance) / initial_balance * 100
@@ -170,7 +190,9 @@ def run_backtest_v38(df, initial_balance=1000, mode='v38'):
         "win_rate": win_rate,
         "max_drawdown": max_drawdown,
         "total_trades": len(trades_df),
-        "atr_spikes": atr_spike_count
+        "atr_spikes": atr_spike_count,
+        "rsi_ok_vol_fail": rsi_ok_vol_fail,
+        "vol_ok_rsi_fail": vol_ok_rsi_fail
     }
 
 if __name__ == "__main__":
@@ -178,27 +200,30 @@ if __name__ == "__main__":
     results = {}
     
     for symbol in symbols:
-        print(f"Fetching data for {symbol}...")
-        df = fetch_backtest_data(symbol, days=30)
+        print(f"Fetching data for {symbol} (60 days)...")
+        df = fetch_backtest_data(symbol, days=60)
         
-        res_v37 = run_backtest_v38(df.copy(), mode='v37')
-        res_v38 = run_backtest_v38(df.copy(), mode='v38')
+        res_v38_strict = run_backtest_v38(df.copy(), mode='v38', vol_buffer=1.0)
+        res_v38_loose = run_backtest_v38(df.copy(), mode='v38', vol_buffer=1.1)
         
         results[symbol] = {
-            "v37": res_v37,
-            "v38": res_v38
+            "strict": res_v38_strict,
+            "loose": res_v38_loose
         }
     
-    print("\n" + "="*50)
-    print("BACKTEST RESULTS: Iteration 38 vs Iteration 37")
-    print("="*50)
+    print("\n" + "="*60)
+    print("DIAGNOSTIC RESULTS: Iteration 38 (60 Days)")
+    print("="*60)
     
     for symbol, data in results.items():
-        v37 = data['v37']
-        v38 = data['v38']
+        s = data['strict']
+        l = data['loose']
         print(f"\n[{symbol}]")
-        print(f"  V37: Profit {v37['net_profit_pct']:.2f}%, WinRate {v37['win_rate']:.2f}%, MDD {v37['max_drawdown']:.2f}%, Trades {v37['total_trades']}")
-        print(f"  V38: Profit {v38['net_profit_pct']:.2f}%, WinRate {v38['win_rate']:.2f}%, MDD {v38['max_drawdown']:.2f}%, Trades {v38['total_trades']}, ATR Spikes {v38['atr_spikes']}")
+        print(f"  Strict (Vol < 1.0x): Profit {s['net_profit_pct']:.2f}%, WinRate {s['win_rate']:.2f}%, Trades {s['total_trades']}")
+        print(f"  Loose  (Vol < 1.1x): Profit {l['net_profit_pct']:.2f}%, WinRate {l['win_rate']:.2f}%, Trades {l['total_trades']}")
+        print(f"  Missed Triggers (Strict):")
+        print(f"    - RSI < 35 but Vol too high: {s['rsi_ok_vol_fail']}")
+        print(f"    - Vol OK but RSI > 35 (but < 42): {s['vol_ok_rsi_fail']}")
 
     with open('data/backtest_results_v38.json', 'w') as f:
         json.dump(results, f, indent=4)

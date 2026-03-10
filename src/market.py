@@ -408,9 +408,9 @@ def run_strategy():
             price_at_bb_lower = latest['low'] <= latest['bb_lower']
             ema_golden_cross = latest['ema20'] > latest['ema50'] and prev['ema20'] <= prev['ema50']
 
-            # Iteration 38: Volume Exhaustion Filter (Current Vol < Avg of last 5)
+            # Iteration 38: Volume Exhaustion Filter (Current Vol < Avg of last 5 * 1.1 buffer)
             avg_vol_5 = df['volume'].rolling(5).mean().shift(1).iloc[-1]
-            vol_exhaustion = latest['volume'] < avg_vol_5
+            vol_exhaustion = latest['volume'] < (avg_vol_5 * 1.1)
 
             # Confirmation: RSI Hook Up and First Green Candle
             rsi_hook_up = latest['rsi'] > prev['rsi']
