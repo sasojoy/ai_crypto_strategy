@@ -106,9 +106,9 @@ def get_progress_bar(current, target, length=10):
 
 def send_rich_heartbeat(positions, scan_results, active_count, version, btc_status=None):
     """
-    Iteration 36 - Volatility Adaptive System
+    Iteration 37 - Dynamic Asset Allocation & Profit Protection
     """
-    msg = f"📊 【波動率自適應偵察 - Iteration 36】\n"
+    msg = f"📊 【資產分配偵察 - Iteration 37】\n"
     msg += f"----------------------------\n"
 
     # 0. BTC Status & Market Rating
@@ -138,7 +138,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
         # Condition 1: EMA200 Above
         price = data.get('price', 0)
         ema200 = data.get('ema200', 0)
-        dist_ema200 = ((price - ema200) / ema200 * 100) if ema200 > 0 else 0
+        dist_ema200 = data.get('dist_ema200_pct', 0)
         if price > ema200:
             score += 34
             details.append("EMA200 ✅")
@@ -166,17 +166,23 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
         tv_symbol = symbol.replace('/', '').replace('USDT', 'USDT')
         tv_link = f"https://www.tradingview.com/chart/?symbol=BINANCE:{tv_symbol}"
         
+        # Iteration 37: Sizing Info
+        risk_pct = data.get('expected_risk_pct', 2.5)
+        weight_str = data.get('weight_str', '正常')
+        vol_risk = "⚠️ 高" if data.get('atr_spike') else "正常"
+        
         msg += f"   • [{symbol}]({tv_link}) 評分: {score}%\n"
         msg += f"     RSI ({rsi:.1f}/42): {get_progress_bar(rsi, 42)}\n"
         msg += f"     EMA200 距離: {dist_ema200:+.2f}%\n"
-        msg += f"     布林距離: {dist_bb:+.2f}% {'🟢' if dist_bb < 0.5 else '⚪'}\n"
+        msg += f"     預計下單: {risk_pct:.1f}% (加權: {weight_str})\n"
+        msg += f"     波動風險: {vol_risk} | 布林: {dist_bb:+.2f}%\n"
         msg += f"     ({ ' | '.join(details) })\n"
 
     # 3. Risk Check
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: {version} | 狀態: 波動率自適應中"
+    msg += f"版本: {version} | 狀態: 資產分配優化中"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")

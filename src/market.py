@@ -416,18 +416,47 @@ def run_strategy():
 
             short_signal = False # Iteration 29/30/31 focus on Long Pullback Strategy
 
+            # Iteration 37: Calculate ATR Average for Spike Guard
+            atr_avg = df['atr'].rolling(window=100).mean().iloc[-1]
+            atr_spike = latest['atr'] > (atr_avg * 1.5) if atr_avg > 0 else False
+
+            # Iteration 37: Distance-Based Sizing Calculation for Report
+            price = latest['close']
+            ema200 = df_4h.iloc[-1]['ema200']
+            dist_ema200_pct = abs(price - ema200) / ema200 * 100 if ema200 > 0 else 0
+            
+            base_risk = 0.025
+            if dist_ema200_pct < 1.5:
+                adj_risk = 0.03
+                weight_str = "+20%"
+            elif dist_ema200_pct > 5.0:
+                adj_risk = 0.015
+                weight_str = "-40%"
+            else:
+                adj_risk = base_risk
+                weight_str = "正常"
+
+            if atr_spike:
+                adj_risk /= 2
+                weight_str += " (ATR 減半)"
+
             # Store scan results for heartbeat
             prices_rsi[symbol] = {
                 'price': latest['close'],
                 'rsi': latest['rsi'],
                 'adx': latest['adx'],
                 'atr': latest['atr'],
+                'atr_avg': atr_avg,
+                'atr_spike': atr_spike,
                 'trend_4h': trend_4h,
                 'support': latest['support_12h'],
                 'resistance': latest['resistance_12h'],
                 'ha_trend': "Bullish" if ha_long else ("Bearish" if ha_short else "Neutral"),
                 'bb_lower': latest['bb_lower'],
-                'ema200': df_4h.iloc[-1]['ema200']
+                'ema200': ema200,
+                'dist_ema200_pct': dist_ema200_pct,
+                'expected_risk_pct': adj_risk * 100,
+                'weight_str': weight_str
             }
 
             if long_signal or short_signal:
@@ -475,9 +504,25 @@ def run_strategy():
             send_telegram_msg(f"⚠️ [Iteration 23] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
             continue
 
-        # Iteration 32: Volatility Sizing with No-Leverage Cap
+        # Iteration 37: Dynamic Asset Allocation
         balance = get_account_balance()
-        risk_pct = 0.025 # 2.5%
+        
+        # 1. Distance-Based Sizing
+        ema200 = prices_rsi[symbol]['ema200']
+        dist_ema200_pct = prices_rsi[symbol]['dist_ema200_pct']
+        
+        if dist_ema200_pct < 1.5:
+            risk_pct = 0.03 # Increase to 3%
+        elif dist_ema200_pct > 5.0:
+            risk_pct = 0.015 # Decrease to 1.5%
+        else:
+            risk_pct = 0.025 # Base 2.5%
+
+        # 2. ATR Spike Guard
+        if prices_rsi[symbol]['atr_spike']:
+            print(f"⚠️ [ATR Spike Guard] {symbol} ATR is high. Halving position size.")
+            risk_pct /= 2
+
         risk_amount = balance * risk_pct
         
         # Volatility Sizing: Adjust SL distance based on ATR (Iteration 36: 2.0 * ATR)
@@ -580,6 +625,26 @@ def manage_positions(prices_rsi):
             # Iteration 29: Partial TP + Trailing Stop
             profit_pct = (current_price - entry_price) / entry_price * 100
             
+            # Iteration 37: Profit Drawdown Protection
+            highest_price = max(state.get('highest_price', entry_price), current_price)
+            state['highest_price'] = highest_price
+            highest_pnl = (highest_price - entry_price) / entry_price * 100
+            
+            if highest_pnl >= 3.0:
+                retracement = (highest_pnl - profit_pct) / highest_pnl if highest_pnl > 0 else 0
+                if retracement >= 0.20:
+                    msg = f"🛡️ [Iteration 37] {symbol} 獲利回撤保護觸發！\n最高獲利：{highest_pnl:.2f}% | 當前獲利：{profit_pct:.2f}% | 回撤：{retracement*100:.1f}%"
+                    send_telegram_msg(msg)
+                    state['status'] = 'Closed'
+                    state['exit_price'] = current_price
+                    state['exit_time'] = datetime.utcnow().isoformat()
+                    state['exit_reason'] = 'Profit_Protection'
+                    pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
+                    update_balance(pnl_amount)
+                    record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'Profit_Protection')
+                    save_order_state(symbol, state)
+                    continue
+
             # 1. SL (Iteration 29: 1.8x ATR or Break-even)
             sl_price = state.get('sl_price', entry_price - (1.8 * prices_rsi[symbol]['atr']))
             
@@ -648,7 +713,7 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
-    send_telegram_msg("🚀 [System Heartbeat] Iteration 36_Volatility_Adaptive 正在 GCE 啟動。動態 ATR 止損與 EMA 距離監控已就緒。")
+    send_telegram_msg("🚀 [System Heartbeat] Iteration 37_Asset_Allocator 正在 GCE 啟動。動態資產分配與獲利回撤保護已就緒。")
     import sys
     if "--check-accounting" in sys.argv:
         print("📊 [ACCOUNTING CHECK]")
@@ -672,10 +737,10 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 36 - Volatility Adaptive"
+    STRATEGY_VERSION = "Iteration 37 - Asset Allocator"
     last_heartbeat_time = 0
     last_summary_date = None
-    send_telegram_msg("🚀 Iteration 36_Volatility_Adaptive 已於遠端正式啟動，動態 ATR 止損與 EMA 距離監控已就緒。")
+    send_telegram_msg("🚀 Iteration 37_Asset_Allocator 已於遠端正式啟動，動態資產分配與獲利回撤保護已就緒。")
 
     while True:
         try:
