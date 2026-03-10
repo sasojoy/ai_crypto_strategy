@@ -480,8 +480,8 @@ def run_strategy():
         risk_pct = 0.025 # 2.5%
         risk_amount = balance * risk_pct
         
-        # Volatility Sizing: Adjust SL distance based on ATR
-        sl_distance = 1.8 * latest['atr'] 
+        # Volatility Sizing: Adjust SL distance based on ATR (Iteration 36: 2.0 * ATR)
+        sl_distance = 2.0 * latest['atr'] 
         
         # Formula: Quantity = Risk Amount / SL Distance
         position_qty = risk_amount / sl_distance if sl_distance > 0 else 0
@@ -648,7 +648,7 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
-    send_telegram_msg("🚀 [System Heartbeat] Iteration 35_Visual_Navigator 正在 GCE 啟動。數據視覺化與 TradingView 整合已就緒。")
+    send_telegram_msg("🚀 [System Heartbeat] Iteration 36_Volatility_Adaptive 正在 GCE 啟動。動態 ATR 止損與 EMA 距離監控已就緒。")
     import sys
     if "--check-accounting" in sys.argv:
         print("📊 [ACCOUNTING CHECK]")
@@ -672,10 +672,10 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 35 - Visual Navigator"
+    STRATEGY_VERSION = "Iteration 36 - Volatility Adaptive"
     last_heartbeat_time = 0
     last_summary_date = None
-    send_telegram_msg("🚀 Iteration 35_Visual_Navigator 已於遠端正式啟動，數據視覺化與 TradingView 整合已就緒。")
+    send_telegram_msg("🚀 Iteration 36_Volatility_Adaptive 已於遠端正式啟動，動態 ATR 止損與 EMA 距離監控已就緒。")
 
     while True:
         try:
@@ -757,7 +757,7 @@ if __name__ == "__main__":
                         'is_bullish': btc_price > btc_ema50,
                         'vol_change_24h': vol_change_24h
                     }
-                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 35", btc_status)
+                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 36", btc_status)
                 
                 last_heartbeat_time = current_time
         except Exception as e:

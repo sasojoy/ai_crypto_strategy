@@ -106,9 +106,9 @@ def get_progress_bar(current, target, length=10):
 
 def send_rich_heartbeat(positions, scan_results, active_count, version, btc_status=None):
     """
-    Iteration 35 - Data Visualization Upgrade
+    Iteration 36 - Volatility Adaptive System
     """
-    msg = f"📊 【數據視覺化偵察 - Iteration 35】\n"
+    msg = f"📊 【波動率自適應偵察 - Iteration 36】\n"
     msg += f"----------------------------\n"
 
     # 0. BTC Status & Market Rating
@@ -136,7 +136,10 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
         details = []
         
         # Condition 1: EMA200 Above
-        if data.get('price', 0) > data.get('ema200', 0):
+        price = data.get('price', 0)
+        ema200 = data.get('ema200', 0)
+        dist_ema200 = ((price - ema200) / ema200 * 100) if ema200 > 0 else 0
+        if price > ema200:
             score += 34
             details.append("EMA200 ✅")
         else:
@@ -151,7 +154,6 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
             details.append("RSI ❌")
             
         # Condition 3: Touch BB Lower
-        price = data.get('price', 0)
         bb_lower = data.get('bb_lower', 0)
         dist_bb = ((price - bb_lower) / bb_lower * 100) if bb_lower > 0 else 0
         if price <= bb_lower * 1.001:
@@ -166,6 +168,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
         
         msg += f"   • [{symbol}]({tv_link}) 評分: {score}%\n"
         msg += f"     RSI ({rsi:.1f}/42): {get_progress_bar(rsi, 42)}\n"
+        msg += f"     EMA200 距離: {dist_ema200:+.2f}%\n"
         msg += f"     布林距離: {dist_bb:+.2f}% {'🟢' if dist_bb < 0.5 else '⚪'}\n"
         msg += f"     ({ ' | '.join(details) })\n"
 
@@ -173,7 +176,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: {version} | 狀態: 視覺化首航中"
+    msg += f"版本: {version} | 狀態: 波動率自適應中"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")
