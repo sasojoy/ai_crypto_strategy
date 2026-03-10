@@ -106,9 +106,9 @@ def get_progress_bar(current, target, length=10):
 
 def send_rich_heartbeat(positions, scan_results, active_count, version, btc_status=None):
     """
-    Iteration 38 - Precision Entry System
+    Iteration 41 - Hybrid Trigger System
     """
-    msg = f"📊 【精準進場偵察 - Iteration 38】\n"
+    msg = f"📊 【混合進場偵察 - Iteration 41】\n"
     msg += f"----------------------------\n"
 
     # 0. BTC Status & Market Rating
@@ -171,6 +171,10 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
         weight_str = data.get('weight_str', '正常')
         vol_risk = "⚠️ 高" if data.get('atr_spike') else "正常"
         
+        # Iteration 41: Potential Divergence Warning
+        potential_div = "⚠️底背離" if data.get('potential_div') else ""
+        if potential_div: details.append(potential_div)
+
         msg += f"   • [{symbol}]({tv_link}) 評分: {score}%\n"
         msg += f"     RSI ({rsi:.1f}/42): {get_progress_bar(rsi, 42)}\n"
         msg += f"     EMA200 距離: {dist_ema200:+.2f}%\n"
@@ -182,7 +186,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: {version} | 狀態: 精準進場監控中"
+    msg += f"版本: {version} | 狀態: 混合進場監控中"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")

@@ -19,11 +19,11 @@ def load_params():
 
 def get_top_relative_strength_symbols():
     """
-    Iteration 32: Minimal Startup
-    Monitor only SOL/USDT for recovery testing.
+    Iteration 41: Watchlist Expansion
+    Monitor top assets for Hybrid Trigger strategy.
     """
-    selected_symbols = ['SOL/USDT']
-    print(f"🎯 [Iteration 32 Recovery] Monitoring Selected Symbols: {selected_symbols}")
+    selected_symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'LINK/USDT', 'MATIC/USDT', 'FET/USDT', 'RNDR/USDT', 'ARB/USDT']
+    print(f"🎯 [Iteration 41 Expansion] Monitoring Selected Symbols: {selected_symbols}")
     return selected_symbols
 
 def fetch_15m_data(symbol='BTC/USDT'):
@@ -401,22 +401,66 @@ def run_strategy():
             df_4h['ema200'] = calculate_ema(df_4h, 200)
             trend_4h_strong = latest['close'] > df_4h.iloc[-1]['ema200']
 
-            # Trigger: 15m RSI < 35 (Iteration 38: Tightened from 42)
+            # Iteration 41: Hybrid Trigger System
+            # 1. MTF Filter (1H EMA 200)
+            df_1h = fetch_1h_data(symbol)
+            if df_1h.empty:
+                print(f"⚠️ [Iteration 41] {symbol} 1H data empty. Skipping.")
+                continue
+            df_1h['ema200'] = calculate_ema(df_1h, 200)
+            trend_1h_strong = latest['close'] > df_1h.iloc[-1]['ema200']
+
+            # 2. MACD Divergence (Bullish)
+            # Price down, MACD Histogram up in last 5 bars
+            _, _, macd_hist = calculate_macd(df)
+            price_down = latest['close'] < df['close'].iloc[-6]
+            macd_up = macd_hist.iloc[-1] > macd_hist.iloc[-6]
+            macd_bullish_div = price_down and macd_up
+
+            # Iteration 41: Hybrid Logic
+            # A. Extreme Mode: RSI < 30 (No MACD Div needed)
+            # B. Structural Mode: RSI < 38 + MACD Div
+            extreme_mode = latest['rsi'] < 30
+            structural_mode = latest['rsi'] < 38 and macd_bullish_div
+            
+            hybrid_trigger = extreme_mode or structural_mode
+
+            # Iteration 39: Asset Tiers Logic (Refined for Hybrid)
             df['bb_upper'], df['bb_lower'], df['bb_mid'], _ = calculate_bollinger_bands(df, 20, 2)
-            latest = df.iloc[-1] # Refresh latest with BB
-            rsi_oversold = latest['rsi'] < 35
+            latest = df.iloc[-1]
+            
+            if symbol in ['SOL/USDT', 'BTC/USDT', 'ETH/USDT']:
+                vol_buffer = 1.2
+                avg_vol_5 = df['volume'].rolling(5).mean().shift(1).iloc[-1]
+                vol_exhaustion = latest['volume'] < (avg_vol_5 * vol_buffer)
+            else:
+                if latest['rsi'] < 30:
+                    vol_exhaustion = True
+                else:
+                    avg_vol_5 = df['volume'].rolling(5).mean().shift(1).iloc[-1]
+                    vol_exhaustion = latest['volume'] < (avg_vol_5 * 1.1)
+
             price_at_bb_lower = latest['low'] <= latest['bb_lower']
             ema_golden_cross = latest['ema20'] > latest['ema50'] and prev['ema20'] <= prev['ema50']
-
-            # Iteration 38: Volume Exhaustion Filter (Current Vol < Avg of last 5 * 1.1 buffer)
-            avg_vol_5 = df['volume'].rolling(5).mean().shift(1).iloc[-1]
-            vol_exhaustion = latest['volume'] < (avg_vol_5 * 1.1)
 
             # Confirmation: RSI Hook Up and First Green Candle
             rsi_hook_up = latest['rsi'] > prev['rsi']
             first_green = latest['close'] > latest['open']
 
-            long_signal = trend_4h_strong and rsi_oversold and vol_exhaustion and (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green
+            # Iteration 41: Combined Signal
+            long_signal = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
+                          (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green
+
+            # Iteration 39: Two-Stage Stop-Loss Protection (Tier 2)
+            if long_signal and symbol not in ['SOL/USDT', 'BTC/USDT']:
+                last_state = load_order_state(symbol)
+                if last_state and last_state.get('status') == 'Closed' and last_state.get('exit_reason') in ['SL', 'SL_Trailing']:
+                    exit_time = datetime.fromisoformat(last_state['exit_time'])
+                    if (datetime.utcnow() - exit_time).total_seconds() < 1800: # 30 mins
+                        # Only allow if RSI is lower than previous entry
+                        if latest['rsi'] >= last_state.get('entry_rsi', 0):
+                            print(f"🛡️ [Iteration 39] {symbol} 處於止損保護期，且 RSI 未創新低。跳過進場。")
+                            long_signal = False
 
             short_signal = False # Iteration 29/30/31 focus on Long Pullback Strategy
 
@@ -453,6 +497,7 @@ def run_strategy():
                 'atr_avg': atr_avg,
                 'atr_spike': atr_spike,
                 'trend_4h': trend_4h,
+                'potential_div': macd_bullish_div, # Iteration 41
                 'support': latest['support_12h'],
                 'resistance': latest['resistance_12h'],
                 'ha_trend': "Bullish" if ha_long else ("Bearish" if ha_short else "Neutral"),
@@ -568,11 +613,12 @@ def run_strategy():
             'side': side,
             'status': 'Open',
             'entry_time': datetime.utcnow().isoformat(),
-            'iteration': '29',
+            'iteration': '39',
             'sl_price': sl_price,
             'tp_price': tp_price,
             'atr': latest['atr'],
-            'highest_price': entry_price
+            'highest_price': entry_price,
+            'entry_rsi': latest['rsi']
         })
     return prices_rsi
 
@@ -632,11 +678,28 @@ def manage_positions(prices_rsi):
             # Iteration 29: Partial TP + Trailing Stop
             profit_pct = (current_price - entry_price) / entry_price * 100
             
-            # Iteration 37: Profit Drawdown Protection
+            # Iteration 40: Dynamic Profit Scaling (Chandelier Exit logic)
+            # If profit > 2%, start trailing with 0.5% buffer
             highest_price = max(state.get('highest_price', entry_price), current_price)
             state['highest_price'] = highest_price
             highest_pnl = (highest_price - entry_price) / entry_price * 100
             
+            if highest_pnl >= 2.0:
+                chandelier_sl = highest_price * 0.995
+                if current_price <= chandelier_sl:
+                    msg = f"📉 [Iteration 40] {symbol} 觸發 0.5% 回調止盈 (Chandelier Exit)！\n最高獲利：{highest_pnl:.2f}% | 當前獲利：{profit_pct:.2f}%"
+                    send_telegram_msg(msg)
+                    state['status'] = 'Closed'
+                    state['exit_price'] = current_price
+                    state['exit_time'] = datetime.utcnow().isoformat()
+                    state['exit_reason'] = 'Chandelier_Exit'
+                    pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
+                    update_balance(pnl_amount)
+                    record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'Chandelier_Exit')
+                    save_order_state(symbol, state)
+                    continue
+
+            # Iteration 37: Profit Drawdown Protection
             if highest_pnl >= 3.0:
                 retracement = (highest_pnl - profit_pct) / highest_pnl if highest_pnl > 0 else 0
                 if retracement >= 0.20:
@@ -720,7 +783,7 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
-    send_telegram_msg("🚀 [System Heartbeat] Iteration 38_Precision_Entry 正在 GCE 啟動。RSI 35 嚴選與成交量枯竭過濾已就緒。")
+    send_telegram_msg("🚀 [System Heartbeat] Iteration 41_Hybrid_Trigger 正在 GCE 啟動。混合進場機制與監控清單擴展已就緒。")
     import sys
     if "--check-accounting" in sys.argv:
         print("📊 [ACCOUNTING CHECK]")
@@ -744,10 +807,10 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 38 - Precision Entry"
+    STRATEGY_VERSION = "Iteration 41 - Hybrid Trigger"
     last_heartbeat_time = 0
     last_summary_date = None
-    send_telegram_msg("🚀 Iteration 38_Precision_Entry 已於遠端正式啟動，RSI 35 嚴選與成交量枯竭過濾已就緒。")
+    send_telegram_msg("🚀 Iteration 41_Hybrid_Trigger 已於遠端正式啟動，混合進場機制與監控清單擴展已就緒。")
 
     while True:
         try:
@@ -816,11 +879,14 @@ if __name__ == "__main__":
                     btc_price = df_btc.iloc[-1]['close']
                     btc_ema50 = calculate_ema(df_btc, 50).iloc[-1]
                     
-                    # Fetch 24h volume change
+                    # Fetch 24h volume change (Iteration 39: Fix display bug)
                     vol_change_24h = 0
                     try:
                         ticker = exchange.fetch_ticker('BTC/USDT')
+                        # Use percentage if available, otherwise calculate from change
                         vol_change_24h = ticker.get('percentage', 0)
+                        if vol_change_24h == 0 and 'change' in ticker and 'last' in ticker:
+                            vol_change_24h = (ticker['change'] / (ticker['last'] - ticker['change'])) * 100
                     except: pass
                     
                     btc_status = {
