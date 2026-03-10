@@ -646,6 +646,7 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
+    send_telegram_msg("🚀 [System Heartbeat] Iteration 31_Stable 正在 GCE 啟動。會計與數量檢查已就緒。")
     import sys
     if "--check-accounting" in sys.argv:
         print("📊 [ACCOUNTING CHECK]")
