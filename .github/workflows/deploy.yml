@@ -64,7 +64,15 @@ jobs:
               $PM2_BIN save
 
               echo "✅ PM2 Status Verification:"
-              $PM2_BIN list
+              $PM2_BIN list > pm2_status.tmp
+              cat pm2_status.tmp
+
+              echo "🔍 Recent Trading Logs:"
+              if [ -f "logs/trading.log" ]; then
+                tail -n 20 logs/trading.log
+              else
+                echo "No trading.log found yet."
+              fi
 
               echo "🔍 Process Verification:"
               ps aux | grep "src.market" | grep -v grep

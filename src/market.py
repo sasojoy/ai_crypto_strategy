@@ -672,7 +672,7 @@ if __name__ == "__main__":
     STRATEGY_VERSION = "Iteration 31 - Capital Allocator"
     last_heartbeat_time = 0
     last_summary_date = None
-    send_telegram_msg(f"🤖 【資金分配器】Iteration 31 啟動！\n🛡️ BTC 暴跌過濾器已上線，波動率權重優化完成。")
+    send_telegram_msg("🚀 Iteration 31_Stable 已於遠端正式啟動，會計與數量檢查機制已就緒。")
 
     while True:
         try:
