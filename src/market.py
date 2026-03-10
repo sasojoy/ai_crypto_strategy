@@ -401,24 +401,28 @@ def run_strategy():
             df_4h['ema200'] = calculate_ema(df_4h, 200)
             trend_4h_strong = latest['close'] > df_4h.iloc[-1]['ema200']
 
-            # Trigger: 15m RSI < 42 and (Price < BB Lower OR EMA 20/50 Golden Cross)
+            # Trigger: 15m RSI < 35 (Iteration 38: Tightened from 42)
             df['bb_upper'], df['bb_lower'], df['bb_mid'], _ = calculate_bollinger_bands(df, 20, 2)
             latest = df.iloc[-1] # Refresh latest with BB
-            rsi_oversold = latest['rsi'] < 42
+            rsi_oversold = latest['rsi'] < 35
             price_at_bb_lower = latest['low'] <= latest['bb_lower']
             ema_golden_cross = latest['ema20'] > latest['ema50'] and prev['ema20'] <= prev['ema50']
+
+            # Iteration 38: Volume Exhaustion Filter (Current Vol < Avg of last 5)
+            avg_vol_5 = df['volume'].rolling(5).mean().shift(1).iloc[-1]
+            vol_exhaustion = latest['volume'] < avg_vol_5
 
             # Confirmation: RSI Hook Up and First Green Candle
             rsi_hook_up = latest['rsi'] > prev['rsi']
             first_green = latest['close'] > latest['open']
 
-            long_signal = trend_4h_strong and rsi_oversold and (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green
+            long_signal = trend_4h_strong and rsi_oversold and vol_exhaustion and (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green
 
             short_signal = False # Iteration 29/30/31 focus on Long Pullback Strategy
 
-            # Iteration 37: Calculate ATR Average for Spike Guard
+            # Iteration 38: Calculate ATR Average for Spike Guard (Factor 1.2)
             atr_avg = df['atr'].rolling(window=100).mean().iloc[-1]
-            atr_spike = latest['atr'] > (atr_avg * 1.5) if atr_avg > 0 else False
+            atr_spike = latest['atr'] > (atr_avg * 1.2) if atr_avg > 0 else False
 
             # Iteration 37: Distance-Based Sizing Calculation for Report
             price = latest['close']
@@ -525,8 +529,8 @@ def run_strategy():
 
         risk_amount = balance * risk_pct
         
-        # Volatility Sizing: Adjust SL distance based on ATR (Iteration 36: 2.0 * ATR)
-        sl_distance = 2.0 * latest['atr'] 
+        # Volatility Sizing: Adjust SL distance based on ATR (Iteration 38: 1.5 * ATR)
+        sl_distance = 1.5 * latest['atr'] 
         
         # Formula: Quantity = Risk Amount / SL Distance
         position_qty = risk_amount / sl_distance if sl_distance > 0 else 0
@@ -542,7 +546,10 @@ def run_strategy():
             position_qty = max_position_value / entry_price
             current_position_value = max_position_value
         sl_price = entry_price - sl_distance
-        tp_price = latest['bb_upper']
+        
+        # Iteration 38: TP = 3.0 * ATR or BB Upper
+        tp_price_atr = entry_price + (3.0 * latest['atr'])
+        tp_price = min(tp_price_atr, latest['bb_upper'])
         rr = (tp_price - entry_price) / sl_distance if sl_distance > 0 else 0
 
         send_entry_notification(
@@ -713,7 +720,7 @@ def manage_positions(prices_rsi):
 
 
 if __name__ == "__main__":
-    send_telegram_msg("🚀 [System Heartbeat] Iteration 37_Asset_Allocator 正在 GCE 啟動。動態資產分配與獲利回撤保護已就緒。")
+    send_telegram_msg("🚀 [System Heartbeat] Iteration 38_Precision_Entry 正在 GCE 啟動。RSI 35 嚴選與成交量枯竭過濾已就緒。")
     import sys
     if "--check-accounting" in sys.argv:
         print("📊 [ACCOUNTING CHECK]")
@@ -737,10 +744,10 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 37 - Asset Allocator"
+    STRATEGY_VERSION = "Iteration 38 - Precision Entry"
     last_heartbeat_time = 0
     last_summary_date = None
-    send_telegram_msg("🚀 Iteration 37_Asset_Allocator 已於遠端正式啟動，動態資產分配與獲利回撤保護已就緒。")
+    send_telegram_msg("🚀 Iteration 38_Precision_Entry 已於遠端正式啟動，RSI 35 嚴選與成交量枯竭過濾已就緒。")
 
     while True:
         try:
