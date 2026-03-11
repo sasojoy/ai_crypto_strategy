@@ -222,7 +222,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
         msg += f"     EMA200 距離: {dist_ema200:+.2f}%\n"
         msg += f"     預計下單: {risk_pct:.1f}% (加權: {weight_str})\n"
         msg += f"     擠壓指數: {sq_idx:.2f} {sq_icon} | 錯過原因: {missed}\n"
-        msg += f"     預警狀態: {preview}\n"
+        msg += f"     預警狀態: {preview} | 支撐強度: {data.get('support_strength', 'N/A')}\n"
         msg += f"     ({ ' | '.join(details) })\n"
 
     # 3. Risk Check

@@ -247,6 +247,18 @@ def calculate_atr(df, period=14):
     true_range = ranges.max(axis=1)
     return true_range.rolling(window=period).mean()
 
+def find_4h_structure(df_4h):
+    """
+    Iteration 55: Detect 4H Support and Resistance
+    """
+    if df_4h is None or len(df_4h) < 20: return None, None
+    
+    support = df_4h.iloc[-20:]['low'].min()
+    resistance = df_4h.iloc[-20:]['high'].max()
+    
+    return support, resistance
+
+
 def log_data(timestamp, price, rsi, ema200):
     log_file = 'data/history.csv'
     os.makedirs('data', exist_ok=True)
@@ -524,10 +536,22 @@ def run_strategy():
                         print(f"🚫 [Waterfall Guard] Entries paused for {symbol}.")
                         continue
 
-            # Iteration 54: Strengthen 4H Trend Bias
+            # Iteration 54 & 55: MTF Structure & Volume Anomaly
             df_4h = fetch_4h_data(symbol)
             if df_4h.empty: continue
             df_4h['ema200'] = calculate_ema(df_4h, 200)
+            
+            support_4h, resistance_4h = find_4h_structure(df_4h)
+            support_strength = "N/A"
+            mtf_structure_ok = True
+            
+            if support_4h:
+                dist_pct = (latest['close'] - support_4h) / support_4h * 100
+                support_strength = f"{dist_pct:.2f}%"
+                # Iteration 55: MTF Filter - Must be within 1.5% of 4H support
+                if dist_pct > 1.5 or dist_pct < -0.5:
+                    mtf_structure_ok = False
+
             # Ensure we have enough data for EMA 200
             if len(df_4h) < 200:
                 trend_4h_strong = False
@@ -536,6 +560,10 @@ def run_strategy():
                 trend_4h_strong = latest['close'] > df_4h.iloc[-1]['ema200']
                 # If 4H is bearish, reduce risk to 50%
                 risk_multiplier = 1.0 if trend_4h_strong else 0.5
+
+            # Iteration 55: Volume Anomaly (1.5x Avg of last 10)
+            avg_vol_10 = df['volume'].iloc[-11:-1].mean()
+            volume_anomaly = latest['volume'] > (avg_vol_10 * 1.5) if avg_vol_10 > 0 else False
 
             # 1. MTF Filter (1H EMA 200)
             df_1h = fetch_1h_data(symbol)
@@ -629,8 +657,8 @@ def run_strategy():
             if macd_hist.iloc[-1] > macd_hist.iloc[-2]: score += 1
             if latest['adx'] > 20: score += 1
             
-            # Entry Threshold: Score >= 2
-            long_signal = trend_1h_strong and score >= 2
+            # Entry Threshold: Score >= 2 + Iteration 55 MTF & Volume
+            long_signal = trend_1h_strong and score >= 2 and mtf_structure_ok and volume_anomaly
             
             # Iteration 50: Funding Rate Shield
             funding_rate = fetch_funding_rate(symbol)
@@ -701,11 +729,13 @@ def run_strategy():
                 adj_risk /= 2
                 weight_str += " (ATR 減半)"
 
-            # Iteration 46: Missed Signal Reason
+            # Iteration 46 & 55: Missed Signal Reason
             missed_reason = "None"
             if not long_signal:
                 if not trend_4h_strong: missed_reason = "4H Trend Bearish"
                 elif not trend_1h_strong: missed_reason = "1H Trend Bearish"
+                elif not mtf_structure_ok: missed_reason = f"MTF Structure (Dist: {support_strength})"
+                elif not volume_anomaly: missed_reason = "No Volume Anomaly"
                 elif not hybrid_trigger: missed_reason = "No RSI/Div Trigger"
                 elif not vol_exhaustion: missed_reason = "Volume Spike"
                 elif not (price_at_bb_lower or ema_golden_cross): missed_reason = "Price not at BB Lower/EMA Cross"
@@ -732,7 +762,8 @@ def run_strategy():
                 'weight_str': weight_str,
                 'squeeze_index': squeeze_index, # Iteration 46
                 'missed_reason': missed_reason, # Iteration 46
-                'signal_preview': signal_preview # Iteration 47
+                'signal_preview': signal_preview, # Iteration 47
+                'support_strength': support_strength # Iteration 55
             }
 
             if long_signal or short_signal:
@@ -810,14 +841,14 @@ def run_strategy():
         
         sl_price = entry_price - sl_distance
         
-        # Iteration 52: Optimized RR = 1.2 (Based on backtest results)
-        optimized_rr = 1.2
-        tp_price = entry_price + (sl_distance * optimized_rr)
+        # Iteration 55: Fixed RR = 1.5 (Focus on logic validation)
+        fixed_rr = 1.5
+        tp_price = entry_price + (sl_distance * fixed_rr)
         
-        # R/R Filter (Iteration 52: Min 1.2)
+        # R/R Filter (Iteration 55: Min 1.5)
         actual_rr = (tp_price - entry_price) / sl_distance if sl_distance > 0 else 0
-        if actual_rr < 1.2:
-            print(f"🛡️ [R/R Filter] {symbol} R/R {actual_rr:.2f} < 1.2. Skipping.")
+        if actual_rr < 1.5:
+            print(f"🛡️ [R/R Filter] {symbol} R/R {actual_rr:.2f} < 1.5. Skipping.")
             continue
 
         # Iteration 50: Slippage & Depth Protection
