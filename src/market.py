@@ -13,6 +13,11 @@ from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculat
 # Load environment variables
 load_dotenv()
 
+# Iteration 56: Physical Isolation for Data Persistence
+DATA_DIR = os.getenv('TRADING_DATA_DIR', '/workspace/trading_data')
+os.makedirs(DATA_DIR, exist_ok=True)
+
+
 # Iteration 51: Physical Isolation Security
 IS_SIMULATION = True
 
@@ -31,10 +36,10 @@ def get_recent_performance():
     Iteration 49: Track recent 10 trades for dynamic risk sizing
     """
     try:
-        if not os.path.exists('data/trade_history.json'):
+        if not os.path.exists(os.path.join(DATA_DIR, 'trade_history.json')):
             return 0.5, 0 # Default win rate 50%, 0 losses
         
-        with open('data/trade_history.json', 'r') as f:
+        with open(os.path.join(DATA_DIR, 'trade_history.json'), 'r') as f:
             history = json.load(f)
         
         recent = history[-10:]
@@ -260,8 +265,8 @@ def find_4h_structure(df_4h):
 
 
 def log_data(timestamp, price, rsi, ema200):
-    log_file = 'data/history.csv'
-    os.makedirs('data', exist_ok=True)
+    log_file = os.path.join(DATA_DIR, 'history.csv')
+    os.makedirs(DATA_DIR, exist_ok=True)
     data = {'timestamp': [timestamp], 'price': [price], 'rsi': [rsi], 'ema200': [ema200]}
     df = pd.DataFrame(data)
     if not os.path.isfile(log_file):
@@ -294,8 +299,8 @@ def stability_monitor():
     1. 若出現連續 3 筆止損，自動回滾。
     2. 若當日虧損超過總資金的 5%，觸發 24 小時熔斷。
     """
-    history_file = 'data/trade_history.json'
-    circuit_breaker_file = 'data/circuit_breaker.json'
+    history_file = os.path.join(DATA_DIR, 'trade_history.json')
+    circuit_breaker_file = os.path.join(DATA_DIR, 'circuit_breaker.json')
     
     if os.path.exists(circuit_breaker_file):
         with open(circuit_breaker_file, 'r') as f:
@@ -352,7 +357,7 @@ def get_account_balance():
     """
     Iteration 32: Read balance from data/balance.json
     """
-    path = 'data/balance.json'
+    path = os.path.join(DATA_DIR, 'balance.json')
     if os.path.exists(path):
         with open(path, 'r') as f:
             data = json.load(f)
@@ -363,7 +368,7 @@ def update_balance(pnl_amount, position_value=0):
     """
     Iteration 54: Slippage & Fee Simulation (0.1% deduction)
     """
-    path = 'data/balance.json'
+    path = os.path.join(DATA_DIR, 'balance.json')
     
     # Deduct 0.1% of position value for slippage and fees
     friction_cost = position_value * 0.001
@@ -381,7 +386,7 @@ def update_balance(pnl_amount, position_value=0):
     data['total_balance'] = new_balance
     data['realized_pnl'] = data.get('realized_pnl', 0.0) + net_pnl
     
-    os.makedirs('data', exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
     with open(path, 'w') as f:
         json.dump(data, f)
     
@@ -391,7 +396,7 @@ def record_trade_history(symbol, side, price, quantity, pnl, reason):
     """
     Iteration 32: Record trade to data/trade_history.csv
     """
-    path = 'data/trade_history.csv'
+    path = os.path.join(DATA_DIR, 'trade_history.csv')
     timestamp = datetime.utcnow().isoformat()
     df = pd.DataFrame([{
         'timestamp': timestamp,
@@ -417,12 +422,12 @@ def log_slippage(symbol, expected_price, actual_price):
         print(f"⚠️ [WARNING] High Slippage detected on {symbol}: {slippage*100:.4f}%")
 
 def save_order_state(symbol, state):
-    os.makedirs('data', exist_ok=True)
-    with open(f'data/order_state_{symbol.replace("/", "_")}.json', 'w') as f:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(os.path.join(DATA_DIR, f'order_state_{symbol.replace("/", "_")}.json'), 'w') as f:
         json.dump(state, f)
 
 def load_order_state(symbol):
-    path = f'data/order_state_{symbol.replace("/", "_")}.json'
+    path = os.path.join(DATA_DIR, f'order_state_{symbol.replace("/", "_")}.json')
     if os.path.exists(path):
         with open(path, 'r') as f:
             return json.load(f)
@@ -433,9 +438,9 @@ KILL_SWITCH_ACTIVE = False
 
 def check_kill_switch():
     global KILL_SWITCH_ACTIVE
-    if os.path.exists('data/kill_switch.trigger'):
+    if os.path.exists(os.path.join(DATA_DIR, 'kill_switch.trigger')):
         KILL_SWITCH_ACTIVE = True
-        os.remove('data/kill_switch.trigger')
+        os.remove(os.path.join(DATA_DIR, 'kill_switch.trigger'))
         return True
     return False
 
@@ -524,13 +529,13 @@ def run_strategy():
                 btc_15m_change = (df_btc_15m.iloc[-1]['close'] - df_btc_15m.iloc[-2]['close']) / df_btc_15m.iloc[-2]['close'] * 100
                 if btc_15m_change < -1.2:
                     # Store waterfall trigger time in a temporary file
-                    with open('data/waterfall_guard.txt', 'w') as f:
+                    with open(os.path.join(DATA_DIR, 'waterfall_guard.txt'), 'w') as f:
                         f.write(datetime.utcnow().isoformat())
                     print(f"🌊 [Waterfall Guard] BTC 15m Drop {btc_15m_change:.2f}% detected. Pausing entries.")
             
             # Check if Waterfall Guard is active (2 hours)
-            if os.path.exists('data/waterfall_guard.txt'):
-                with open('data/waterfall_guard.txt', 'r') as f:
+            if os.path.exists(os.path.join(DATA_DIR, 'waterfall_guard.txt')):
+                with open(os.path.join(DATA_DIR, 'waterfall_guard.txt'), 'r') as f:
                     trigger_time = datetime.fromisoformat(f.read().strip())
                     if (datetime.utcnow() - trigger_time).total_seconds() < 7200:
                         print(f"🚫 [Waterfall Guard] Entries paused for {symbol}.")
@@ -1100,8 +1105,8 @@ if __name__ == "__main__":
         print("📊 [ACCOUNTING CHECK]")
         balance = get_account_balance()
         print(f"Total Balance: ${balance:.2f}")
-        if os.path.exists('data/trade_history.csv'):
-            df = pd.read_csv('data/trade_history.csv')
+        if os.path.exists(os.path.join(DATA_DIR, 'trade_history.csv')):
+            df = pd.read_csv(os.path.join(DATA_DIR, 'trade_history.csv'))
             print(f"Total Trades: {len(df)}")
             print(f"Total PnL from History: ${df['pnl'].sum():.2f}")
         else:
@@ -1151,15 +1156,15 @@ if __name__ == "__main__":
                 
                 # Iteration 32: Fetch actual realized PnL and balance
                 balance_data = {"total_balance": 1000.0, "realized_pnl": 0.0}
-                if os.path.exists('data/balance.json'):
-                    with open('data/balance.json', 'r') as f:
+                if os.path.exists(os.path.join(DATA_DIR, 'balance.json')):
+                    with open(os.path.join(DATA_DIR, 'balance.json'), 'r') as f:
                         balance_data = json.load(f)
                 
                 # Iteration 32: Calculate Daily PnL from CSV
                 daily_pnl = 0
-                if os.path.exists('data/trade_history.csv'):
+                if os.path.exists(os.path.join(DATA_DIR, 'trade_history.csv')):
                     try:
-                        df_history = pd.read_csv('data/trade_history.csv')
+                        df_history = pd.read_csv(os.path.join(DATA_DIR, 'trade_history.csv'))
                         today_str = datetime.utcnow().strftime('%Y-%m-%d')
                         df_today = df_history[df_history['timestamp'].str.startswith(today_str)]
                         daily_pnl = df_today['pnl'].sum()

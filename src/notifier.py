@@ -5,6 +5,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Iteration 56: Physical Isolation for Data Persistence
+DATA_DIR = os.getenv('TRADING_DATA_DIR', '/workspace/trading_data')
+
+
 def send_telegram_msg(message):
     token = os.getenv('TELEGRAM_BOT_TOKEN')
     chat_id = os.getenv('TELEGRAM_CHAT_ID')
@@ -132,13 +136,13 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     
     # Iteration 54: [實戰演習數據] Block
     balance_data = {"total_balance": 1000.0, "realized_pnl": 0.0}
-    if os.path.exists('data/balance.json'):
-        with open('data/balance.json', 'r') as f:
+    if os.path.exists(os.path.join(DATA_DIR, 'balance.json')):
+        with open(os.path.join(DATA_DIR, 'balance.json'), 'r') as f:
             balance_data = json.load(f)
     
     trade_count = 0
-    if os.path.exists('data/trade_history.csv'):
-        df_history = pd.read_csv('data/trade_history.csv')
+    if os.path.exists(os.path.join(DATA_DIR, 'trade_history.csv')):
+        df_history = pd.read_csv(os.path.join(DATA_DIR, 'trade_history.csv'))
         # Filter for current month
         df_history['timestamp'] = pd.to_datetime(df_history['timestamp'])
         current_month = datetime.utcnow().month
