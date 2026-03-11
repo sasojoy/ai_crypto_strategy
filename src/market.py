@@ -401,6 +401,36 @@ def update_balance(pnl_amount, position_value=0):
     
     print(f"💰 [BALANCE UPDATE] PnL: ${pnl_amount:.2f} | Friction: ${friction_cost:.2f} | Net: ${net_pnl:.2f} | New Balance: ${new_balance:.2f}")
 
+def update_daily_performance():
+    """
+    Iteration 54: Automatic Performance Tracker
+    Logs daily net value and win rate to data/daily_performance.csv at 00:00 UTC.
+    """
+    try:
+        path = os.path.join(BASE_DIR, 'data', 'daily_performance.csv')
+        balance = get_account_balance()
+        
+        # Calculate win rate from history
+        win_rate, _ = get_recent_performance()
+        
+        now = datetime.utcnow()
+        date_str = now.strftime('%Y-%m-%d')
+        
+        # Check if we already logged today
+        if os.path.exists(path):
+            df = pd.read_csv(path)
+            if date_str in df['date'].values:
+                return
+        else:
+            df = pd.DataFrame(columns=['date', 'balance', 'win_rate'])
+            
+        new_row = pd.DataFrame([{'date': date_str, 'balance': balance, 'win_rate': win_rate}])
+        df = pd.concat([df, new_row], ignore_index=True)
+        df.to_csv(path, index=False)
+        print(f"📈 Daily performance logged: {date_str} | Balance: {balance}")
+    except Exception as e:
+        print(f"Error updating daily performance: {e}")
+
 def record_trade_history(symbol, side, price, quantity, pnl, reason):
     """
     Iteration 32: Record trade to data/trade_history.csv
@@ -468,6 +498,10 @@ def get_daily_stats():
 
 def run_strategy():
     params = load_params()
+
+    # Iteration 54: Daily Performance Tracker
+    update_daily_performance()
+
     # Iteration 16: Dynamic Symbol Selection
     symbols = get_top_relative_strength_symbols()
     prices_rsi = {}
@@ -883,7 +917,10 @@ def run_strategy():
         # Iteration 42: Dynamic Asset Allocation (Using pre-calculated adj_risk)
         balance = get_account_balance()
         risk_pct_val = prices_rsi[symbol].get('expected_risk_pct', 0.025)
-        # Iteration 46 & 54: Apply Risk Multiplier for Tiered Bandwidth/Trend Decay & 4H Trend Bias
+        
+        # Iteration 54: Compounding Position Sizing
+        # Position_Size = (Current_Balance * Risk_Percentage) / (2 * ATR)
+        # Note: sl_distance is 2.0 * ATR
         risk_amount = balance * (risk_pct_val / 100) * signal.get('risk_multiplier', 1.0)
         
         # Iteration 52: ATR-Based Dynamic SL/TP
@@ -892,6 +929,9 @@ def run_strategy():
         
         # Formula: Quantity = Risk Amount / SL Distance
         position_qty = risk_amount / sl_distance if sl_distance > 0 else 0
+        
+        # Compounding Factor for Telegram
+        compounding_factor = balance / 1000.0 # Assuming 1000 is initial balance
         
         entry_price = latest['close']
         

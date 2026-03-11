@@ -153,6 +153,11 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
         trade_count = len(df_history[df_history['timestamp'].dt.month == current_month])
 
     msg += f"🎮 [實戰演習數據]\n"
+    total_pnl_pct = ((balance_data.get('total_balance', 1000.0) - 1000.0) / 1000.0) * 100
+    compounding_factor = balance_data.get('total_balance', 1000.0) / 1000.0
+    msg += f"   • 目前淨值: ${balance_data.get('total_balance', 1000.0):,.2f}\n"
+    msg += f"   • 總獲利率: {total_pnl_pct:+.2f}%\n"
+    msg += f"   • 複利加權係數: {compounding_factor:.2f}x\n"
     msg += f"   • 累積模擬盈虧: ${balance_data.get('realized_pnl', 0.0):+.2f}\n"
     msg += f"   • 最大回撤 (Max DD): 0.00% (Simulated)\n"
     msg += f"   • 本月已成交次數: {trade_count}\n"
