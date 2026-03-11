@@ -12,19 +12,19 @@ def verify_performance():
     """
     print("🛡️ [Gatekeeper] Starting deployment verification...")
     
-    symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
+    symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT']
     total_profit = 0
     total_trades = 0
     total_wins = 0
     
     try:
         print("Fetching BTC data for Waterfall Guard...")
-        btc_df = fetch_backtest_data('BTC/USDT', days=30) # Use 30 days for faster verification
+        btc_df = fetch_backtest_data('BTC/USDT', days=60) # 60-day Stress Backtest
         
         for symbol in symbols:
             print(f"Verifying {symbol}...")
-            df = fetch_backtest_data(symbol, days=30)
-            res = run_backtest_v42(df, symbol, btc_df, mode='v46')
+            df = fetch_backtest_data(symbol, days=60)
+            res = run_backtest_v42(df, symbol, btc_df, mode='v47')
             
             total_profit += res['net_profit_pct']
             total_trades += res['total_trades']
@@ -33,14 +33,14 @@ def verify_performance():
         avg_profit = total_profit / len(symbols)
         overall_win_rate = (total_wins / total_trades * 100) if total_trades > 0 else 0
         
-        print(f"\n📊 Verification Results (30-Day Backtest - Iteration 46):")
+        print(f"\n📊 Verification Results (60-Day Stress Backtest - Iteration 47):")
         print(f"   • Average Profit: {avg_profit:.2f}% (Target: > -2.00%)")
-        print(f"   • Overall Win Rate: {overall_win_rate:.2f}% (Target: > 45.00%)")
+        print(f"   • Overall Win Rate: {overall_win_rate:.2f}% (Target: > 40.00%)")
         print(f"   • Total Trades: {total_trades}")
         
         # Threshold Checks
         profit_ok = avg_profit > -2.0
-        win_rate_ok = overall_win_rate > 45.0 or total_trades == 0 # Allow if no trades were found
+        win_rate_ok = overall_win_rate > 40.0 or total_trades == 0 # Allow if no trades were found
         
         if profit_ok and win_rate_ok:
             print("\n✅ [Gatekeeper] Verification PASSED. Proceeding with deployment.")

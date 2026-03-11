@@ -104,7 +104,50 @@ def run_backtest_v42(df, symbol, btc_df, initial_balance=1000, mode='v42'):
             
             double_div = macd_bullish_div and rsi_bullish_div
 
-            if mode == 'v46':
+            if mode == 'v47':
+                # Iteration 47: Sensitivity Boost & Momentum Flip
+                bandwidth_avg_100 = df['bandwidth'].iloc[i-100:i].mean()
+                squeeze_index = current_row['bandwidth'] / bandwidth_avg_100 if bandwidth_avg_100 > 0 else 1.0
+                squeeze_tier1 = squeeze_index < 0.8
+                squeeze_tier2 = 0.8 <= squeeze_index < 1.0
+                
+                # Sensitivity Boost: ADX > 22 & RSI < 35
+                trend_decay_active = current_row['adx'] > 22 and current_row['rsi'] < 35
+                
+                # Momentum Flip: MACD Histogram shortening for 2 bars
+                momentum_flip = df['macd_hist'].iloc[i] > df['macd_hist'].iloc[i-1] > df['macd_hist'].iloc[i-2]
+                
+                # Iteration 45: StochRSI Confirmation
+                stoch_oversold = current_row['stoch_k'] < 20 and current_row['stoch_d'] < 20
+                stoch_golden_cross = prev_row['stoch_k'] <= prev_row['stoch_d'] and current_row['stoch_k'] > current_row['stoch_d']
+                stoch_rsi_ok = stoch_oversold and stoch_golden_cross
+                rsi_oversold_45 = current_row['rsi'] < 38
+                
+                # Hybrid Trigger from v42 (Iteration 47: Relaxed to 35)
+                extreme_mode = current_row['rsi'] < 35
+                structural_mode = current_row['rsi'] < 38 and double_div
+                hybrid_trigger = extreme_mode or structural_mode
+                
+                # Volume Exhaustion from v42
+                avg_vol_5 = df['volume'].iloc[i-5:i].mean()
+                vol_exhaustion = current_row['volume'] < (avg_vol_5 * 1.2)
+                
+                if trend_decay_active:
+                    # Iteration 47: Relaxed 4H Trend for Trend Decay
+                    entry_allowed = trend_1h_strong and hybrid_trigger and vol_exhaustion and \
+                                    rsi_hook_up and first_green and stoch_rsi_ok
+                    risk_multiplier = 0.3
+                elif momentum_flip and current_row['low'] <= current_row['bb_lower']:
+                    entry_allowed = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
+                                    rsi_hook_up and first_green and stoch_rsi_ok and rsi_oversold_45
+                    risk_multiplier = 0.5
+                else:
+                    base_conditions = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
+                                      (current_row['low'] <= current_row['bb_lower'] or ema_golden_cross) and \
+                                      rsi_hook_up and first_green and stoch_rsi_ok and rsi_oversold_45
+                    entry_allowed = base_conditions and (squeeze_tier1 or squeeze_tier2)
+                    risk_multiplier = 1.0 if squeeze_tier1 else (0.5 if squeeze_tier2 else 1.0)
+            elif mode == 'v46':
                 # Iteration 46: Tiered Bandwidth & Trend Decay
                 bandwidth_avg_100 = df['bandwidth'].iloc[i-100:i].mean()
                 squeeze_index = current_row['bandwidth'] / bandwidth_avg_100 if bandwidth_avg_100 > 0 else 1.0

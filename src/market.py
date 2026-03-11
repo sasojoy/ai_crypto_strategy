@@ -520,10 +520,10 @@ def run_strategy():
             
             double_div = macd_bullish_div and rsi_bullish_div
 
-            # Iteration 42: Hybrid Logic
-            # A. Extreme Mode: RSI < 30 (No Div needed)
+            # Iteration 42: Hybrid Logic (Iteration 47: Relaxed Extreme Mode to 35)
+            # A. Extreme Mode: RSI < 35 (No Div needed)
             # B. Structural Mode: RSI < 38 + Double Divergence
-            extreme_mode = latest['rsi'] < 30
+            extreme_mode = latest['rsi'] < 35
             structural_mode = latest['rsi'] < 38 and double_div
             
             hybrid_trigger = extreme_mode or structural_mode
@@ -550,7 +550,7 @@ def run_strategy():
             rsi_hook_up = latest['rsi'] > prev['rsi']
             first_green = latest['close'] > latest['open']
 
-            # Iteration 46: Tiered Bandwidth & Trend Decay
+            # Iteration 47: Sensitivity Boost & Momentum Flip
             bandwidth_avg_100 = df['bandwidth'].rolling(100).mean().iloc[-1]
             squeeze_index = latest['bandwidth'] / bandwidth_avg_100 if bandwidth_avg_100 > 0 else 1.0
             
@@ -559,11 +559,14 @@ def run_strategy():
             # Tier 2: Moderate Squeeze (0.8x - 1.0x)
             squeeze_tier2 = 0.8 <= squeeze_index < 1.0
             
-            # Trend Decay Compensation: ADX > 30 & RSI < 30
-            trend_decay_active = latest['adx'] > 30 and latest['rsi'] < 30
+            # Trend Decay Sensitivity Boost: ADX > 22 & RSI < 35
+            trend_decay_active = latest['adx'] > 22 and latest['rsi'] < 35
+
+            # Momentum Flip: MACD Histogram shortening for 2 bars
+            macd_hist = df['macd_hist']
+            momentum_flip = macd_hist.iloc[-1] > macd_hist.iloc[-2] > macd_hist.iloc[-3]
 
             # Iteration 45: StochRSI Confirmation
-            # RSI < 38 and StochRSI K cross D in oversold area (< 20)
             df['stoch_k'], df['stoch_d'] = calculate_stoch_rsi(df)
             latest_stoch_k = df['stoch_k'].iloc[-1]
             latest_stoch_d = df['stoch_d'].iloc[-1]
@@ -575,11 +578,17 @@ def run_strategy():
             stoch_rsi_ok = stoch_oversold and stoch_golden_cross
             rsi_oversold_45 = latest['rsi'] < 38
 
-            # Iteration 46: Combined Signal Logic
+            # Iteration 47: Combined Signal Logic (Relaxed 4H Trend for Trend Decay)
             if trend_decay_active:
-                long_signal = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
+                # Trend Decay allows entry even if 4H trend is not strong (Counter-trend)
+                long_signal = trend_1h_strong and hybrid_trigger and vol_exhaustion and \
                               rsi_hook_up and first_green and stoch_rsi_ok
                 risk_multiplier = 0.3
+            elif momentum_flip and price_at_bb_lower:
+                # Momentum Flip allows entry without Squeeze
+                long_signal = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
+                              rsi_hook_up and first_green and stoch_rsi_ok and rsi_oversold_45
+                risk_multiplier = 0.5 # Moderate risk for momentum flip
             else:
                 base_conditions = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
                                   (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green and \
@@ -587,6 +596,11 @@ def run_strategy():
                 
                 long_signal = base_conditions and (squeeze_tier1 or squeeze_tier2)
                 risk_multiplier = 1.0 if squeeze_tier1 else 0.5
+
+            # Iteration 47: Signal Preview (RSI < 40 but blocked by MACD/ADX)
+            signal_preview = False
+            if latest['rsi'] < 40 and not long_signal:
+                signal_preview = True
 
             # Iteration 39: Two-Stage Stop-Loss Protection (Tier 2)
             if long_signal and symbol not in ['SOL/USDT', 'BTC/USDT']:
@@ -667,7 +681,8 @@ def run_strategy():
                 'expected_risk_pct': adj_risk * 100,
                 'weight_str': weight_str,
                 'squeeze_index': squeeze_index, # Iteration 46
-                'missed_reason': missed_reason # Iteration 46
+                'missed_reason': missed_reason, # Iteration 46
+                'signal_preview': signal_preview # Iteration 47
             }
 
             if long_signal or short_signal:
