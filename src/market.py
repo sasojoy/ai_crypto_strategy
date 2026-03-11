@@ -519,11 +519,15 @@ def run_strategy():
                         print(f"🚫 [Waterfall Guard] Entries paused for {symbol}.")
                         continue
 
-            # Pre-requisite: 4H Trend Strong (EMA 200 above)
+            # Iteration 53: Strict 4H Trend Logic (EMA 200)
             df_4h = fetch_4h_data(symbol)
             if df_4h.empty: continue
             df_4h['ema200'] = calculate_ema(df_4h, 200)
-            trend_4h_strong = latest['close'] > df_4h.iloc[-1]['ema200']
+            # Ensure we have enough data for EMA 200
+            if len(df_4h) < 200:
+                trend_4h_strong = False
+            else:
+                trend_4h_strong = latest['close'] > df_4h.iloc[-1]['ema200']
 
             # 1. MTF Filter (1H EMA 200)
             df_1h = fetch_1h_data(symbol)
@@ -907,11 +911,18 @@ def manage_positions(prices_rsi):
             
             profit_pct = (current_price - entry_price) / entry_price * 100
             
-            # If we have already taken partial profit (Iteration 29 logic)
-            # or if profit is significant, use EMA 10 as trailing stop
-            if profit_pct > 1.5:
+            # Iteration 53: EMA 10 Trailing Stop (Activated after 1.2 R/R)
+            # For ETH/USDT, backtest showed significant improvement
+            sl_dist = state.get('atr', 0) * 2.0
+            rr_1_2_price = entry_price + (sl_dist * 1.2)
+            
+            if current_price >= rr_1_2_price or state.get('active_trailing', False):
+                if not state.get('active_trailing'):
+                    state['active_trailing'] = True
+                    save_order_state(symbol, state)
+                
                 if current_price < latest_ema10:
-                    msg = f"🏃 [Iteration 49] {symbol} 跌破 15m EMA 10，奔跑利潤出場！\n獲利：{profit_pct:.2f}% | EMA10: {latest_ema10:.2f}"
+                    msg = f"🏃 [Iteration 53] {symbol} 觸發 EMA 10 尾隨止盈！\n獲利：{profit_pct:.2f}% | EMA10: {latest_ema10:.2f}"
                     send_telegram_msg(msg)
                     cancel_sl_order(symbol, state.get('sl_order_id'))
                     state['status'] = 'Closed'

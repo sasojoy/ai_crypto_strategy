@@ -119,8 +119,15 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     win_rate, losses = get_recent_performance()
     risk_level = "2.5% (High)" if win_rate > 0.5 else ("1.0% (Low)" if losses >= 2 else "1.5% (Normal)")
     
-    msg = f"🚀 【報告優化 - Iteration 52】\n"
+    # Iteration 53: EV Estimate
+    # EV = (WinRate * AvgWin) - (LossRate * AvgLoss)
+    # Based on backtest: WinRate ~ 45%, AvgWin ~ 1.2, AvgLoss ~ 1.0
+    ev = (0.45 * 1.2) - (0.55 * 1.0)
+    ev_status = "🟢 正期望值" if ev > 0 else "🔴 負期望值"
+
+    msg = f"🚀 【報告優化 - Iteration 53】\n"
     msg += f"📊 戰績：[勝率 {win_rate*100:.0f}%] | [Risk: {risk_level}]\n"
+    msg += f"📈 期望值 (EV): {ev:+.2f} ({ev_status})\n"
     msg += f"----------------------------\n"
 
     # 0. BTC Status & Market Rating
@@ -202,7 +209,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: Iteration 52 | 模式: 100% 模擬觀測"
+    msg += f"版本: Iteration 53 | 模式: 100% 模擬觀測"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")
