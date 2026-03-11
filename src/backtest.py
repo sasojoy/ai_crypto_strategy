@@ -81,7 +81,9 @@ def run_backtest(df, initial_balance=2000):
             # Check TP or SL
             if current_price >= tp_price or current_price <= sl_price:
                 price_change = (current_price - entry_price) / entry_price
-                profit_amount = balance * price_change
+                # Iteration 54: Slippage & Fee Simulation (0.1% deduction)
+                friction_cost = balance * 0.001
+                profit_amount = (balance * price_change) - friction_cost
                 balance += profit_amount
                 trades.append({
                     'entry_time': entry_time,

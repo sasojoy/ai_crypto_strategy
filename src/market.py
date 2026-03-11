@@ -347,13 +347,18 @@ def get_account_balance():
             return data.get('total_balance', 1000.0)
     return 1000.0
 
-def update_balance(pnl_amount):
+def update_balance(pnl_amount, position_value=0):
     """
-    Iteration 32: Update balance and realized PnL
+    Iteration 54: Slippage & Fee Simulation (0.1% deduction)
     """
     path = 'data/balance.json'
+    
+    # Deduct 0.1% of position value for slippage and fees
+    friction_cost = position_value * 0.001
+    net_pnl = pnl_amount - friction_cost
+    
     balance = get_account_balance()
-    new_balance = balance + pnl_amount
+    new_balance = balance + net_pnl
     
     # Load existing data to preserve other fields if any
     data = {"total_balance": 1000.0, "realized_pnl": 0.0}
@@ -362,13 +367,13 @@ def update_balance(pnl_amount):
             data = json.load(f)
     
     data['total_balance'] = new_balance
-    data['realized_pnl'] = data.get('realized_pnl', 0.0) + pnl_amount
+    data['realized_pnl'] = data.get('realized_pnl', 0.0) + net_pnl
     
     os.makedirs('data', exist_ok=True)
     with open(path, 'w') as f:
         json.dump(data, f)
     
-    print(f"💰 [BALANCE UPDATE] PnL: ${pnl_amount:.2f} | New Balance: ${new_balance:.2f}")
+    print(f"💰 [BALANCE UPDATE] PnL: ${pnl_amount:.2f} | Friction: ${friction_cost:.2f} | Net: ${net_pnl:.2f} | New Balance: ${new_balance:.2f}")
 
 def record_trade_history(symbol, side, price, quantity, pnl, reason):
     """
@@ -519,15 +524,18 @@ def run_strategy():
                         print(f"🚫 [Waterfall Guard] Entries paused for {symbol}.")
                         continue
 
-            # Iteration 53: Strict 4H Trend Logic (EMA 200)
+            # Iteration 54: Strengthen 4H Trend Bias
             df_4h = fetch_4h_data(symbol)
             if df_4h.empty: continue
             df_4h['ema200'] = calculate_ema(df_4h, 200)
             # Ensure we have enough data for EMA 200
             if len(df_4h) < 200:
                 trend_4h_strong = False
+                risk_multiplier = 1.0
             else:
                 trend_4h_strong = latest['close'] > df_4h.iloc[-1]['ema200']
+                # If 4H is bearish, reduce risk to 50%
+                risk_multiplier = 1.0 if trend_4h_strong else 0.5
 
             # 1. MTF Filter (1H EMA 200)
             df_1h = fetch_1h_data(symbol)
@@ -779,7 +787,7 @@ def run_strategy():
         # Iteration 42: Dynamic Asset Allocation (Using pre-calculated adj_risk)
         balance = get_account_balance()
         risk_pct_val = prices_rsi[symbol].get('expected_risk_pct', 0.025)
-        # Iteration 46: Apply Risk Multiplier for Tiered Bandwidth/Trend Decay
+        # Iteration 46 & 54: Apply Risk Multiplier for Tiered Bandwidth/Trend Decay & 4H Trend Bias
         risk_amount = balance * (risk_pct_val / 100) * signal.get('risk_multiplier', 1.0)
         
         # Iteration 52: ATR-Based Dynamic SL/TP
@@ -930,7 +938,8 @@ def manage_positions(prices_rsi):
                     state['exit_time'] = datetime.utcnow().isoformat()
                     state['exit_reason'] = 'EMA10_Trailing'
                     pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
-                    update_balance(pnl_amount)
+                    pos_value = state['pos_size'] * state['exit_price']
+                    update_balance(pnl_amount, pos_value)
                     record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'EMA10_Trailing')
                     save_order_state(symbol, state)
                     continue
@@ -952,7 +961,8 @@ def manage_positions(prices_rsi):
                     state['exit_time'] = datetime.utcnow().isoformat()
                     state['exit_reason'] = 'Chandelier_Exit'
                     pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
-                    update_balance(pnl_amount)
+                    pos_value = state['pos_size'] * state['exit_price']
+                    update_balance(pnl_amount, pos_value)
                     record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'Chandelier_Exit')
                     save_order_state(symbol, state)
                     continue
@@ -969,7 +979,8 @@ def manage_positions(prices_rsi):
                     state['exit_time'] = datetime.utcnow().isoformat()
                     state['exit_reason'] = 'Profit_Protection'
                     pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
-                    update_balance(pnl_amount)
+                    pos_value = state['pos_size'] * state['exit_price']
+                    update_balance(pnl_amount, pos_value)
                     record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'Profit_Protection')
                     save_order_state(symbol, state)
                     continue
@@ -996,7 +1007,8 @@ def manage_positions(prices_rsi):
                 
                 # Iteration 32: Financial Tracking
                 pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
-                update_balance(pnl_amount)
+                pos_value = state['pos_size'] * state['exit_price']
+                update_balance(pnl_amount, pos_value)
                 record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'SL_Trailing')
                 
                 save_order_state(symbol, state)
@@ -1011,7 +1023,8 @@ def manage_positions(prices_rsi):
                 # Iteration 32: Financial Tracking for Partial TP
                 partial_qty = state.get('pos_size', 0) * 0.5
                 pnl_amount = (current_price - entry_price) * partial_qty
-                update_balance(pnl_amount)
+                pos_value = partial_qty * current_price
+                update_balance(pnl_amount, pos_value)
                 record_trade_history(symbol, side, current_price, partial_qty, pnl_amount, 'Partial_TP')
                 
                 # Iteration 45: Exchange-side Partial Close & SL Update
@@ -1039,7 +1052,8 @@ def manage_positions(prices_rsi):
                     
                     # Iteration 32: Financial Tracking
                     pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
-                    update_balance(pnl_amount)
+                    pos_value = state['pos_size'] * state['exit_price']
+                    update_balance(pnl_amount, pos_value)
                     record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'Time_Exit')
                     
                     save_order_state(symbol, state)
