@@ -55,13 +55,15 @@ def send_hourly_audit(equity, realized_pnl, active_positions):
     )
     send_telegram_msg(msg)
 
-def send_entry_notification(symbol, side, pos_value, capital_pct, tp, sl, rr):
+def send_entry_notification(symbol, side, pos_value, capital_pct, tp, sl, rr, ml_score=None):
     """
-    Entry Notification - Iteration 52 Optimized
+    Entry Notification - Iteration 55 AI-Enhanced
     """
+    ai_str = f"🤖 AI 信心分值: {ml_score:.4f}\n" if ml_score else ""
     msg = (
         f"🚀 【進場通知】: {symbol} | 方向: {side}\n"
         f"----------------------------\n"
+        f"{ai_str}"
         f"💰 投入金額: ${pos_value:,.2f} (佔總資金 {capital_pct:.2f}%)\n"
         f"🎯 預期獲利: {tp:.4f}\n"
         f"🛡️ 強制止損: {sl:.4f}\n"

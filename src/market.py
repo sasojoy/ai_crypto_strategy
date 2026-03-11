@@ -10,6 +10,10 @@ from src.notifier import send_telegram_msg, send_kill_switch_alert, send_rich_he
 from src.logger import log_trade
 from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels, calculate_rsi_slope, calculate_stoch_rsi
 
+from src.features import extract_features
+from src.ml_model import CryptoMLModel
+
+
 # Load environment variables
 load_dotenv()
 
@@ -498,6 +502,9 @@ def get_daily_stats():
 
 def run_strategy():
     params = load_params()
+    # Iteration 55: Initialize ML Model
+    ml_model = CryptoMLModel()
+    ml_model.load()
 
     # Iteration 54: Daily Performance Tracker
     update_daily_performance()
@@ -521,6 +528,9 @@ def run_strategy():
         print(f"📊 [BTC Sentiment] Price: {btc_price:.2f}, EMA50: {btc_ema50:.2f}, OK: {btc_sentiment_ok}")
 
     potential_signals = []
+
+    # Iteration 55: Fetch BTC data for ML features
+    df_btc_ml = fetch_1h_data('BTC/USDT')
 
     for symbol in symbols:
         try:
@@ -882,14 +892,29 @@ def run_strategy():
                 # Calculate Volume Growth Rate for Correlation Detection
                 vol_growth = (latest['volume'] - avg_vol_5) / avg_vol_5 if avg_vol_5 > 0 else 0
                 
-                potential_signals.append({
-                    'symbol': symbol,
-                    'side': side,
-                    'vol_growth': vol_growth,
-                    'latest': latest,
-                    'prices_rsi': prices_rsi[symbol],
-                    'risk_multiplier': risk_multiplier # Iteration 46
-                })
+                # Iteration 55: AI-Enhanced Decision Flow
+                # Step 1: Extract features for the current symbol
+                df_ml = fetch_1h_data(symbol)
+                if not df_ml.empty and not df_btc_ml.empty:
+                    features = extract_features(df_ml, df_btc_ml)
+                    if not features.empty:
+                        # Step 2: Get ML probability score
+                        ml_score = ml_model.predict_proba(features.tail(1))[0]
+                        print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
+                        
+                        # Step 3: Filter by score > 0.65
+                        if ml_score > 0.65:
+                            potential_signals.append({
+                                'symbol': symbol,
+                                'side': side,
+                                'vol_growth': vol_growth,
+                                'latest': latest,
+                                'prices_rsi': prices_rsi[symbol],
+                                'risk_multiplier': risk_multiplier,
+                                'ml_score': ml_score
+                            })
+                        else:
+                            print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} <= 0.65. Signal rejected.")
         except Exception as e:
             print(f"Error in strategy execution for {symbol}: {e}")
 
@@ -974,7 +999,8 @@ def run_strategy():
                 capital_pct=capital_pct,
                 tp=tp_price,
                 sl=sl_price,
-                rr=actual_rr
+                rr=actual_rr,
+                ml_score=signal.get('ml_score')
             )
             
             save_order_state(symbol, {
