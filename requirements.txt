@@ -2,3 +2,6 @@ ccxt
 pandas
 python-dotenv
 httpx
+joblib
+scikit-learn
+numpy

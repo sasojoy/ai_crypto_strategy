@@ -484,6 +484,28 @@ def record_ai_prediction(symbol, side, ml_score, signal_data):
 
 
 
+
+def check_and_retrain_model():
+    """
+    Iteration 55: Weekly Auto-Retrain Logic.
+    Retrains the model every Sunday at 00:00 UTC.
+    """
+    now = datetime.utcnow()
+    # Sunday is 6 in weekday()
+    if now.weekday() == 6 and now.hour == 0 and now.minute < 15:
+        print("🔄 [AI Auto-Retrain] It's Sunday 00:00 UTC. Starting weekly model re-training...")
+        try:
+            from src.train_model import train
+            train()
+            send_telegram_msg("🔄 [AI Auto-Retrain] 每週模型再訓練完成，AI 已更新至最新市場狀態。")
+        except Exception as e:
+            print(f"Error during auto-retrain: {e}")
+            send_telegram_msg(f"⚠️ [AI Auto-Retrain] 模型再訓練失敗: {e}")
+
+
+
+
+
 def log_slippage(symbol, expected_price, actual_price):
     slippage = abs(actual_price - expected_price) / expected_price
     os.makedirs('logs', exist_ok=True)
@@ -506,6 +528,24 @@ def load_order_state(symbol):
 
 # Global Kill Switch State
 KILL_SWITCH_ACTIVE = False
+
+
+# Iteration 55: AI Filter Tracking
+AI_FILTERED_COUNT = 0
+LAST_FILTER_RESET = datetime.utcnow().date()
+
+def get_ai_filtered_count():
+    global AI_FILTERED_COUNT, LAST_FILTER_RESET
+    today = datetime.utcnow().date()
+    if today > LAST_FILTER_RESET:
+        AI_FILTERED_COUNT = 0
+        LAST_FILTER_RESET = today
+    return AI_FILTERED_COUNT
+
+def increment_ai_filtered_count():
+    global AI_FILTERED_COUNT
+    get_ai_filtered_count() # Trigger reset if needed
+    AI_FILTERED_COUNT += 1
 
 def check_kill_switch():
     global KILL_SWITCH_ACTIVE
@@ -536,6 +576,10 @@ def run_strategy():
 
     # Iteration 54: Daily Performance Tracker
     update_daily_performance()
+
+    # Iteration 55: Weekly Auto-Retrain
+    check_and_retrain_model()
+
 
     # Iteration 16: Dynamic Symbol Selection
     symbols = get_top_relative_strength_symbols()
@@ -954,6 +998,7 @@ def run_strategy():
                             })
                         else:
                             print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} <= 0.65. Signal rejected.")
+                            increment_ai_filtered_count()
         except Exception as e:
             print(f"Error in strategy execution for {symbol}: {e}")
 

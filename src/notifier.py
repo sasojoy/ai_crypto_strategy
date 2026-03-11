@@ -136,10 +136,14 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     ai_scores = [res.get('ml_score') for res in scan_results.values() if res.get('ml_score') is not None]
     avg_ai_score = sum(ai_scores) / len(ai_scores) if ai_scores else 0.5
     ai_status = "🟢 樂觀" if avg_ai_score > 0.6 else ("🟡 中立" if avg_ai_score > 0.4 else "🔴 悲觀")
+    
+    from src.market import get_ai_filtered_count
+    ai_filtered = get_ai_filtered_count()
 
     msg = f"🚀 【Iteration 58 | RETRO_OPTIMIZED】\n"
     msg += f"📊 戰績：[勝率 {win_rate*100:.0f}%] | [Risk: {risk_level}]\n"
     msg += f"🤖 AI Confidence: {avg_ai_score*100:.1f}% ({ai_status})\n"
+    msg += f"🛡️ AI Filtered Out: {ai_filtered} trades today\n"
     msg += f"📈 期望值 (EV): {ev:+.2f} ({ev_status})\n"
     msg += f"----------------------------\n"
     
