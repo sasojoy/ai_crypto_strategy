@@ -2,7 +2,23 @@
 import sys
 import json
 import os
+import subprocess
 from src.backtest_v42 import fetch_backtest_data, run_backtest_v42
+
+def run_unit_tests():
+    """
+    Iteration 57: Engineering Release System
+    Runs pytest on the tests/ directory.
+    """
+    print("🧪 [CI Gate] Running unit and integration tests...")
+    result = subprocess.run(["pytest", "tests/"], capture_output=True, text=True)
+    if result.returncode != 0:
+        print("\n❌ [CI Gate] Tests FAILED!")
+        print(result.stdout)
+        print(result.stderr)
+        return False
+    print("✅ [CI Gate] All tests passed.")
+    return True
 
 def verify_performance():
     """
@@ -11,6 +27,11 @@ def verify_performance():
     Thresholds: Total Profit > -2%, Win Rate > 25%
     """
     print("🛡️ [Gatekeeper] Starting deployment verification...")
+    
+    # Iteration 57: Run unit tests first
+    if not run_unit_tests():
+        print("🛑 Deployment aborted due to test failures.")
+        sys.exit(1)
     
     symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT']
     total_profit = 0

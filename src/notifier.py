@@ -129,14 +129,17 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     ev = (0.45 * 1.2) - (0.55 * 1.0)
     ev_status = "🟢 正期望值" if ev > 0 else "🔴 負期望值"
 
-    msg = f"🚀 【報告優化 - Iteration 54】\n"
+    msg = f"🚀 【Iteration 58 | RETRO_OPTIMIZED】\n"
     msg += f"📊 戰績：[勝率 {win_rate*100:.0f}%] | [Risk: {risk_level}]\n"
     msg += f"📈 期望值 (EV): {ev:+.2f} ({ev_status})\n"
     msg += f"----------------------------\n"
     
-    # Iteration 54: [實戰演習數據] Block
+    # Iteration 57: [實戰演習數據] Block
     balance_data = {"total_balance": 1000.0, "realized_pnl": 0.0}
-    if os.path.exists(os.path.join(DATA_DIR, 'balance.json')):
+    if os.path.exists(os.path.join(DATA_DIR, 'system_state.json')):
+        with open(os.path.join(DATA_DIR, 'system_state.json'), 'r') as f:
+            balance_data = json.load(f)
+    elif os.path.exists(os.path.join(DATA_DIR, 'balance.json')):
         with open(os.path.join(DATA_DIR, 'balance.json'), 'r') as f:
             balance_data = json.load(f)
     

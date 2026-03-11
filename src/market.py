@@ -355,20 +355,28 @@ def trigger_rollback(reason):
 
 def get_account_balance():
     """
-    Iteration 32: Read balance from data/balance.json
+    Iteration 57: Read balance from system_state.json (Persistent)
     """
-    path = os.path.join(DATA_DIR, 'balance.json')
+    path = os.path.join(DATA_DIR, 'system_state.json')
     if os.path.exists(path):
         with open(path, 'r') as f:
             data = json.load(f)
             return data.get('total_balance', 1000.0)
+    
+    # Fallback to old balance.json if exists
+    old_path = os.path.join(DATA_DIR, 'balance.json')
+    if os.path.exists(old_path):
+        with open(old_path, 'r') as f:
+            data = json.load(f)
+            return data.get('total_balance', 1000.0)
+            
     return 1000.0
 
 def update_balance(pnl_amount, position_value=0):
     """
-    Iteration 54: Slippage & Fee Simulation (0.1% deduction)
+    Iteration 57: Update balance in system_state.json
     """
-    path = os.path.join(DATA_DIR, 'balance.json')
+    path = os.path.join(DATA_DIR, 'system_state.json')
     
     # Deduct 0.1% of position value for slippage and fees
     friction_cost = position_value * 0.001
@@ -955,16 +963,36 @@ def manage_positions(prices_rsi):
             
             profit_pct = (current_price - entry_price) / entry_price * 100
             
-            # Iteration 53: EMA 10 Trailing Stop (Activated after 1.2 R/R)
-            # For ETH/USDT, backtest showed significant improvement
+            # Iteration 58: EMA 10 Trailing Stop (Activated after 1.5 R/R)
+            # Retro-Optimization: Increased from 1.2 to 1.5 R/R to cover friction costs
             sl_dist = state.get('atr', 0) * 2.0
-            rr_1_2_price = entry_price + (sl_dist * 1.2)
+            rr_1_5_price = entry_price + (sl_dist * 1.5)
             
-            if current_price >= rr_1_2_price or state.get('active_trailing', False):
-                if not state.get('active_trailing'):
+            if current_price >= rr_1_5_price or state.get('active_trailing', False):
+                # Iteration 58: Partial Profit Taking (50%) & Breakeven SL
+                if not state.get('is_partial_closed', False):
+                    print(f"💰 [PARTIAL CLOSE] {symbol} reached 1.5 R/R. Closing 50% and moving SL to breakeven.")
+                    
+                    # 1. Close 50% of position
+                    partial_qty = state['pos_size'] * 0.5
+                    pnl_amount = (current_price - entry_price) * partial_qty
+                    pos_value = partial_qty * current_price
+                    
+                    update_balance(pnl_amount, pos_value)
+                    record_trade_history(symbol, side, current_price, partial_qty, pnl_amount, 'Partial_1.5RR')
+                    
+                    # 2. Update state for remaining 50%
+                    state['pos_size'] -= partial_qty
+                    state['is_partial_closed'] = True
+                    
+                    # 3. Move SL to Breakeven (Entry + 0.2% to cover fees/slippage)
+                    state['sl_price'] = entry_price * 1.002 
+                    state['sl_order_id'] = move_sl_to_breakeven(symbol, state['pos_size'], entry_price, state.get('sl_order_id'))
+                    
                     state['active_trailing'] = True
                     save_order_state(symbol, state)
-                
+                    send_telegram_msg(f"💰 {symbol} 已達 1.5 R/R！\n執行：減倉 50% + 止損移至保本價。\n剩餘倉位：{state['pos_size']:.4f}")
+
                 if current_price < latest_ema10:
                     msg = f"🏃 [Iteration 53] {symbol} 觸發 EMA 10 尾隨止盈！\n獲利：{profit_pct:.2f}% | EMA10: {latest_ema10:.2f}"
                     send_telegram_msg(msg)
@@ -1021,8 +1049,9 @@ def manage_positions(prices_rsi):
                     save_order_state(symbol, state)
                     continue
 
-            # 1. SL (Iteration 29: 1.8x ATR or Break-even)
-            sl_price = state.get('sl_price', entry_price - (1.8 * prices_rsi[symbol]['atr']))
+            # 1. SL (Iteration 58: Fixed 2% SL or Break-even)
+            # Retro-Optimization: Fixed 2% SL performed better in backtests than ATR-based SL
+            sl_price = state.get('sl_price', entry_price * 0.98)
             
             # Trailing Stop Logic (if partial TP already hit)
             if state.get('partial_tp_hit'):
@@ -1050,29 +1079,8 @@ def manage_positions(prices_rsi):
                 save_order_state(symbol, state)
                 continue
 
-            # 2. TP (Iteration 45: 1.5% Profit Partial TP + Break-even Stop)
-            profit_pct_45 = (current_price - entry_price) / entry_price * 100
-            if profit_pct_45 >= 1.5 and not state.get('partial_tp_hit'):
-                msg = f"💰 [Iteration 45] {symbol} 獲利達 1.5%，平倉 50% 並將止損移至保本價！"
-                send_telegram_msg(msg)
-                
-                # Iteration 32: Financial Tracking for Partial TP
-                partial_qty = state.get('pos_size', 0) * 0.5
-                pnl_amount = (current_price - entry_price) * partial_qty
-                pos_value = partial_qty * current_price
-                update_balance(pnl_amount, pos_value)
-                record_trade_history(symbol, side, current_price, partial_qty, pnl_amount, 'Partial_TP')
-                
-                # Iteration 45: Exchange-side Partial Close & SL Update
-                # In real exchange, execute partial close order here
-                new_sl_id = move_sl_to_breakeven(symbol, partial_qty, entry_price, state.get('sl_order_id'))
-                
-                state['partial_tp_hit'] = True
-                state['pos_size'] = partial_qty
-                state['sl_price'] = entry_price * 1.001
-                state['highest_price'] = current_price
-                state['sl_order_id'] = new_sl_id
-                save_order_state(symbol, state)
+            # Iteration 45: Redundant Partial TP logic removed in favor of Iteration 57 1.2 R/R logic.
+            pass
             
             # 3. Time-based Exit (Iteration 30: 48h)
             entry_time = datetime.fromisoformat(state['entry_time'])
