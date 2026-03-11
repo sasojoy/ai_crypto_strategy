@@ -13,8 +13,9 @@ from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculat
 # Load environment variables
 load_dotenv()
 
-# Iteration 56: Physical Isolation for Data Persistence
-DATA_DIR = os.getenv('TRADING_DATA_DIR', '/workspace/trading_data')
+# Iteration 58: Relative Path Definition for GCE Compatibility
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.getenv('TRADING_DATA_DIR', os.path.join(BASE_DIR, 'trading_data'))
 os.makedirs(DATA_DIR, exist_ok=True)
 
 

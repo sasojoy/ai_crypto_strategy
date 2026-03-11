@@ -11,7 +11,9 @@ def run_unit_tests():
     Runs pytest on the tests/ directory.
     """
     print("🧪 [CI Gate] Running unit and integration tests...")
-    result = subprocess.run(["pytest", "tests/"], capture_output=True, text=True)
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    test_dir = os.path.join(base_dir, 'tests')
+    result = subprocess.run(["pytest", test_dir], capture_output=True, text=True)
     if result.returncode != 0:
         print("\n❌ [CI Gate] Tests FAILED!")
         print(result.stdout)
