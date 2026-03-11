@@ -550,10 +550,17 @@ def run_strategy():
             rsi_hook_up = latest['rsi'] > prev['rsi']
             first_green = latest['close'] > latest['open']
 
-            # Iteration 45: Squeeze Filter
-            # Bandwidth < 100-period average * 0.8
+            # Iteration 46: Tiered Bandwidth & Trend Decay
             bandwidth_avg_100 = df['bandwidth'].rolling(100).mean().iloc[-1]
-            squeeze_active = latest['bandwidth'] < (bandwidth_avg_100 * 0.8) if bandwidth_avg_100 > 0 else False
+            squeeze_index = latest['bandwidth'] / bandwidth_avg_100 if bandwidth_avg_100 > 0 else 1.0
+            
+            # Tier 1: Strong Squeeze (< 0.8x)
+            squeeze_tier1 = squeeze_index < 0.8
+            # Tier 2: Moderate Squeeze (0.8x - 1.0x)
+            squeeze_tier2 = 0.8 <= squeeze_index < 1.0
+            
+            # Trend Decay Compensation: ADX > 30 & RSI < 30
+            trend_decay_active = latest['adx'] > 30 and latest['rsi'] < 30
 
             # Iteration 45: StochRSI Confirmation
             # RSI < 38 and StochRSI K cross D in oversold area (< 20)
@@ -568,10 +575,18 @@ def run_strategy():
             stoch_rsi_ok = stoch_oversold and stoch_golden_cross
             rsi_oversold_45 = latest['rsi'] < 38
 
-            # Iteration 45: Combined Signal
-            long_signal = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
-                          (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green and \
-                          squeeze_active and stoch_rsi_ok and rsi_oversold_45
+            # Iteration 46: Combined Signal Logic
+            if trend_decay_active:
+                long_signal = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
+                              rsi_hook_up and first_green and stoch_rsi_ok
+                risk_multiplier = 0.3
+            else:
+                base_conditions = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
+                                  (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green and \
+                                  stoch_rsi_ok and rsi_oversold_45
+                
+                long_signal = base_conditions and (squeeze_tier1 or squeeze_tier2)
+                risk_multiplier = 1.0 if squeeze_tier1 else 0.5
 
             # Iteration 39: Two-Stage Stop-Loss Protection (Tier 2)
             if long_signal and symbol not in ['SOL/USDT', 'BTC/USDT']:
@@ -622,6 +637,17 @@ def run_strategy():
                 adj_risk /= 2
                 weight_str += " (ATR 減半)"
 
+            # Iteration 46: Missed Signal Reason
+            missed_reason = "None"
+            if not long_signal:
+                if not trend_4h_strong: missed_reason = "4H Trend Bearish"
+                elif not trend_1h_strong: missed_reason = "1H Trend Bearish"
+                elif not hybrid_trigger: missed_reason = "No RSI/Div Trigger"
+                elif not vol_exhaustion: missed_reason = "Volume Spike"
+                elif not (price_at_bb_lower or ema_golden_cross): missed_reason = "Price not at BB Lower/EMA Cross"
+                elif not stoch_rsi_ok: missed_reason = "StochRSI No Cross"
+                elif not (squeeze_tier1 or squeeze_tier2 or trend_decay_active): missed_reason = "No Squeeze/Trend Decay"
+
             # Store scan results for heartbeat
             prices_rsi[symbol] = {
                 'price': latest['close'],
@@ -639,7 +665,9 @@ def run_strategy():
                 'ema200': ema200,
                 'dist_ema200_pct': dist_ema200_pct,
                 'expected_risk_pct': adj_risk * 100,
-                'weight_str': weight_str
+                'weight_str': weight_str,
+                'squeeze_index': squeeze_index, # Iteration 46
+                'missed_reason': missed_reason # Iteration 46
             }
 
             if long_signal or short_signal:
@@ -664,7 +692,8 @@ def run_strategy():
                     'side': side,
                     'vol_growth': vol_growth,
                     'latest': latest,
-                    'prices_rsi': prices_rsi[symbol]
+                    'prices_rsi': prices_rsi[symbol],
+                    'risk_multiplier': risk_multiplier # Iteration 46
                 })
         except Exception as e:
             print(f"Error in strategy execution for {symbol}: {e}")
@@ -690,7 +719,8 @@ def run_strategy():
         # Iteration 42: Dynamic Asset Allocation (Using pre-calculated adj_risk)
         balance = get_account_balance()
         risk_pct = prices_rsi[symbol].get('expected_risk_pct', 0.025)
-        risk_amount = balance * risk_pct
+        # Iteration 46: Apply Risk Multiplier for Tiered Bandwidth/Trend Decay
+        risk_amount = balance * (risk_pct / 100) * signal.get('risk_multiplier', 1.0)
         
         # Volatility Sizing: Adjust SL distance based on ATR (Iteration 38: 1.5 * ATR)
         sl_distance = 1.5 * latest['atr'] 

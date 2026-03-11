@@ -24,7 +24,7 @@ def verify_performance():
         for symbol in symbols:
             print(f"Verifying {symbol}...")
             df = fetch_backtest_data(symbol, days=30)
-            res = run_backtest_v42(df, symbol, btc_df, mode='v45')
+            res = run_backtest_v42(df, symbol, btc_df, mode='v46')
             
             total_profit += res['net_profit_pct']
             total_trades += res['total_trades']
@@ -33,7 +33,7 @@ def verify_performance():
         avg_profit = total_profit / len(symbols)
         overall_win_rate = (total_wins / total_trades * 100) if total_trades > 0 else 0
         
-        print(f"\n📊 Verification Results (30-Day Backtest - Iteration 45):")
+        print(f"\n📊 Verification Results (30-Day Backtest - Iteration 46):")
         print(f"   • Average Profit: {avg_profit:.2f}% (Target: > -2.00%)")
         print(f"   • Overall Win Rate: {overall_win_rate:.2f}% (Target: > 45.00%)")
         print(f"   • Total Trades: {total_trades}")

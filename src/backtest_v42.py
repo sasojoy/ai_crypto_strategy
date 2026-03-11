@@ -11,7 +11,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import os
 import json
-from src.market import calculate_rsi, calculate_ema, calculate_atr, calculate_bollinger_bands, calculate_macd, calculate_stoch_rsi
+from src.market import calculate_rsi, calculate_ema, calculate_atr, calculate_bollinger_bands, calculate_macd, calculate_stoch_rsi, calculate_adx
 
 def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=60):
     exchange = ccxt.binance()
@@ -41,6 +41,7 @@ def run_backtest_v42(df, symbol, btc_df, initial_balance=1000, mode='v42'):
     df['ema200_1h'] = calculate_ema(df, 200 * 4)
     _, _, df['macd_hist'] = calculate_macd(df)
     df['stoch_k'], df['stoch_d'] = calculate_stoch_rsi(df)
+    df['adx'] = calculate_adx(df)
     
     df = df.dropna().reset_index(drop=True)
     
@@ -103,7 +104,46 @@ def run_backtest_v42(df, symbol, btc_df, initial_balance=1000, mode='v42'):
             
             double_div = macd_bullish_div and rsi_bullish_div
 
-            if mode == 'v45':
+            if mode == 'v46':
+                # Iteration 46: Tiered Bandwidth & Trend Decay
+                bandwidth_avg_100 = df['bandwidth'].iloc[i-100:i].mean()
+                squeeze_index = current_row['bandwidth'] / bandwidth_avg_100 if bandwidth_avg_100 > 0 else 1.0
+                squeeze_tier1 = squeeze_index < 0.8
+                squeeze_tier2 = 0.8 <= squeeze_index < 1.0
+                trend_decay_active = current_row['adx'] > 30 and current_row['rsi'] < 30
+                
+                # Iteration 45: StochRSI Confirmation
+                stoch_oversold = current_row['stoch_k'] < 20 and current_row['stoch_d'] < 20
+                stoch_golden_cross = prev_row['stoch_k'] <= prev_row['stoch_d'] and current_row['stoch_k'] > current_row['stoch_d']
+                stoch_rsi_ok = stoch_oversold and stoch_golden_cross
+                rsi_oversold_45 = current_row['rsi'] < 38
+                
+                # Hybrid Trigger from v42
+                extreme_mode = current_row['rsi'] < 30
+                structural_mode = current_row['rsi'] < 38 and double_div
+                hybrid_trigger = extreme_mode or structural_mode
+                
+                # Volume Exhaustion from v42
+                avg_vol_5 = df['volume'].iloc[i-5:i].mean()
+                vol_exhaustion = current_row['volume'] < (avg_vol_5 * 1.2)
+                
+                # Iteration 46: Relaxed conditions for Trend Decay
+                if trend_decay_active:
+                    entry_allowed = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
+                                    rsi_hook_up and first_green and stoch_rsi_ok
+                    risk_multiplier = 0.3
+                else:
+                    base_conditions = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
+                                      (current_row['low'] <= current_row['bb_lower'] or ema_golden_cross) and \
+                                      rsi_hook_up and first_green and stoch_rsi_ok and rsi_oversold_45
+                    
+                    entry_allowed = base_conditions and (squeeze_tier1 or squeeze_tier2)
+                    
+                    if entry_allowed:
+                        risk_multiplier = 1.0 if squeeze_tier1 else 0.5
+                    else:
+                        risk_multiplier = 1.0
+            elif mode == 'v45':
                 # Iteration 45: Squeeze Filter
                 bandwidth_avg_100 = df['bandwidth'].iloc[i-100:i].mean()
                 squeeze_active = current_row['bandwidth'] < (bandwidth_avg_100 * 0.8) if bandwidth_avg_100 > 0 else False
@@ -124,6 +164,7 @@ def run_backtest_v42(df, symbol, btc_df, initial_balance=1000, mode='v42'):
                 vol_exhaustion = current_row['volume'] < (avg_vol_5 * 1.2)
                 
                 entry_allowed = trend_4h_strong and trend_1h_strong and hybrid_trigger and squeeze_active and stoch_rsi_ok and rsi_oversold_45
+                risk_multiplier = 1.0
             elif mode == 'v42':
                 extreme_mode = current_row['rsi'] < 30
                 structural_mode = current_row['rsi'] < 38 and double_div
@@ -168,7 +209,8 @@ def run_backtest_v42(df, symbol, btc_df, initial_balance=1000, mode='v42'):
                 risk_pct = base_risk * 1.2 if dist_ema200_pct < 1.5 else (base_risk * 0.6 if dist_ema200_pct > 5.0 else base_risk)
                 
                 sl_distance = 1.5 * current_row['atr']
-                risk_amount = balance * risk_pct
+                # Iteration 46: Apply Risk Multiplier
+                risk_amount = balance * risk_pct * risk_multiplier
                 pos_size = risk_amount / sl_distance
                 if pos_size * entry_price > balance * 0.95:
                     pos_size = (balance * 0.95) / entry_price

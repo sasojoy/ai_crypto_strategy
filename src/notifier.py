@@ -106,9 +106,9 @@ def get_progress_bar(current, target, length=10):
 
 def send_rich_heartbeat(positions, scan_results, active_count, version, btc_status=None):
     """
-    Iteration 43 - Hard SL & Auto-Recovery System
+    Iteration 46 - Tiered Squeeze & Trend Decay
     """
-    msg = f"📊 【異常恢復偵察 - Iteration 43】\n"
+    msg = f"📊 【戰備報告 - Iteration 46】\n"
     msg += f"----------------------------\n"
 
     # 0. BTC Status & Market Rating
@@ -175,11 +175,16 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
         potential_div = "⚠️底背離" if data.get('potential_div') else ""
         if potential_div: details.append(potential_div)
 
+        # Iteration 46: Squeeze Index & Missed Reason
+        sq_idx = data.get('squeeze_index', 1.0)
+        sq_icon = "💎" if sq_idx < 0.8 else ("🌀" if sq_idx < 1.0 else "⚖️")
+        missed = data.get('missed_reason', 'None')
+
         msg += f"   • [{symbol}]({tv_link}) 評分: {score}%\n"
         msg += f"     RSI ({rsi:.1f}/42): {get_progress_bar(rsi, 42)}\n"
         msg += f"     EMA200 距離: {dist_ema200:+.2f}%\n"
         msg += f"     預計下單: {risk_pct:.1f}% (加權: {weight_str})\n"
-        msg += f"     波動風險: {vol_risk} | 布林: {dist_bb:+.2f}%\n"
+        msg += f"     擠壓指數: {sq_idx:.2f} {sq_icon} | 錯過原因: {missed}\n"
         msg += f"     ({ ' | '.join(details) })\n"
 
     # 3. Risk Check
