@@ -13,6 +13,10 @@ from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculat
 # Load environment variables
 load_dotenv()
 
+# Iteration 50: Global Dry Run Lock
+DRY_RUN = True
+
+
 def load_params():
     with open('config/params.json', 'r') as f:
         return json.load(f)
@@ -100,9 +104,10 @@ def fetch_1h_data(symbol='BTC/USDT'):
 def fetch_funding_rate(symbol):
     """
     Iteration 17: Funding Rate Filter
-    Fetch current funding rate for the symbol.
+    Fetch current funding rate for the symbol using Public API.
     """
     try:
+        # Public API - No Key Required
         exchange = ccxt.binance({'options': {'defaultType': 'future'}})
         funding = exchange.fetch_funding_rate(symbol)
         return funding['fundingRate']
@@ -144,14 +149,32 @@ def fetch_open_interest(symbol):
         print(f"Error fetching OI for {symbol}: {e}")
         return 0
 
+def simulate_hard_sl(symbol, side, qty, sl_price):
+    """
+    Iteration 50: Simulate Hard SL for Dry Run
+    """
+    sl_side = 'sell' if side == 'LONG' else 'buy'
+    msg = f"🛡️ [Dry Run] 模擬已掛出交易所端止損: {symbol} {sl_side} at {sl_price} (Qty: {qty})"
+    print(msg)
+    return {"id": f"sim-sl-{int(time.time())}", "status": "simulated"}
+
 def create_order_with_hard_sl(symbol, side, qty, entry_price, sl_price, tp_price):
     """
     Iteration 43: Exchange-side Hard SL
     Submits entry order and stop-loss order to Binance Futures.
     """
+    if DRY_RUN:
+        print(f"🚀 [Dry Run] 模擬進場: {symbol} {side} {qty} at {entry_price}")
+        sl_order = simulate_hard_sl(symbol, side, qty, sl_price)
+        return {"id": f"sim-entry-{int(time.time())}", "status": "simulated"}, sl_order
+
     try:
+        api_key = os.getenv('BINANCE_API_KEY')
+        if not api_key:
+            raise ValueError("BINANCE_API_KEY is required for live trading.")
+
         exchange = ccxt.binance({
-            'apiKey': os.getenv('BINANCE_API_KEY'),
+            'apiKey': api_key,
             'secret': os.getenv('BINANCE_SECRET'),
             'options': {'defaultType': 'future'}
         })
@@ -186,6 +209,10 @@ def cancel_sl_order(symbol, sl_order_id):
     Iteration 43: Cancel Exchange-side SL
     """
     if not sl_order_id: return
+    if DRY_RUN:
+        print(f"🧹 [Dry Run] 模擬取消 SL Order {sl_order_id} for {symbol}")
+        return
+
     try:
         exchange = ccxt.binance({
             'apiKey': os.getenv('BINANCE_API_KEY'),
@@ -201,6 +228,10 @@ def move_sl_to_breakeven(symbol, qty, entry_price, old_sl_order_id):
     """
     Iteration 45: Break-even Stop (Exchange-side)
     """
+    if DRY_RUN:
+        print(f"🛡️ [Dry Run] 模擬將止損移至保本價 for {symbol}")
+        return f"sim-be-{int(time.time())}"
+
     try:
         exchange = ccxt.binance({
             'apiKey': os.getenv('BINANCE_API_KEY'),
