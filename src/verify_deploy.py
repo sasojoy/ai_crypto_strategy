@@ -21,14 +21,21 @@ def verify_performance():
         print("Fetching BTC data for Waterfall Guard...")
         btc_df = fetch_backtest_data('BTC/USDT', days=60) # 60-day Stress Backtest
         
+        # Iteration 49: Use the new scoring logic for verification
+        from src.backtest_v48 import run_backtest_v49
+        
         for symbol in symbols:
             print(f"Verifying {symbol}...")
             df = fetch_backtest_data(symbol, days=60)
-            res = run_backtest_v42(df, symbol, btc_df, mode='v47')
+            trades = run_backtest_v49(df, symbol, rsi_thresh=40, adx_thresh=20)
             
-            total_profit += res['net_profit_pct']
-            total_trades += res['total_trades']
-            total_wins += (res['win_rate'] / 100 * res['total_trades']) if res['total_trades'] > 0 else 0
+            # Convert trades to res format for compatibility
+            net_profit = sum([t.get('pnl', 0) for t in trades]) * 100
+            win_rate = (len([t for t in trades if t.get('pnl', 0) > 0]) / len(trades) * 100) if trades else 0
+            
+            total_profit += net_profit
+            total_trades += len(trades)
+            total_wins += (win_rate / 100 * len(trades)) if trades else 0
             
         avg_profit = total_profit / len(symbols)
         overall_win_rate = (total_wins / total_trades * 100) if total_trades > 0 else 0

@@ -17,6 +17,34 @@ def load_params():
     with open('config/params.json', 'r') as f:
         return json.load(f)
 
+def get_recent_performance():
+    """
+    Iteration 49: Track recent 10 trades for dynamic risk sizing
+    """
+    try:
+        if not os.path.exists('data/trade_history.json'):
+            return 0.5, 0 # Default win rate 50%, 0 losses
+        
+        with open('data/trade_history.json', 'r') as f:
+            history = json.load(f)
+        
+        recent = history[-10:]
+        if not recent:
+            return 0.5, 0
+            
+        wins = len([t for t in recent if t.get('pnl', 0) > 0])
+        win_rate = wins / len(recent)
+        
+        # Check for back-to-back losses
+        last_two = history[-2:]
+        losses = len([t for t in last_two if t.get('pnl', 0) < 0])
+        
+        return win_rate, losses
+    except Exception as e:
+        print(f"Error tracking performance: {e}")
+        return 0.5, 0
+
+
 def get_top_relative_strength_symbols():
     """
     Iteration 42: Capital Re-allocation
@@ -81,6 +109,27 @@ def fetch_funding_rate(symbol):
     except Exception as e:
         print(f"Error fetching funding rate for {symbol}: {e}")
         return 0
+
+def check_order_book_depth(symbol, amount_usd):
+    """
+    Iteration 50: Slippage & Depth Protection
+    Checks if the order book can handle the order with < 0.5% slippage.
+    """
+    try:
+        exchange = ccxt.binance()
+        order_book = exchange.fetch_order_book(symbol, limit=20)
+        bids = order_book['bids'] # [price, amount]
+        
+        total_depth = 0
+        for price, amount in bids:
+            total_depth += price * amount
+            if total_depth >= amount_usd * 2: # We want at least 2x depth for the order
+                slippage = (bids[0][0] - price) / bids[0][0]
+                return slippage < 0.005
+        return False
+    except Exception as e:
+        print(f"Depth check error: {e}")
+        return True # Default to True to not block if API fails
 
 def fetch_open_interest(symbol):
     """
@@ -509,7 +558,8 @@ def run_strategy():
             trend_1h_strong = latest['close'] > df_1h.iloc[-1]['ema200']
 
             # 2. Double Divergence (MACD + RSI)
-            _, _, macd_hist = calculate_macd(df)
+            _, _, df['macd_hist'] = calculate_macd(df)
+            macd_hist = df['macd_hist']
             price_down = latest['close'] < df['close'].iloc[-6]
             macd_up = macd_hist.iloc[-1] > macd_hist.iloc[-6]
             macd_bullish_div = price_down and macd_up
@@ -529,7 +579,8 @@ def run_strategy():
             hybrid_trigger = extreme_mode or structural_mode
 
             # Iteration 39: Asset Tiers Logic (Refined for Hybrid)
-            df['bb_upper'], df['bb_lower'], df['bb_mid'], _ = calculate_bollinger_bands(df, 20, 2)
+            # Iteration 50 Fix: Explicitly assign bandwidth to avoid KeyError
+            df['bb_upper'], df['bb_lower'], df['bandwidth'], _ = calculate_bollinger_bands(df, 20, 2)
             latest = df.iloc[-1]
             
             if symbol in ['SOL/USDT', 'BTC/USDT', 'ETH/USDT']:
@@ -551,6 +602,11 @@ def run_strategy():
             first_green = latest['close'] > latest['open']
 
             # Iteration 47: Sensitivity Boost & Momentum Flip
+            # Iteration 50: Null Check for Bandwidth
+            if 'bandwidth' not in df.columns:
+                _, _, df['bandwidth'], _ = calculate_bollinger_bands(df, 20, 2)
+                latest = df.iloc[-1]
+
             bandwidth_avg_100 = df['bandwidth'].rolling(100).mean().iloc[-1]
             squeeze_index = latest['bandwidth'] / bandwidth_avg_100 if bandwidth_avg_100 > 0 else 1.0
             
@@ -578,24 +634,30 @@ def run_strategy():
             stoch_rsi_ok = stoch_golden_cross
             rsi_oversold_45 = latest['rsi'] < 38
 
-            # Iteration 47: Combined Signal Logic (Relaxed 4H & 1H Trend for Trend Decay)
-            if trend_decay_active:
-                # Trend Decay allows entry even if 4H/1H trend is not strong (Counter-trend)
-                long_signal = hybrid_trigger and vol_exhaustion and \
-                              rsi_hook_up and first_green and stoch_rsi_ok
-                risk_multiplier = 0.3
-            elif momentum_flip and price_at_bb_lower:
-                # Momentum Flip allows entry without Squeeze
-                long_signal = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
-                              rsi_hook_up and first_green and stoch_rsi_ok and rsi_oversold_45
-                risk_multiplier = 0.5 # Moderate risk for momentum flip
+            # Iteration 48: Score-Based Entry (Unfreeze Action)
+            # Core Filter: 1H EMA 200
+            score = 0
+            if latest['rsi'] < 40: score += 1
+            if macd_hist.iloc[-1] > macd_hist.iloc[-2]: score += 1
+            if latest['adx'] > 20: score += 1
+            
+            # Entry Threshold: Score >= 2
+            long_signal = trend_1h_strong and score >= 2
+            
+            # Iteration 50: Funding Rate Shield
+            funding_rate = fetch_funding_rate(symbol)
+            if funding_rate > 0.0003: # 0.03%
+                long_signal = False
+                print(f"🛡️ [Funding Shield] {symbol} Funding Rate {funding_rate*100:.4f}% too high. Entry blocked.")
+            
+            # Iteration 49: Dynamic Risk Sizing
+            win_rate, losses = get_recent_performance()
+            if losses >= 2:
+                risk_multiplier = 0.2  # Reduce to 1% (0.2 * 5% base)
+            elif win_rate > 0.5:
+                risk_multiplier = 0.5  # Increase to 2.5% (0.5 * 5% base)
             else:
-                base_conditions = trend_4h_strong and trend_1h_strong and hybrid_trigger and vol_exhaustion and \
-                                  (price_at_bb_lower or ema_golden_cross) and rsi_hook_up and first_green and \
-                                  stoch_rsi_ok and rsi_oversold_45
-                
-                long_signal = base_conditions and (squeeze_tier1 or squeeze_tier2)
-                risk_multiplier = 1.0 if squeeze_tier1 else 0.5
+                risk_multiplier = 0.3  # Default 1.5%
 
             # Iteration 47: Signal Preview (RSI < 40 but blocked by MACD/ADX)
             signal_preview = False
@@ -760,6 +822,11 @@ def run_strategy():
         tp_price = min(tp_price_atr, latest['bb_upper'])
         rr = (tp_price - entry_price) / sl_distance if sl_distance > 0 else 0
 
+        # Iteration 50: Slippage & Depth Protection
+        if not check_order_book_depth(symbol, current_position_value):
+            print(f"🛡️ [Slippage Shield] {symbol} depth insufficient or slippage > 0.5%. Entry aborted.")
+            continue
+
         # Iteration 43: Exchange-side Hard SL
         entry_order, sl_order = create_order_with_hard_sl(symbol, side, position_qty, entry_price, sl_price, tp_price)
         
@@ -845,8 +912,29 @@ def manage_positions(prices_rsi):
         latest_exit = df_exit.iloc[-1]
 
         if side == 'LONG':
-            # Iteration 29: Partial TP + Trailing Stop
+            # Iteration 49: Let Profits Run (15m EMA 10 Trailing Stop)
+            df_exit = fetch_15m_data(symbol)
+            df_exit['ema10'] = calculate_ema(df_exit, 10)
+            latest_ema10 = df_exit['ema10'].iloc[-1]
+            
             profit_pct = (current_price - entry_price) / entry_price * 100
+            
+            # If we have already taken partial profit (Iteration 29 logic)
+            # or if profit is significant, use EMA 10 as trailing stop
+            if profit_pct > 1.5:
+                if current_price < latest_ema10:
+                    msg = f"🏃 [Iteration 49] {symbol} 跌破 15m EMA 10，奔跑利潤出場！\n獲利：{profit_pct:.2f}% | EMA10: {latest_ema10:.2f}"
+                    send_telegram_msg(msg)
+                    cancel_sl_order(symbol, state.get('sl_order_id'))
+                    state['status'] = 'Closed'
+                    state['exit_price'] = current_price
+                    state['exit_time'] = datetime.utcnow().isoformat()
+                    state['exit_reason'] = 'EMA10_Trailing'
+                    pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
+                    update_balance(pnl_amount)
+                    record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'EMA10_Trailing')
+                    save_order_state(symbol, state)
+                    continue
             
             # Iteration 40: Dynamic Profit Scaling (Chandelier Exit logic)
             # If profit > 2%, start trailing with 0.5% buffer
