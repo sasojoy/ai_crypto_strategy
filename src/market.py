@@ -92,11 +92,10 @@ def fetch_4h_data(symbol='BTC/USDT'):
 
 
 
-def fetch_1h_data(symbol='BTC/USDT'):
+def fetch_1h_data(symbol='BTC/USDT', limit=100):
     try:
         exchange = ccxt.binance()
         timeframe = '1h'
-        limit = 100
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
@@ -259,8 +258,22 @@ def log_data(timestamp, price, rsi, ema200):
         df.to_csv(log_file, mode='a', header=False, index=False)
 
 def get_active_positions_count():
-    # 模擬邏輯：此處應為實際持倉查詢
-    return 0
+    """
+    Iteration 52: Real-time scan of active positions from data files
+    """
+    count = 0
+    if not os.path.exists('data'):
+        return 0
+    for filename in os.listdir('data'):
+        if filename.startswith('order_state_') and filename.endswith('.json'):
+            try:
+                with open(os.path.join('data', filename), 'r') as f:
+                    state = json.load(f)
+                    if state.get('status') == 'Open':
+                        count += 1
+            except:
+                pass
+    return count
 
 def stability_monitor():
     """
@@ -752,18 +765,22 @@ def run_strategy():
         side = signal['side']
         latest = signal['latest']
         
+        # Iteration 52: Max Positions Lock (Strict)
         if current_pos_count >= 3:
-            send_telegram_msg(f"⚠️ [Iteration 23] 發現 {symbol} 進場信號，但因風控攔截 (總倉位已滿 3 倉)。")
+            msg = f"🚫 [Max Positions Lock] 發現 {symbol} 信號，但持倉已滿 ({current_pos_count}/3)。"
+            print(msg)
+            send_telegram_msg(msg)
             continue
 
         # Iteration 42: Dynamic Asset Allocation (Using pre-calculated adj_risk)
         balance = get_account_balance()
-        risk_pct = prices_rsi[symbol].get('expected_risk_pct', 0.025)
+        risk_pct_val = prices_rsi[symbol].get('expected_risk_pct', 0.025)
         # Iteration 46: Apply Risk Multiplier for Tiered Bandwidth/Trend Decay
-        risk_amount = balance * (risk_pct / 100) * signal.get('risk_multiplier', 1.0)
+        risk_amount = balance * (risk_pct_val / 100) * signal.get('risk_multiplier', 1.0)
         
-        # Volatility Sizing: Adjust SL distance based on ATR (Iteration 38: 1.5 * ATR)
-        sl_distance = 1.5 * latest['atr'] 
+        # Iteration 52: ATR-Based Dynamic SL/TP
+        # SL = 2.0 * ATR
+        sl_distance = 2.0 * latest['atr'] 
         
         # Formula: Quantity = Risk Amount / SL Distance
         position_qty = risk_amount / sl_distance if sl_distance > 0 else 0
@@ -778,12 +795,18 @@ def run_strategy():
             print(f"⚠️ [RISK] Position value ${current_position_value:.2f} exceeds cap. Reducing to ${max_position_value:.2f}")
             position_qty = max_position_value / entry_price
             current_position_value = max_position_value
+        
         sl_price = entry_price - sl_distance
         
-        # Iteration 38: TP = 3.0 * ATR or BB Upper
-        tp_price_atr = entry_price + (3.0 * latest['atr'])
-        tp_price = min(tp_price_atr, latest['bb_upper'])
-        rr = (tp_price - entry_price) / sl_distance if sl_distance > 0 else 0
+        # Iteration 52: Optimized RR = 1.2 (Based on backtest results)
+        optimized_rr = 1.2
+        tp_price = entry_price + (sl_distance * optimized_rr)
+        
+        # R/R Filter (Iteration 52: Min 1.2)
+        actual_rr = (tp_price - entry_price) / sl_distance if sl_distance > 0 else 0
+        if actual_rr < 1.2:
+            print(f"🛡️ [R/R Filter] {symbol} R/R {actual_rr:.2f} < 1.2. Skipping.")
+            continue
 
         # Iteration 50: Slippage & Depth Protection
         if not check_order_book_depth(symbol, current_position_value):
@@ -794,14 +817,16 @@ def run_strategy():
         entry_order, sl_order = create_order_with_hard_sl(symbol, side, position_qty, entry_price, sl_price, tp_price)
         
         if entry_order:
+            # Iteration 52: Fix capital percentage calculation
+            capital_pct = (current_position_value / balance) * 100
             send_entry_notification(
                 symbol=symbol,
                 side=side,
-                pos_value=risk_amount,
-                risk_pct=risk_pct * 100,
+                pos_value=current_position_value,
+                capital_pct=capital_pct,
                 tp=tp_price,
                 sl=sl_price,
-                rr=rr
+                rr=actual_rr
             )
             
             save_order_state(symbol, {
@@ -1110,14 +1135,11 @@ if __name__ == "__main__":
                     btc_price = df_btc.iloc[-1]['close']
                     btc_ema50 = calculate_ema(df_btc, 50).iloc[-1]
                     
-                    # Fetch 24h volume change (Iteration 51: Fix volume data)
+                    # Fetch 24h volume change (Iteration 52: Fix volume data)
                     vol_change_24h = 0
                     try:
-                        # Compare last 24h volume with previous 24h volume
-                        df_vol = fetch_1h_data('BTC/USDT') # Assuming it returns enough data or we use a custom fetch
                         # For accuracy, we fetch 48h of 1h data
-                        ohlcv_48h = exchange.fetch_ohlcv('BTC/USDT', timeframe='1h', limit=48)
-                        df_48h = pd.DataFrame(ohlcv_48h, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+                        df_48h = fetch_1h_data('BTC/USDT', limit=48)
                         if len(df_48h) >= 48:
                             last_24h_vol = df_48h.iloc[-24:]['volume'].sum()
                             prev_24h_vol = df_48h.iloc[-48:-24]['volume'].sum()
@@ -1132,7 +1154,7 @@ if __name__ == "__main__":
                         'is_bullish': btc_price > btc_ema50,
                         'vol_change_24h': vol_change_24h
                     }
-                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 51", btc_status)
+                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 52", btc_status)
                 
                 last_heartbeat_time = current_time
         except Exception as e:

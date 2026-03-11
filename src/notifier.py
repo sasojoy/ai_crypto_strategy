@@ -50,19 +50,18 @@ def send_hourly_audit(equity, realized_pnl, active_positions):
     )
     send_telegram_msg(msg)
 
-def send_entry_notification(symbol, side, pos_value, risk_pct, tp, sl, rr):
+def send_entry_notification(symbol, side, pos_value, capital_pct, tp, sl, rr):
     """
-    Entry Notification - Iteration 28
+    Entry Notification - Iteration 52 Optimized
     """
     msg = (
         f"🚀 【進場通知】: {symbol} | 方向: {side}\n"
         f"----------------------------\n"
-        f"💰 投入金額: ${pos_value:,.2f} (佔總資金 {risk_pct}%)\n"
+        f"💰 投入金額: ${pos_value:,.2f} (佔總資金 {capital_pct:.2f}%)\n"
         f"🎯 預期獲利: {tp:.4f}\n"
         f"🛡️ 強制止損: {sl:.4f}\n"
         f"⚖️ 盈虧比 (R/R): {rr:.2f}\n"
         f"----------------------------\n"
-        f"狀態：已執行市價單，監控中。"
     )
     send_telegram_msg(msg)
 
@@ -120,7 +119,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     win_rate, losses = get_recent_performance()
     risk_level = "2.5% (High)" if win_rate > 0.5 else ("1.0% (Low)" if losses >= 2 else "1.5% (Normal)")
     
-    msg = f"🚀 【報告優化 - Iteration 51】\n"
+    msg = f"🚀 【報告優化 - Iteration 52】\n"
     msg += f"📊 戰績：[勝率 {win_rate*100:.0f}%] | [Risk: {risk_level}]\n"
     msg += f"----------------------------\n"
 
@@ -203,7 +202,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: Iteration 51 | 模式: 100% 模擬觀測"
+    msg += f"版本: Iteration 52 | 模式: 100% 模擬觀測"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")
