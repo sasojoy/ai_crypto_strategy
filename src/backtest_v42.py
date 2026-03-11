@@ -117,10 +117,9 @@ def run_backtest_v42(df, symbol, btc_df, initial_balance=1000, mode='v42'):
                 # Momentum Flip: MACD Histogram shortening for 2 bars
                 momentum_flip = df['macd_hist'].iloc[i] > df['macd_hist'].iloc[i-1] > df['macd_hist'].iloc[i-2]
                 
-                # Iteration 45: StochRSI Confirmation
-                stoch_oversold = current_row['stoch_k'] < 20 and current_row['stoch_d'] < 20
+                # Iteration 45: StochRSI Confirmation (Iteration 47: Relaxed)
                 stoch_golden_cross = prev_row['stoch_k'] <= prev_row['stoch_d'] and current_row['stoch_k'] > current_row['stoch_d']
-                stoch_rsi_ok = stoch_oversold and stoch_golden_cross
+                stoch_rsi_ok = stoch_golden_cross
                 rsi_oversold_45 = current_row['rsi'] < 38
                 
                 # Hybrid Trigger from v42 (Iteration 47: Relaxed to 35)
@@ -133,8 +132,8 @@ def run_backtest_v42(df, symbol, btc_df, initial_balance=1000, mode='v42'):
                 vol_exhaustion = current_row['volume'] < (avg_vol_5 * 1.2)
                 
                 if trend_decay_active:
-                    # Iteration 47: Relaxed 4H Trend for Trend Decay
-                    entry_allowed = trend_1h_strong and hybrid_trigger and vol_exhaustion and \
+                    # Iteration 47: Relaxed 4H & 1H Trend for Trend Decay
+                    entry_allowed = hybrid_trigger and vol_exhaustion and \
                                     rsi_hook_up and first_green and stoch_rsi_ok
                     risk_multiplier = 0.3
                 elif momentum_flip and current_row['low'] <= current_row['bb_lower']:

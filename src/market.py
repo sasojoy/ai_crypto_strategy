@@ -573,15 +573,15 @@ def run_strategy():
             prev_stoch_k = df['stoch_k'].iloc[-2]
             prev_stoch_d = df['stoch_d'].iloc[-2]
             
-            stoch_oversold = latest_stoch_k < 20 and latest_stoch_d < 20
+            # Iteration 47: Relaxed StochRSI (No oversold needed)
             stoch_golden_cross = prev_stoch_k <= prev_stoch_d and latest_stoch_k > latest_stoch_d
-            stoch_rsi_ok = stoch_oversold and stoch_golden_cross
+            stoch_rsi_ok = stoch_golden_cross
             rsi_oversold_45 = latest['rsi'] < 38
 
-            # Iteration 47: Combined Signal Logic (Relaxed 4H Trend for Trend Decay)
+            # Iteration 47: Combined Signal Logic (Relaxed 4H & 1H Trend for Trend Decay)
             if trend_decay_active:
-                # Trend Decay allows entry even if 4H trend is not strong (Counter-trend)
-                long_signal = trend_1h_strong and hybrid_trigger and vol_exhaustion and \
+                # Trend Decay allows entry even if 4H/1H trend is not strong (Counter-trend)
+                long_signal = hybrid_trigger and vol_exhaustion and \
                               rsi_hook_up and first_green and stoch_rsi_ok
                 risk_multiplier = 0.3
             elif momentum_flip and price_at_bb_lower:
