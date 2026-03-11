@@ -456,6 +456,34 @@ def record_trade_history(symbol, side, price, quantity, pnl, reason):
     else:
         df.to_csv(path, mode='a', header=False, index=False)
 
+
+def record_ai_prediction(symbol, side, ml_score, signal_data):
+    """
+    Iteration 55: Record AI predictions for accuracy audit.
+    """
+    file_path = os.path.join(DATA_DIR, 'ai_predictions.csv')
+    os.makedirs(DATA_DIR, exist_ok=True)
+    
+    header = ['timestamp', 'symbol', 'side', 'ml_score', 'rsi', 'adx', 'atr', 'vol_growth']
+    row = [
+        datetime.utcnow().isoformat(),
+        symbol,
+        side,
+        f"{ml_score:.4f}",
+        f"{signal_data.get('rsi', 0):.2f}",
+        f"{signal_data.get('adx', 0):.2f}",
+        f"{signal_data.get('atr', 0):.4f}",
+        f"{signal_data.get('vol_growth', 0):.4f}"
+    ]
+    
+    file_exists = os.path.isfile(file_path)
+    with open(file_path, 'a') as f:
+        if not file_exists:
+            f.write(','.join(header) + '\n')
+        f.write(','.join(row) + '\n')
+
+
+
 def log_slippage(symbol, expected_price, actual_price):
     slippage = abs(actual_price - expected_price) / expected_price
     os.makedirs('logs', exist_ok=True)
@@ -901,6 +929,17 @@ def run_strategy():
                         # Step 2: Get ML probability score
                         ml_score = ml_model.predict_proba(features.tail(1))[0]
                         print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
+                        
+                        # Update prices_rsi with ml_score for heartbeat
+                        prices_rsi[symbol]['ml_score'] = ml_score
+                        
+                        # Iteration 55: Record prediction for audit
+                        record_ai_prediction(symbol, side, ml_score, {
+                            'rsi': latest['rsi'],
+                            'adx': latest['adx'],
+                            'atr': latest['atr'],
+                            'vol_growth': vol_growth
+                        })
                         
                         # Step 3: Filter by score > 0.65
                         if ml_score > 0.65:

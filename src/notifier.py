@@ -132,8 +132,14 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     ev = (0.45 * 1.2) - (0.55 * 1.0)
     ev_status = "🟢 正期望值" if ev > 0 else "🔴 負期望值"
 
+    # Iteration 55: AI Confidence
+    ai_scores = [res.get('ml_score') for res in scan_results.values() if res.get('ml_score') is not None]
+    avg_ai_score = sum(ai_scores) / len(ai_scores) if ai_scores else 0.5
+    ai_status = "🟢 樂觀" if avg_ai_score > 0.6 else ("🟡 中立" if avg_ai_score > 0.4 else "🔴 悲觀")
+
     msg = f"🚀 【Iteration 58 | RETRO_OPTIMIZED】\n"
     msg += f"📊 戰績：[勝率 {win_rate*100:.0f}%] | [Risk: {risk_level}]\n"
+    msg += f"🤖 AI Confidence: {avg_ai_score*100:.1f}% ({ai_status})\n"
     msg += f"📈 期望值 (EV): {ev:+.2f} ({ev_status})\n"
     msg += f"----------------------------\n"
     
