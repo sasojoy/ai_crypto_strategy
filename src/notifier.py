@@ -105,12 +105,10 @@ def send_kill_switch_alert(reason="User Command"):
     )
     send_telegram_msg(msg)
 
-def get_progress_bar(current, target, length=10):
-    """Generates an emoji progress bar for RSI proximity to target (42)"""
+def get_progress_bar(current, target, length=5):
+    """Generates an emoji progress bar for RSI proximity to target (42) - Shortened for Mobile"""
     if current <= target: return "🟥" * length
-    # Calculate how close we are. If current is 70 and target is 42, we are far.
-    # If current is 43 and target is 42, we are very close.
-    ratio = max(0, min(1, (current - target) / 30)) # 30 is the range from 42 to 72
+    ratio = max(0, min(1, (current - target) / 30))
     filled = length - int(ratio * length)
     return "🟥" * filled + "⬜" * (length - filled)
 
@@ -122,7 +120,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     win_rate, losses = get_recent_performance()
     risk_level = "2.5% (High)" if win_rate > 0.5 else ("1.0% (Low)" if losses >= 2 else "1.5% (Normal)")
     
-    msg = f"🚀 【利潤最大化 - Iteration 49】\n"
+    msg = f"🚀 【報告優化 - Iteration 51】\n"
     msg += f"📊 戰績：[勝率 {win_rate*100:.0f}%] | [Risk: {risk_level}]\n"
     msg += f"----------------------------\n"
 
@@ -177,10 +175,6 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
         else:
             details.append("布林 ❌")
             
-        # TradingView Link
-        tv_symbol = symbol.replace('/', '').replace('USDT', 'USDT')
-        tv_link = f"https://www.tradingview.com/chart/?symbol=BINANCE:{tv_symbol}"
-        
         # Iteration 37: Sizing Info
         risk_pct = data.get('expected_risk_pct', 2.5)
         weight_str = data.get('weight_str', '正常')
@@ -197,7 +191,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
         # Iteration 47: Signal Preview
         preview = "👀 待確認" if data.get('signal_preview') else "⚪ 無預警"
 
-        msg += f"   • [{symbol}]({tv_link}) 評分: {score}%\n"
+        msg += f"   • {symbol} 評分: {score}%\n"
         msg += f"     RSI ({rsi:.1f}/42): {get_progress_bar(rsi, 42)}\n"
         msg += f"     EMA200 距離: {dist_ema200:+.2f}%\n"
         msg += f"     預計下單: {risk_pct:.1f}% (加權: {weight_str})\n"
@@ -209,7 +203,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: {version} | 狀態: 異常恢復監控中"
+    msg += f"版本: Iteration 51 | 模式: 100% 模擬觀測"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")

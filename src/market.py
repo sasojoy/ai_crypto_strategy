@@ -13,8 +13,13 @@ from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculat
 # Load environment variables
 load_dotenv()
 
-# Iteration 50: Global Dry Run Lock
-DRY_RUN = True
+# Iteration 51: Physical Isolation Security
+IS_SIMULATION = True
+
+# Security Check
+if not IS_SIMULATION:
+    if not os.getenv('BINANCE_API_KEY') or not os.getenv('BINANCE_SECRET'):
+        raise RuntimeError("❌ [SECURITY FATAL] IS_SIMULATION is False but no API keys found. Terminating for safety.")
 
 
 def load_params():
@@ -160,109 +165,36 @@ def simulate_hard_sl(symbol, side, qty, sl_price):
 
 def create_order_with_hard_sl(symbol, side, qty, entry_price, sl_price, tp_price):
     """
-    Iteration 43: Exchange-side Hard SL
-    Submits entry order and stop-loss order to Binance Futures.
+    Iteration 51: Physical Isolation - Simulation Only
     """
-    if DRY_RUN:
-        print(f"🚀 [Dry Run] 模擬進場: {symbol} {side} {qty} at {entry_price}")
-        sl_order = simulate_hard_sl(symbol, side, qty, sl_price)
-        return {"id": f"sim-entry-{int(time.time())}", "status": "simulated"}, sl_order
-
-    try:
-        api_key = os.getenv('BINANCE_API_KEY')
-        if not api_key:
-            raise ValueError("BINANCE_API_KEY is required for live trading.")
-
-        exchange = ccxt.binance({
-            'apiKey': api_key,
-            'secret': os.getenv('BINANCE_SECRET'),
-            'options': {'defaultType': 'future'}
-        })
-        
-        # 1. Entry Order (Market)
-        print(f"🚀 [Iteration 43] Submitting Entry Order: {symbol} {side} {qty}")
-        entry_order = exchange.create_market_order(symbol, side.lower(), qty)
-        
-        # 2. Hard Stop Loss Order (Stop Market)
-        sl_side = 'sell' if side == 'LONG' else 'buy'
-        print(f"🛡️ [Iteration 43] Submitting Hard SL Order: {symbol} {sl_side} at {sl_price}")
-        sl_order = exchange.create_order(
-            symbol=symbol,
-            type='STOP_MARKET',
-            side=sl_side,
-            amount=qty,
-            params={
-                'stopPrice': sl_price,
-                'reduceOnly': True
-            }
-        )
-        
-        return entry_order, sl_order
-    except Exception as e:
-        error_msg = f"❌ [Iteration 43] Order Execution Failed for {symbol}: {str(e)}"
-        print(error_msg)
-        send_telegram_msg(error_msg)
+    if not IS_SIMULATION:
+        print("❌ [SECURITY] Live trading is physically disabled in this version.")
         return None, None
+
+    print(f"🚀 [Simulation] 模擬進場: {symbol} {side} {qty} at {entry_price}")
+    sl_order = simulate_hard_sl(symbol, side, qty, sl_price)
+    return {"id": f"sim-entry-{int(time.time())}", "status": "simulated"}, sl_order
 
 def cancel_sl_order(symbol, sl_order_id):
     """
-    Iteration 43: Cancel Exchange-side SL
+    Iteration 51: Physical Isolation - Simulation Only
     """
-    if not sl_order_id: return
-    if DRY_RUN:
-        print(f"🧹 [Dry Run] 模擬取消 SL Order {sl_order_id} for {symbol}")
+    if not IS_SIMULATION:
+        print("❌ [SECURITY] Live trading is physically disabled in this version.")
         return
 
-    try:
-        exchange = ccxt.binance({
-            'apiKey': os.getenv('BINANCE_API_KEY'),
-            'secret': os.getenv('BINANCE_SECRET'),
-            'options': {'defaultType': 'future'}
-        })
-        print(f"🧹 [Iteration 43] Cancelling SL Order {sl_order_id} for {symbol}")
-        exchange.cancel_order(sl_order_id, symbol)
-    except Exception as e:
-        print(f"⚠️ [Iteration 43] Failed to cancel SL order {sl_order_id}: {e}")
+    print(f"🧹 [Simulation] 模擬取消 SL Order {sl_order_id} for {symbol}")
 
 def move_sl_to_breakeven(symbol, qty, entry_price, old_sl_order_id):
     """
-    Iteration 45: Break-even Stop (Exchange-side)
+    Iteration 51: Physical Isolation - Simulation Only
     """
-    if DRY_RUN:
-        print(f"🛡️ [Dry Run] 模擬將止損移至保本價 for {symbol}")
-        return f"sim-be-{int(time.time())}"
-
-    try:
-        exchange = ccxt.binance({
-            'apiKey': os.getenv('BINANCE_API_KEY'),
-            'secret': os.getenv('BINANCE_SECRET'),
-            'options': {'defaultType': 'future'}
-        })
-        
-        # 1. Cancel old SL
-        if old_sl_order_id:
-            try:
-                exchange.cancel_order(old_sl_order_id, symbol)
-            except: pass
-            
-        # 2. Create new SL at entry + small buffer for fees
-        be_price = entry_price * 1.001 # 0.1% buffer for fees
-        print(f"🛡️ [Iteration 45] Moving SL to Break-even for {symbol} at {be_price}")
-        
-        new_sl_order = exchange.create_order(
-            symbol=symbol,
-            type='STOP_MARKET',
-            side='sell', # Assuming LONG for now as per strategy focus
-            amount=qty,
-            params={
-                'stopPrice': be_price,
-                'reduceOnly': True
-            }
-        )
-        return new_sl_order['id']
-    except Exception as e:
-        print(f"⚠️ [Iteration 45] Failed to move SL to break-even for {symbol}: {e}")
+    if not IS_SIMULATION:
+        print("❌ [SECURITY] Live trading is physically disabled in this version.")
         return old_sl_order_id
+
+    print(f"🛡️ [Simulation] 模擬將止損移至保本價 for {symbol}")
+    return f"sim-be-{int(time.time())}"
 
 
 
@@ -1178,15 +1110,21 @@ if __name__ == "__main__":
                     btc_price = df_btc.iloc[-1]['close']
                     btc_ema50 = calculate_ema(df_btc, 50).iloc[-1]
                     
-                    # Fetch 24h volume change (Iteration 39: Fix display bug)
+                    # Fetch 24h volume change (Iteration 51: Fix volume data)
                     vol_change_24h = 0
                     try:
-                        ticker = exchange.fetch_ticker('BTC/USDT')
-                        # Use percentage if available, otherwise calculate from change
-                        vol_change_24h = ticker.get('percentage', 0)
-                        if vol_change_24h == 0 and 'change' in ticker and 'last' in ticker:
-                            vol_change_24h = (ticker['change'] / (ticker['last'] - ticker['change'])) * 100
-                    except: pass
+                        # Compare last 24h volume with previous 24h volume
+                        df_vol = fetch_1h_data('BTC/USDT') # Assuming it returns enough data or we use a custom fetch
+                        # For accuracy, we fetch 48h of 1h data
+                        ohlcv_48h = exchange.fetch_ohlcv('BTC/USDT', timeframe='1h', limit=48)
+                        df_48h = pd.DataFrame(ohlcv_48h, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+                        if len(df_48h) >= 48:
+                            last_24h_vol = df_48h.iloc[-24:]['volume'].sum()
+                            prev_24h_vol = df_48h.iloc[-48:-24]['volume'].sum()
+                            if prev_24h_vol > 0:
+                                vol_change_24h = (last_24h_vol - prev_24h_vol) / prev_24h_vol * 100
+                    except Exception as e:
+                        print(f"Error calculating vol change: {e}")
                     
                     btc_status = {
                         'price': btc_price,
@@ -1194,7 +1132,7 @@ if __name__ == "__main__":
                         'is_bullish': btc_price > btc_ema50,
                         'vol_change_24h': vol_change_24h
                     }
-                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 36", btc_status)
+                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 51", btc_status)
                 
                 last_heartbeat_time = current_time
         except Exception as e:
