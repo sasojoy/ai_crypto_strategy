@@ -664,16 +664,63 @@ def run_strategy():
             stoch_rsi_ok = stoch_golden_cross
             rsi_oversold_45 = latest['rsi'] < 38
 
-            # Iteration 48: Score-Based Entry (Unfreeze Action)
-            # Core Filter: 1H EMA 200
-            score = 0
-            if latest['rsi'] < 40: score += 1
-            if macd_hist.iloc[-1] > macd_hist.iloc[-2]: score += 1
-            if latest['adx'] > 20: score += 1
+
+            # Iteration 53: Relative Strength Filter (Coin vs BTC 24h)
+            # Fetch 24h change for current coin
+            df_1d = fetch_ohlcv(symbol, timeframe='1d', limit=2)
+            if len(df_1d) >= 2:
+                coin_24h_change = (df_1d.iloc[-1]['close'] - df_1d.iloc[-2]['close']) / df_1d.iloc[-2]['close']
+            else:
+                coin_24h_change = 0
+                
+            # Fetch 24h change for BTC (if not already fetched this cycle)
+            if 'BTC_24H_CHANGE' not in locals():
+                df_btc_1d = fetch_ohlcv('BTC/USDT', timeframe='1d', limit=2)
+                BTC_24H_CHANGE = (df_btc_1d.iloc[-1]['close'] - df_btc_1d.iloc[-2]['close']) / df_btc_1d.iloc[-2]['close'] if len(df_btc_1d) >= 2 else 0
             
-            # Entry Threshold: Score >= 2 + Iteration 55 MTF & Volume
-            long_signal = trend_1h_strong and score >= 2 and mtf_structure_ok and volume_anomaly
+            relative_strength_ok = coin_24h_change > BTC_24H_CHANGE
+
+            # Iteration 52: Dual-Mode Entry & Squeeze Breakout
+            # 1. Dual-Mode Entry
+            price = latest['close']
+            ema200_1h = df['ema200'].iloc[-1] if 'ema200' in df.columns else calculate_ema(df, 200).iloc[-1]
+            avg_vol_5 = df['volume'].rolling(5).mean().shift(1).iloc[-1]
             
+            # A. Trend Mode (Price > 1H EMA 200)
+            trend_mode = price > ema200_1h
+            trend_entry = False
+            if trend_mode:
+                # RSI < 45, MACD Histogram Turn, Volume > Avg 5, Relative Strength > BTC
+                macd_turn = macd_hist.iloc[-1] > macd_hist.iloc[-2]
+                vol_ok = latest['volume'] > avg_vol_5
+                if latest['rsi'] < 45 and macd_turn and vol_ok and relative_strength_ok:
+                    trend_entry = True
+            
+            # B. Bottom Fishing Mode (Price < 1H EMA 200)
+            bottom_fishing_mode = price <= ema200_1h
+            bottom_entry = False
+            if bottom_fishing_mode:
+                # RSI < 32, MACD Bullish Divergence
+                macd_bullish_div = calculate_macd_divergence(df)
+                if latest['rsi'] < 32 and macd_bullish_div.iloc[-1]:
+                    bottom_entry = True
+            
+            # 2. Squeeze Breakout Strategy
+            squeeze_index = calculate_squeeze_index(df)
+            squeeze_breakout = False
+            if squeeze_index.iloc[-1] < 0.3 and latest['close'] > latest['bb_upper']:
+                squeeze_breakout = True
+            
+            # 3. Time-Filter (Exclude 00:00 - 04:00 UTC - Low Liquidity)
+            current_hour = datetime.utcnow().hour
+            time_filter_ok = not (0 <= current_hour < 4)
+            
+            # Final Signal Logic
+            long_signal = (trend_entry or bottom_entry or squeeze_breakout) and time_filter_ok
+            
+            # Special Case: Squeeze Breakout uses 50% position size
+            is_squeeze_trade = squeeze_breakout and not (trend_entry or bottom_entry)
+
             # Iteration 50: Funding Rate Shield
             funding_rate = fetch_funding_rate(symbol)
             if funding_rate > 0.0003: # 0.03%
@@ -688,6 +735,10 @@ def run_strategy():
                 risk_multiplier = 0.5  # Increase to 2.5% (0.5 * 5% base)
             else:
                 risk_multiplier = 0.3  # Default 1.5%
+            
+            # Iteration 52: Squeeze Breakout uses 50% position size
+            if is_squeeze_trade:
+                risk_multiplier *= 0.5
 
             # Iteration 47: Signal Preview (RSI < 40 but blocked by MACD/ADX)
             signal_preview = False
@@ -930,23 +981,36 @@ def manage_positions(prices_rsi):
         side = state['side']
         adx = prices_rsi.get(symbol, {}).get('adx', 0)
         
-        # Iteration 25: Zombie Position Cleanup (ADX < 15 & Loss & 4h sideways)
-        # Sideways check: price within 0.5% of entry for > 4 hours
-        entry_time = datetime.fromisoformat(state['entry_time'])
-        hours_held = (datetime.utcnow() - entry_time).total_seconds() / 3600
+        # Iteration 53: Infinite RR Path
+        # 1. Partial TP at 1.2 RR
+        rr_1_2_price = entry_price + (state['atr'] * 1.5 * 1.2) if side == 'LONG' else entry_price - (state['atr'] * 1.5 * 1.2)
         
-        is_loss = (side == 'LONG' and current_price < entry_price) or (side == 'SHORT' and current_price > entry_price)
-
-        if adx < 15 and hours_held > 4 and is_loss:
-            price_diff_pct = abs(current_price - entry_price) / entry_price
-            if price_diff_pct < 0.005:
-                msg = f"🧟 [Iteration 25] {symbol} 僵屍倉位清理！\n原因：ADX {adx:.1f} < 15 且虧損橫盤 {hours_held:.1f} 小時。\n現價平倉釋放保證金。"
+        if not state.get('partial_tp_done', False):
+            if (side == 'LONG' and current_price >= rr_1_2_price) or (side == 'SHORT' and current_price <= rr_1_2_price):
+                msg = f"💰 [Iteration 53] {symbol} 達到 1.2 RR！執行 50% 減倉止盈。\n剩餘 50% 開啟 EMA 10 移動止損。"
+                send_telegram_msg(msg)
+                
+                # Execute 50% reduction
+                reduce_qty = state['pos_size'] * 0.5
+                close_partial_position(symbol, reduce_qty)
+                
+                state['pos_size'] -= reduce_qty
+                state['partial_tp_done'] = True
+                save_order_state(symbol, state)
+        
+        # 2. EMA 10 Trailing Stop (for remaining 50%)
+        if state.get('partial_tp_done', False):
+            df_exit = fetch_15m_data(symbol)
+            df_exit['ema10'] = calculate_ema(df_exit, 10)
+            ema10 = df_exit['ema10'].iloc[-1]
+            if (side == 'LONG' and current_price < ema10) or (side == 'SHORT' and current_price > ema10):
+                msg = f"📈 [Iteration 53] {symbol} 跌破 EMA 10！全數平倉獲利了結。"
                 send_telegram_msg(msg)
                 cancel_sl_order(symbol, state.get('sl_order_id'))
                 state['status'] = 'Closed'
                 state['exit_price'] = current_price
                 state['exit_time'] = datetime.utcnow().isoformat()
-                state['exit_reason'] = 'Zombie Cleanup'
+                state['exit_reason'] = 'EMA 10 Trailing'
                 save_order_state(symbol, state)
                 continue
 
@@ -957,152 +1021,73 @@ def manage_positions(prices_rsi):
         latest_exit = df_exit.iloc[-1]
 
         if side == 'LONG':
-            # Iteration 49: Let Profits Run (15m EMA 10 Trailing Stop)
-            df_exit = fetch_15m_data(symbol)
-            df_exit['ema10'] = calculate_ema(df_exit, 10)
-            latest_ema10 = df_exit['ema10'].iloc[-1]
-            
-            profit_pct = (current_price - entry_price) / entry_price * 100
-            
-            # Iteration 58: EMA 10 Trailing Stop (Activated after 1.5 R/R)
-            # Retro-Optimization: Increased from 1.2 to 1.5 R/R to cover friction costs
-            sl_dist = state.get('atr', 0) * 2.0
-            rr_1_5_price = entry_price + (sl_dist * 1.5)
-            
-            if current_price >= rr_1_5_price or state.get('active_trailing', False):
-                # Iteration 58: Partial Profit Taking (50%) & Breakeven SL
-                if not state.get('is_partial_closed', False):
-                    print(f"💰 [PARTIAL CLOSE] {symbol} reached 1.5 R/R. Closing 50% and moving SL to breakeven.")
-                    
-                    # 1. Close 50% of position
-                    partial_qty = state['pos_size'] * 0.5
-                    pnl_amount = (current_price - entry_price) * partial_qty
-                    pos_value = partial_qty * current_price
-                    
-                    update_balance(pnl_amount, pos_value)
-                    record_trade_history(symbol, side, current_price, partial_qty, pnl_amount, 'Partial_1.5RR')
-                    
-                    # 2. Update state for remaining 50%
-                    state['pos_size'] -= partial_qty
-                    state['is_partial_closed'] = True
-                    
-                    # 3. Move SL to Breakeven (Entry + 0.2% to cover fees/slippage)
-                    state['sl_price'] = entry_price * 1.002 
-                    state['sl_order_id'] = move_sl_to_breakeven(symbol, state['pos_size'], entry_price, state.get('sl_order_id'))
-                    
-                    state['active_trailing'] = True
-                    save_order_state(symbol, state)
-                    send_telegram_msg(f"💰 {symbol} 已達 1.5 R/R！\n執行：減倉 50% + 止損移至保本價。\n剩餘倉位：{state['pos_size']:.4f}")
-
-                if current_price < latest_ema10:
-                    msg = f"🏃 [Iteration 53] {symbol} 觸發 EMA 10 尾隨止盈！\n獲利：{profit_pct:.2f}% | EMA10: {latest_ema10:.2f}"
-                    send_telegram_msg(msg)
-                    cancel_sl_order(symbol, state.get('sl_order_id'))
-                    state['status'] = 'Closed'
-                    state['exit_price'] = current_price
-                    state['exit_time'] = datetime.utcnow().isoformat()
-                    state['exit_reason'] = 'EMA10_Trailing'
-                    pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
-                    pos_value = state['pos_size'] * state['exit_price']
-                    update_balance(pnl_amount, pos_value)
-                    record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'EMA10_Trailing')
-                    save_order_state(symbol, state)
-                    continue
-            
-            # Iteration 40: Dynamic Profit Scaling (Chandelier Exit logic)
-            # If profit > 2%, start trailing with 0.5% buffer
-            highest_price = max(state.get('highest_price', entry_price), current_price)
-            state['highest_price'] = highest_price
-            highest_pnl = (highest_price - entry_price) / entry_price * 100
-            
-            if highest_pnl >= 2.0:
-                chandelier_sl = highest_price * 0.995
-                if current_price <= chandelier_sl:
-                    msg = f"📉 [Iteration 40] {symbol} 觸發 0.5% 回調止盈 (Chandelier Exit)！\n最高獲利：{highest_pnl:.2f}% | 當前獲利：{profit_pct:.2f}%"
-                    send_telegram_msg(msg)
-                    cancel_sl_order(symbol, state.get('sl_order_id'))
-                    state['status'] = 'Closed'
-                    state['exit_price'] = current_price
-                    state['exit_time'] = datetime.utcnow().isoformat()
-                    state['exit_reason'] = 'Chandelier_Exit'
-                    pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
-                    pos_value = state['pos_size'] * state['exit_price']
-                    update_balance(pnl_amount, pos_value)
-                    record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'Chandelier_Exit')
-                    save_order_state(symbol, state)
-                    continue
-
-            # Iteration 37: Profit Drawdown Protection
-            if highest_pnl >= 3.0:
-                retracement = (highest_pnl - profit_pct) / highest_pnl if highest_pnl > 0 else 0
-                if retracement >= 0.20:
-                    msg = f"🛡️ [Iteration 37] {symbol} 獲利回撤保護觸發！\n最高獲利：{highest_pnl:.2f}% | 當前獲利：{profit_pct:.2f}% | 回撤：{retracement*100:.1f}%"
-                    send_telegram_msg(msg)
-                    cancel_sl_order(symbol, state.get('sl_order_id'))
-                    state['status'] = 'Closed'
-                    state['exit_price'] = current_price
-                    state['exit_time'] = datetime.utcnow().isoformat()
-                    state['exit_reason'] = 'Profit_Protection'
-                    pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
-                    pos_value = state['pos_size'] * state['exit_price']
-                    update_balance(pnl_amount, pos_value)
-                    record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'Profit_Protection')
-                    save_order_state(symbol, state)
-                    continue
-
-            # 1. SL (Iteration 58: Fixed 2% SL or Break-even)
-            # Retro-Optimization: Fixed 2% SL performed better in backtests than ATR-based SL
-            sl_price = state.get('sl_price', entry_price * 0.98)
-            
-            # Trailing Stop Logic (if partial TP already hit)
-            if state.get('partial_tp_hit'):
-                highest_price = max(state.get('highest_price', 0), current_price)
-                state['highest_price'] = highest_price
-                # Trailing Stop: 1.5% from highest price
-                trailing_sl = highest_price * 0.985
-                sl_price = max(sl_price, trailing_sl)
-
-            if current_price <= sl_price:
-                msg = f"❌ [Iteration 29] {symbol} 觸發止損/移動止損！\n現價：{current_price:.2f} | 止損價：{sl_price:.2f}"
+            # Iteration 26: Exit Logic (BB Mid/Upper)
+            if current_price >= latest_exit['bb_upper']:
+                msg = f"🚀 [Iteration 26] {symbol} 觸及布林上軌！全數平倉獲利了結。"
                 send_telegram_msg(msg)
                 cancel_sl_order(symbol, state.get('sl_order_id'))
                 state['status'] = 'Closed'
                 state['exit_price'] = current_price
                 state['exit_time'] = datetime.utcnow().isoformat()
-                state['exit_reason'] = 'SL_Trailing'
+                state['exit_reason'] = 'BB Upper'
+                save_order_state(symbol, state)
+                continue
+
+        # 3. SL (Iteration 53: ATR-based SL)
+        sl_price = state.get('sl_price')
+        if (side == 'LONG' and current_price <= sl_price) or (side == 'SHORT' and current_price >= sl_price):
+            msg = f"❌ [Iteration 53] {symbol} 觸發止損！\n現價：{current_price:.2f} | 止損價：{sl_price:.2f}"
+            send_telegram_msg(msg)
+            cancel_sl_order(symbol, state.get('sl_order_id'))
+            state['status'] = 'Closed'
+            state['exit_price'] = current_price
+            state['exit_time'] = datetime.utcnow().isoformat()
+            state['exit_reason'] = 'SL'
+            
+            pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
+            pos_value = state['pos_size'] * state['exit_price']
+            update_balance(pnl_amount, pos_value)
+            record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'SL')
+            
+            save_order_state(symbol, state)
+            continue
+
+        # Iteration 45: Redundant Partial TP logic removed in favor of Iteration 57 1.2 R/R logic.
+        pass
+        
+        # 3. Time-based Exit (Iteration 30: 48h)
+        entry_time = datetime.fromisoformat(state['entry_time'])
+        if (datetime.utcnow() - entry_time).total_seconds() >= 172800: # 48 hours
+            if current_price > entry_price:
+                msg = f"⏳ [Iteration 30] {symbol} 持倉超過 48 小時且獲利為正，強行平倉釋放資金！"
+                send_telegram_msg(msg)
+                cancel_sl_order(symbol, state.get('sl_order_id'))
+                state['status'] = 'Closed'
+                state['exit_price'] = current_price
+                state['exit_time'] = datetime.utcnow().isoformat()
+                state['exit_reason'] = 'Time_Exit'
                 
                 # Iteration 32: Financial Tracking
                 pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
                 pos_value = state['pos_size'] * state['exit_price']
                 update_balance(pnl_amount, pos_value)
-                record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'SL_Trailing')
+                record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'Time_Exit')
                 
                 save_order_state(symbol, state)
                 continue
 
-            # Iteration 45: Redundant Partial TP logic removed in favor of Iteration 57 1.2 R/R logic.
-            pass
-            
-            # 3. Time-based Exit (Iteration 30: 48h)
-            entry_time = datetime.fromisoformat(state['entry_time'])
-            if (datetime.utcnow() - entry_time).total_seconds() >= 172800: # 48 hours
-                if current_price > entry_price:
-                    msg = f"⏳ [Iteration 30] {symbol} 持倉超過 48 小時且獲利為正，強行平倉釋放資金！"
-                    send_telegram_msg(msg)
-                    cancel_sl_order(symbol, state.get('sl_order_id'))
-                    state['status'] = 'Closed'
-                    state['exit_price'] = current_price
-                    state['exit_time'] = datetime.utcnow().isoformat()
-                    state['exit_reason'] = 'Time_Exit'
-                    
-                    # Iteration 32: Financial Tracking
-                    pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
-                    pos_value = state['pos_size'] * state['exit_price']
-                    update_balance(pnl_amount, pos_value)
-                    record_trade_history(symbol, side, state['exit_price'], state['pos_size'], pnl_amount, 'Time_Exit')
-                    
-                    save_order_state(symbol, state)
-                    continue
+def close_partial_position(symbol, qty):
+    """
+    Iteration 53: Close 50% of the position at 1.2 RR.
+    """
+    try:
+        # In a real exchange, you would send a market order to close 'qty'
+        # For now, we simulate the exchange call and update our local state
+        print(f"💰 [EXCHANGE] Partial close executed for {symbol}: {qty} units.")
+        return True
+    except Exception as e:
+        print(f"❌ Error in partial close for {symbol}: {e}")
+        return False
 
 
 

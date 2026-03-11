@@ -86,3 +86,47 @@ def calculate_stoch_rsi(df, period=14, smooth_k=3, smooth_d=3):
     d = k.rolling(window=smooth_d).mean() * 100
     return k, d
 
+
+def calculate_squeeze_index(df, period=20):
+    """
+    Iteration 52: Squeeze Index
+    Measures the ratio between Keltner Channel and Bollinger Bands.
+    Squeeze Index < 0.3 indicates extreme compression.
+    """
+    # Bollinger Bands
+    sma = df['close'].rolling(window=period).mean()
+    std = df['close'].rolling(window=period).std()
+    bb_upper = sma + (std * 2)
+    bb_lower = sma - (std * 2)
+    
+    # Keltner Channel (using ATR)
+    atr = calculate_atr(df, period)
+    kc_upper = sma + (atr * 1.5)
+    kc_lower = sma - (atr * 1.5)
+    
+    # Squeeze Index: Ratio of BB width to KC width
+    bb_width = bb_upper - bb_lower
+    kc_width = kc_upper - kc_lower
+    squeeze_index = bb_width / kc_width
+    return squeeze_index
+
+def calculate_macd_divergence(df, window=20):
+    """
+    Iteration 52: MACD Bullish Divergence
+    Price makes lower low, but MACD makes higher low.
+    """
+    macd_line, _, _ = calculate_macd(df)
+    
+    # Find local minima in price and MACD
+    price_lows = df['low'].rolling(window=window).min()
+    macd_lows = macd_line.rolling(window=window).min()
+    
+    # Check for divergence: 
+    # Current price low is lower than previous window's low, 
+    # but current MACD low is higher than previous window's low.
+    # This is a simplified version for real-time calculation.
+    price_lower_low = df['low'] < df['low'].shift(window)
+    macd_higher_low = macd_line > macd_line.shift(window)
+    
+    return price_lower_low & macd_higher_low
+
