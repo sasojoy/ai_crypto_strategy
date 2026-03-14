@@ -1,4 +1,24 @@
 
+# AI Crypto Strategy - Iteration Archive
+
+## 交接專用區 (Handover Section)
+- **環境變數 (Environment Variables)**:
+  - `GITHUB_TOKEN`: 用於 Git 同步與 API 驗證。
+  - `TELEGRAM_BOT_TOKEN`: 用於發送交易與系統通知。
+  - `TELEGRAM_CHAT_ID`: 通知接收頻道 ID。
+  - `GEMINI_API_KEY`: AI 決策核心 API。
+- **部署路徑 (Deployment Path)**:
+  - GCE: `~/ai_crypto_strategy`
+  - PM2 Name: `Iteration43_Stable` (目前用於 Iteration 60+)
+- **核心參數 (Core Parameters)**:
+  - **RSI Limit**: 45 (Standard) / 55 (Aggressive Mode)
+  - **AI Confidence**: 0.65 (Standard) / 0.75 (Defense Mode)
+  - **Min RR**: 1.5 (Standard) / 1.8 (Defense Mode)
+
+---
+
+
+
 # AI Crypto Strategy - Iterations Archive
 
 This document tracks the evolution of the trading strategy, documenting logic changes, modified files, and expected performance improvements for each iteration.

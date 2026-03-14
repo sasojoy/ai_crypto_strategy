@@ -140,11 +140,16 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     from src.market import get_ai_filtered_count
     ai_filtered = get_ai_filtered_count()
 
+    # Iteration 61: Integrated Health Check
+    from src.health_check import run_full_health_check
+    health_report = run_full_health_check()
+    
     # Iteration 60: Regime Mode Display
     regime_mode = btc_status.get('regime_mode', '未知') if btc_status else '未知'
     
-    msg = f"🚀 【Iteration 60 | 多頭追擊模式】\n"
+    msg = f"🚀 【Iteration 61 | 系統健康監控】\n"
     msg += f"📊 戰績：[勝率 {win_rate*100:.0f}%] | [Risk: {risk_level}]\n"
+    msg += f"🏥 系統狀態：\n{health_report}\n"
     msg += f"🤖 AI Confidence: {avg_ai_score*100:.1f}% ({ai_status})\n"
     msg += f"🛡️ AI Filtered Out: {ai_filtered} trades today\n"
     msg += f"📈 期望值 (EV): {ev:+.2f} ({ev_status})\n"

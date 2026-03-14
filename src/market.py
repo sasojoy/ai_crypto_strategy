@@ -1400,7 +1400,8 @@ if __name__ == "__main__":
                         'vol_change_24h': vol_change_24h,
                         'regime_mode': regime_mode
                     }
-                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 60", btc_status)
+                    # Iteration 61: Integrated Health Check in Heartbeat
+                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 61", btc_status)
                 
                 last_heartbeat_time = current_time
         except Exception as e:
