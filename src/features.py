@@ -23,19 +23,26 @@ def extract_features(df, btc_df=None):
     # 3. Price Volatility (Standard Deviation of returns)
     features['volatility_24h'] = df['close'].pct_change().rolling(window=24).std()
     
-    # 4. Relative Strength vs BTC
+    # 4. Relative Strength vs BTC & BTC Volatility
     if btc_df is not None:
         # Align BTC data with current df
         btc_close = btc_df['close'].reindex(df.index, method='ffill')
         coin_returns = df['close'].pct_change(24)
         btc_returns = btc_close.pct_change(24)
         features['relative_strength_btc'] = coin_returns - btc_returns
+        # Iteration 59: [Feature Injection] BTC Standard Deviation (24H)
+        features['btc_volatility_24h'] = btc_close.pct_change().rolling(window=24).std()
     else:
         features['relative_strength_btc'] = 0
+        features['btc_volatility_24h'] = 0
         
     # 5. Price distance from EMA 200
     ema200 = calculate_ema(df, 200)
     features['dist_ema200'] = (df['close'] - ema200) / ema200
+    
+    # Iteration 60: [Feature Injection] Price distance from EMA 20
+    ema20 = calculate_ema(df, 20)
+    features['dist_ema20'] = (df['close'] - ema20) / ema20
     
     return features.dropna()
 

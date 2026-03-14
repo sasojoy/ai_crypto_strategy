@@ -46,6 +46,9 @@ def run_evaluation(df, initial_balance=10000, rsi_th=30, ema_f=50, ema_s=200, sl
     df['rsi_slope'] = calculate_rsi_slope(df)
     df['ema20'] = calculate_ema(df, 20)
     df['ema50'] = calculate_ema(df, 50)
+    
+    # Iteration 60: [Feature Injection] Price distance from EMA 20
+    df['dist_ema20'] = (df['close'] - df['ema20']) / df['ema20']
 
     # 4H Trend Filter
     if df_4h is not None:

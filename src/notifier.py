@@ -140,11 +140,15 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     from src.market import get_ai_filtered_count
     ai_filtered = get_ai_filtered_count()
 
-    msg = f"🚀 【Iteration 58 | RETRO_OPTIMIZED】\n"
+    # Iteration 60: Regime Mode Display
+    regime_mode = btc_status.get('regime_mode', '未知') if btc_status else '未知'
+    
+    msg = f"🚀 【Iteration 60 | 多頭追擊模式】\n"
     msg += f"📊 戰績：[勝率 {win_rate*100:.0f}%] | [Risk: {risk_level}]\n"
     msg += f"🤖 AI Confidence: {avg_ai_score*100:.1f}% ({ai_status})\n"
     msg += f"🛡️ AI Filtered Out: {ai_filtered} trades today\n"
     msg += f"📈 期望值 (EV): {ev:+.2f} ({ev_status})\n"
+    msg += f"🌐 當前策略模式: {regime_mode}\n"
     msg += f"----------------------------\n"
     
     # Iteration 57: [實戰演習數據] Block
@@ -254,7 +258,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: Iteration 54 | 模式: 100% 模擬觀測"
+    msg += f"版本: Iteration 60 | 模式: 100% 模擬觀測"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")

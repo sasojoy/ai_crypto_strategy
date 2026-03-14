@@ -603,6 +603,35 @@ def run_strategy():
 
     # Iteration 55: Fetch BTC data for ML features
     df_btc_ml = fetch_1h_data('BTC/USDT')
+    
+    # Iteration 60: Dynamic Environment Filter (Regime Filter)
+    regime_mode = "趨勢擴張"
+    ml_threshold = 0.65
+    min_rr = 1.5
+    rsi_threshold_boost = 0
+    aggressive_macd = False
+    
+    if not df_btc_ml.empty:
+        # Calculate 24H Volume Change for BTC
+        btc_vol_24h_change = df_btc_ml['volume'].pct_change(24).iloc[-1]
+        
+        # Iteration 60: Aggressive Trend Mode
+        btc_ema50_ml = calculate_ema(df_btc_ml, 50).iloc[-1]
+        btc_ema200_ml = calculate_ema(df_btc_ml, 200).iloc[-1]
+        btc_bullish = df_btc_ml['close'].iloc[-1] > btc_ema50_ml > btc_ema200_ml
+        
+        if btc_vol_24h_change > 0.20 and btc_bullish:
+            regime_mode = "多頭追擊"
+            rsi_threshold_boost = 10 # 45 -> 55
+            aggressive_macd = True
+            print(f"🔥 [Iteration 60] 多頭追擊模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+        elif btc_vol_24h_change < 0:
+            regime_mode = "震盪防禦"
+            ml_threshold = 0.75
+            min_rr = 1.8
+            print(f"🛡️ [Iteration 59] 低量防禦模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+        else:
+            print(f"🚀 [Iteration 59] 趨勢擴張模式 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
 
     for symbol in symbols:
         try:
@@ -704,7 +733,7 @@ def run_strategy():
             trend_1h_strong = latest['close'] > df_1h.iloc[-1]['ema200']
 
             # 2. Double Divergence (MACD + RSI)
-            _, _, df['macd_hist'] = calculate_macd(df)
+            df['macd_line'], df['macd_signal'], df['macd_hist'] = calculate_macd(df)
             macd_hist = df['macd_hist']
             price_down = latest['close'] < df['close'].iloc[-6]
             macd_up = macd_hist.iloc[-1] > macd_hist.iloc[-6]
@@ -806,10 +835,21 @@ def run_strategy():
             trend_mode = price > ema200_1h
             trend_entry = False
             if trend_mode:
-                # RSI < 45, MACD Histogram Turn, Volume > Avg 5, Relative Strength > BTC
+                # RSI < 45 (or 55 in Aggressive Mode), MACD Histogram Turn, Volume > Avg 5, Relative Strength > BTC
                 macd_turn = macd_hist.iloc[-1] > macd_hist.iloc[-2]
                 vol_ok = latest['volume'] > avg_vol_5
-                if latest['rsi'] < 45 and macd_turn and vol_ok and relative_strength_ok:
+                
+                # Iteration 60: [Aggressive Trend Mode] MACD Aggressive Signal (MACD Line & Signal Line > 0 and Golden Cross)
+                macd_aggressive_signal = False
+                if aggressive_macd:
+                    macd_golden_cross = df['macd_line'].iloc[-1] > df['macd_signal'].iloc[-1] and df['macd_line'].iloc[-2] <= df['macd_signal'].iloc[-2]
+                    if df['macd_line'].iloc[-1] > 0 and df['macd_signal'].iloc[-1] > 0 and macd_golden_cross:
+                        macd_aggressive_signal = True
+                        print(f"🔥 [Iteration 60] {symbol} MACD Aggressive Signal Detected!")
+
+                # Iteration 60: [Dynamic RSI] Boost RSI limit in Aggressive Mode
+                rsi_limit = 45 + rsi_threshold_boost
+                if (latest['rsi'] < rsi_limit and macd_turn and vol_ok and relative_strength_ok) or macd_aggressive_signal:
                     trend_entry = True
             
             # B. Bottom Fishing Mode (Price < 1H EMA 200)
@@ -1357,9 +1397,10 @@ if __name__ == "__main__":
                         'price': btc_price,
                         'ema50': btc_ema50,
                         'is_bullish': btc_price > btc_ema50,
-                        'vol_change_24h': vol_change_24h
+                        'vol_change_24h': vol_change_24h,
+                        'regime_mode': regime_mode
                     }
-                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 52", btc_status)
+                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 60", btc_status)
                 
                 last_heartbeat_time = current_time
         except Exception as e:
