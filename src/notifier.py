@@ -51,7 +51,7 @@ def send_hourly_audit(equity, realized_pnl, active_positions):
     msg += (
         f"📈 帳戶總淨值: ${equity:,.2f}\n"
         f"----------------------------\n"
-        f"狀態：Iteration 31 資金分配器 運行中"
+        f"狀態：Iteration 61 | Aggressive Trend 運行中"
     )
     send_telegram_msg(msg)
 
@@ -144,7 +144,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     from src.health_check import run_full_health_check
     health_report = run_full_health_check()
     
-    # Iteration 60: Regime Mode Display
+    # Iteration 61: Regime Mode Display
     regime_mode = btc_status.get('regime_mode', '未知') if btc_status else '未知'
     
     msg = f"🚀 【Iteration 61 | 系統健康監控】\n"
@@ -263,7 +263,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: Iteration 60 | 模式: 100% 模擬觀測"
+    msg += f"版本: Iteration 61 | Aggressive Trend | 模式: 100% 模擬觀測"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")

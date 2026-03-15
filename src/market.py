@@ -627,7 +627,7 @@ def run_strategy():
             print(f"🔥 [Iteration 60] 多頭追擊模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
         elif btc_vol_24h_change < 0:
             regime_mode = "震盪防禦"
-            ml_threshold = 0.75
+            ml_threshold = 0.68
             min_rr = 1.8
             print(f"🛡️ [Iteration 59] 低量防禦模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
         else:
@@ -1026,7 +1026,7 @@ def run_strategy():
                         })
                         
                         # Step 3: Filter by score > 0.65
-                        if ml_score > 0.65:
+                        if ml_score > ml_threshold:
                             potential_signals.append({
                                 'symbol': symbol,
                                 'side': side,
