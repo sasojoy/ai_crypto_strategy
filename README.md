@@ -111,3 +111,9 @@ ai_crypto_strategy/
 
 ---
 *Last Updated: 2026-03-14*
+
+## ⚠️ Performance Warning (Iteration 61.3)
+- **勝率**: 26.09%
+- **總盈虧**: -$925.17 (Last 30 days BTC/USDT)
+- **交易次數**: 23
+- **警示**: 舊邏輯在縮量市場表現極差，已於 Iteration 62 緊急修正。

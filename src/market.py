@@ -618,8 +618,8 @@ def run_strategy():
     
     # Iteration 60: Dynamic Environment Filter (Regime Filter)
     regime_mode = "趨勢擴張"
-    ml_threshold = 0.65
-    min_rr = 1.5
+    ml_threshold = 0.69
+    min_rr = 1.3
     rsi_threshold_boost = 0
     aggressive_macd = False
     
@@ -632,6 +632,9 @@ def run_strategy():
         btc_ema200_ml = calculate_ema(df_btc_ml, 200).iloc[-1]
         btc_bullish = df_btc_ml['close'].iloc[-1] > btc_ema50_ml > btc_ema200_ml
         
+        if btc_vol_24h_change < -0.20:
+            print(f"🚫 [Iteration 62] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            return {}
         if btc_vol_24h_change > 0.20 and btc_bullish:
             regime_mode = "多頭追擊"
             rsi_threshold_boost = 10 # 45 -> 55
@@ -639,8 +642,8 @@ def run_strategy():
             print(f"🔥 [Iteration 60] 多頭追擊模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
         elif btc_vol_24h_change < 0:
             regime_mode = "震盪防禦"
-            ml_threshold = 0.68
-            min_rr = 1.8
+            ml_threshold = 0.75
+            min_rr = 1.3
             print(f"🛡️ [Iteration 59] 低量防禦模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
         else:
             print(f"🚀 [Iteration 59] 趨勢擴張模式 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
@@ -1108,12 +1111,12 @@ def run_strategy():
         sl_price = entry_price - sl_distance
         
         # Iteration 55: Fixed RR = 1.5 (Focus on logic validation)
-        fixed_rr = 1.5
+        fixed_rr = 1.3
         tp_price = entry_price + (sl_distance * fixed_rr)
         
         # R/R Filter (Iteration 55: Min 1.5)
         actual_rr = (tp_price - entry_price) / sl_distance if sl_distance > 0 else 0
-        if actual_rr < 1.5:
+        if actual_rr < 1.3:
             print(f"🛡️ [R/R Filter] {symbol} R/R {actual_rr:.2f} < 1.5. Skipping.")
             continue
 

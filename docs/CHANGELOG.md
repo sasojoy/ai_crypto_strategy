@@ -1,5 +1,13 @@
 # Changelog
 
+## [Iteration 62] - 2026-03-14
+### Fixed
+- Emergency threshold tightening due to 26% win-rate in backtest.
+- Hardened ML thresholds: 0.75 (Defense) / 0.69 (Trend).
+- Adjusted RR to 1.3 for current choppy market conditions.
+
+# Changelog
+
 ## [Iteration 61.3] - 2026-03-14
 ### Fixed
 - Resolved `NameError: name 'fetch_ohlcv' is not defined` by adding the function to `src/market.py`.
