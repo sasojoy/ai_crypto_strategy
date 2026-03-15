@@ -83,6 +83,24 @@ def fetch_15m_data(symbol='BTC/USDT'):
     return df
 
 
+
+def fetch_5m_data(symbol='BTC/USDT'):
+    try:
+        exchange = ccxt.binance()
+        timeframe = '5m'
+        limit = 300
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        return df
+    except Exception as e:
+        print(f"Error fetching 5m data for {symbol}: {e}")
+        return pd.DataFrame()
+
+
+
+
+
 def fetch_4h_data(symbol='BTC/USDT'):
     """
     Iteration 16: Multi-Timeframe Filter
@@ -282,8 +300,8 @@ def find_4h_structure(df_4h):
 
 def check_upside_potential(symbol, entry_price, df_1h):
     """
-    Iteration 64: Space-to-Resistance Check
-    Only allow entry if there is at least 1.5% upside to the recent 24h high.
+    Iteration 67: Space-to-Resistance Check
+    Only allow entry if there is at least 1.2% upside to the recent 24h high.
     """
     if df_1h.empty or len(df_1h) < 24:
         return True
@@ -291,8 +309,8 @@ def check_upside_potential(symbol, entry_price, df_1h):
     recent_high = df_1h.iloc[-24:]['high'].max()
     upside_pct = (recent_high - entry_price) / entry_price
     
-    if upside_pct < 0.025:
-        print(f"🛡️ [Space Check] {symbol} upside {upside_pct:.2%} < 1.5% to resistance ({recent_high:.2f}). Skipping.")
+    if upside_pct < 0.012:
+        print(f"🛡️ [Space Check] {symbol} upside {upside_pct:.2%} < 1.2% to resistance ({recent_high:.2f}). Skipping.")
         return False
     return True
 
@@ -1084,23 +1102,46 @@ def run_strategy():
                         
                         # Check 4H EMA Alignment
                         ema_aligned = check_ema_alignment(df_4h)
+                        
+                        # Iteration 66: EMA20 Slope Filter (1h)
+                        ema20 = calculate_ema(df_ml, 20)
+                        ema20_slope_up = ema20.iloc[-1] > ema20.iloc[-2]
 
-                        if ml_score >= 0.70:
+                        passed_filter = False
+                        tier = ""
+                        if ml_score >= 0.63:
                             current_risk = 0.012
-                            target_rr = 1.8
+                            target_rr = 1.5
                             tier = "Tier 1 (High Conviction)"
-                            passed_filter = True
-                        elif ml_score >= 0.60:
-                            current_risk = 0.008
-                            target_rr = 1.3
-                            tier = "Tier 2 (Squeeze Required)"
-                            # Tier 2 requires BB Squeeze and EMA Alignment
-                            passed_filter = is_squeezed and ema_aligned
-                        else:
-                            passed_filter = False
+                            passed_filter = ema20_slope_up
+                        elif ml_score >= 0.58:
+                            current_risk = 0.005
+                            target_rr = 2.0
+                            tier = "Tier 2 (Speculative)"
+                            passed_filter = is_squeezed and ema_aligned and ema20_slope_up
+                        
+                        # Iteration 67: 5m Auxiliary Scan
+                        if not passed_filter:
+                            df_5m = fetch_5m_data(symbol)
+                            if not df_5m.empty:
+                                df_features_5m = extract_features(df_5m)
+                                X_5m = df_features_5m[model.feature_names_in_].fillna(0)
+                                ml_score_5m = model.predict_proba(X_5m)[:, 1][-1]
+                                # Tier 3 requires higher score and basic trend alignment
+                                ema20_5m = calculate_ema(df_5m, 20)
+                                ema50_5m = calculate_ema(df_5m, 50)
+                                ema_aligned_5m = ema20_5m.iloc[-1] > ema50_5m.iloc[-1]
+                                ema20_slope_up_5m = ema20_5m.iloc[-1] > ema20_5m.iloc[-2]
+                                rsi_5m = calculate_rsi(df_5m).iloc[-1]
+                                
+                                if ml_score_5m > 0.70 and ema_aligned_5m and ema20_slope_up_5m and (55 <= rsi_5m <= 70):
+                                    current_risk = 0.008
+                                    target_rr = 1.5
+                                    tier = "Tier 3 (5m Auxiliary)"
+                                    passed_filter = True
 
                         if passed_filter:
-                            print(f"🎯 [Iteration 65] {symbol} {tier} Signal. Score: {ml_score:.4f}, Risk: {current_risk*100}%, RR: {target_rr}")
+                            print(f"🎯 [Iteration 66] {symbol} {tier} Signal. Score: {ml_score:.4f}, Risk: {current_risk*100}%, RR: {target_rr}")
                             potential_signals.append({
                                 'symbol': symbol,
                                 'side': side,
@@ -1113,13 +1154,14 @@ def run_strategy():
                                 'tier': tier
                             })
                         else:
-                            if ml_score >= 0.60:
+                            if ml_score >= 0.63:
                                 reason = ""
-                                if not is_squeezed: reason += "No Squeeze "
-                                if not ema_aligned: reason += "EMA Not Aligned"
-                                print(f"🛡️ [Iteration 65 Filter] {symbol} score {ml_score:.4f} but rejected: {reason}")
+                                if not is_squeezed and ml_score < 0.68: reason += "No Squeeze "
+                                if not ema_aligned and ml_score < 0.68: reason += "EMA Not Aligned "
+                                if not ema20_slope_up: reason += "EMA20 Slope Down"
+                                print(f"🛡️ [Iteration 66 Filter] {symbol} score {ml_score:.4f} but rejected: {reason}")
                             else:
-                                print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} <= 0.60. Signal rejected.")
+                                print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} < 0.63. Signal rejected.")
                             increment_ai_filtered_count()
         except Exception as e:
             print(f"Error in strategy execution for {symbol}: {e}")
@@ -1258,6 +1300,21 @@ def manage_positions(prices_rsi):
         side = state['side']
         adx = prices_rsi.get(symbol, {}).get('adx', 0)
         
+
+        
+        # Iteration 67: Trailing Stop to Break-Even
+        # If profit > 0.8%, move SL to entry price
+        profit_pct = (current_price - entry_price) / entry_price if side == 'LONG' else (entry_price - current_price) / entry_price
+        if not state.get('be_sl_active', False) and profit_pct >= 0.008:
+            new_sl = entry_price
+            print(f"🛡️ [Iteration 67] {symbol} profit {profit_pct:.2%} >= 0.8%. Moving SL to Break-Even: {new_sl}")
+            if update_sl_order(symbol, state.get('sl_order_id'), new_sl):
+                state['be_sl_active'] = True
+                state['sl_price'] = new_sl
+                save_order_state(symbol, state)
+                send_telegram_msg(f"🛡️ [Iteration 67] {symbol} 已啟動保本止損 (Trailing to BE)。")
+
+
         # Iteration 53: Infinite RR Path
         # 1. Partial TP at 1.2 RR
         rr_1_2_price = entry_price + (state['atr'] * 1.5 * 1.2) if side == 'LONG' else entry_price - (state['atr'] * 1.5 * 1.2)

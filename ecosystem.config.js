@@ -1,7 +1,7 @@
-// Iteration 64.2 - Corrected Syntax for PM2.
+// Iteration 67 - Dynamic Sniper.
 module.exports = {
   apps : [{
-    name: "Iteration64_Sniper",
+    name: "Iteration67_Sniper",
     script: "src/market.py",
     env: {
       NODE_ENV: "production",
