@@ -32,6 +32,12 @@ if not IS_SIMULATION:
         raise RuntimeError("❌ [SECURITY FATAL] IS_SIMULATION is False but no API keys found. Terminating for safety.")
 
 
+
+
+# Global state initialization
+regime_mode = "NEUTRAL"
+
+
 def load_params():
     with open('config/params.json', 'r') as f:
         return json.load(f)
@@ -70,7 +76,7 @@ def get_top_relative_strength_symbols():
     Focus on high-conviction assets (BTC, ETH, SOL) and reduce exposure to experimental ones.
     """
     selected_symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
-    print(f"🎯 [Iteration 42 Re-allocation] Monitoring Selected Symbols: {selected_symbols}")
+    print(f"🎯 [Iteration 67] Monitoring Selected Symbols: {selected_symbols}")
     return selected_symbols
 
 def fetch_15m_data(symbol='BTC/USDT'):
@@ -297,6 +303,25 @@ def find_4h_structure(df_4h):
     resistance = df_4h.iloc[-20:]['high'].max()
     
     return support, resistance
+
+
+
+def calculate_squeeze_index(df, window=100):
+    """
+    Iteration 67: Calculate Bollinger Band Squeeze Index.
+    Returns the percentile rank of the current BB Width over the specified window.
+    """
+    if df.empty or len(df) < window:
+        return 1.0 # No squeeze if not enough data
+    
+    _, _, bb_width, _ = calculate_bollinger_bands(df)
+    current_width = bb_width.iloc[-1]
+    historical_widths = bb_width.iloc[-window:]
+    
+    # Calculate percentile rank
+    percentile = (historical_widths < current_width).mean()
+    return percentile
+
 
 def check_upside_potential(symbol, entry_price, df_1h):
     """
@@ -628,10 +653,11 @@ def check_ema_alignment(df_4h):
 
 
 def run_strategy():
+    global regime_mode
     params = load_params()
 
-    # Iteration 64.1: Fix variable initialization to prevent crash
-    regime_mode = "PROTECT"
+    # Iteration 67: Fix variable initialization to prevent crash
+    regime_mode = "NEUTRAL"
     indicators_signal = False
 
     # Iteration 55: Initialize ML Model
@@ -685,20 +711,20 @@ def run_strategy():
         btc_bullish = df_btc_ml['close'].iloc[-1] > btc_ema50_ml > btc_ema200_ml
         
         if btc_vol_24h_change < -0.20:
-            print(f"🚫 [Iteration 64] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            print(f"🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
             return {}
         if btc_vol_24h_change > 0.20 and btc_bullish:
             regime_mode = "多頭追擊"
             rsi_threshold_boost = 10 # 45 -> 55
             aggressive_macd = True
-            print(f"🔥 [Iteration 60] 多頭追擊模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            print(f"🔥 [Iteration 67] 多頭追擊模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
         elif btc_vol_24h_change < 0:
             regime_mode = "震盪防禦"
             ml_threshold = 0.85
             min_rr = 1.3
-            print(f"🛡️ [Iteration 59] 低量防禦模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            print(f"🛡️ [Iteration 67] 低量防禦模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
         else:
-            print(f"🚀 [Iteration 59] 趨勢擴張模式 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            print(f"🚀 [Iteration 67] 趨勢擴張模式 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
 
     for symbol in symbols:
         try:
@@ -796,7 +822,7 @@ def run_strategy():
             # 1. MTF Filter (1H EMA 200)
             df_1h = fetch_1h_data(symbol)
             if df_1h.empty:
-                print(f"⚠️ [Iteration 42] {symbol} 1H data empty. Skipping.")
+                print(f"⚠️ [Iteration 67] {symbol} 1H data empty. Skipping.")
                 continue
             df_1h['ema200'] = calculate_ema(df_1h, 200)
             trend_1h_strong = latest['close'] > df_1h.iloc[-1]['ema200']
@@ -914,7 +940,7 @@ def run_strategy():
                     macd_golden_cross = df['macd_line'].iloc[-1] > df['macd_signal'].iloc[-1] and df['macd_line'].iloc[-2] <= df['macd_signal'].iloc[-2]
                     if df['macd_line'].iloc[-1] > 0 and df['macd_signal'].iloc[-1] > 0 and macd_golden_cross:
                         macd_aggressive_signal = True
-                        print(f"🔥 [Iteration 60] {symbol} MACD Aggressive Signal Detected!")
+                        print(f"🔥 [Iteration 67] {symbol} MACD Aggressive Signal Detected!")
 
                 # Iteration 60: [Dynamic RSI] Boost RSI limit in Aggressive Mode
                 rsi_limit = 45 + rsi_threshold_boost
@@ -978,7 +1004,7 @@ def run_strategy():
                     if (datetime.utcnow() - exit_time).total_seconds() < 1800: # 30 mins
                         # Only allow if RSI is lower than previous entry
                         if latest['rsi'] >= last_state.get('entry_rsi', 0):
-                            print(f"🛡️ [Iteration 39] {symbol} 處於止損保護期，且 RSI 未創新低。跳過進場。")
+                            print(f"🛡️ [Iteration 67] {symbol} 處於止損保護期，且 RSI 未創新低。跳過進場。")
                             long_signal = False
 
             short_signal = False # Iteration 29/30/31 focus on Long Pullback Strategy
@@ -1061,13 +1087,13 @@ def run_strategy():
                 # Iteration 23: BTC Sentiment & Funding Rate Filter
                 if side == 'LONG':
                     if not btc_sentiment_ok:
-                        print(f"🚫 [Iteration 23] {symbol} Long signal ignored: BTC Sentiment Bearish.")
+                        print(f"🚫 [Iteration 67] {symbol} Long signal ignored: BTC Sentiment Bearish.")
                         continue
                     
                     if symbol in ['DOGE/USDT', 'XRP/USDT']:
                         funding_rate = fetch_funding_rate(symbol)
                         if funding_rate > 0.0005:
-                            print(f"🚫 [Iteration 23] {symbol} Long signal ignored: Funding Rate too high ({funding_rate*100:.4f}%).")
+                            print(f"🚫 [Iteration 67] {symbol} Long signal ignored: Funding Rate too high ({funding_rate*100:.4f}%).")
                             continue
 
                 # Calculate Volume Growth Rate for Correlation Detection
@@ -1141,7 +1167,7 @@ def run_strategy():
                                     passed_filter = True
 
                         if passed_filter:
-                            print(f"🎯 [Iteration 66] {symbol} {tier} Signal. Score: {ml_score:.4f}, Risk: {current_risk*100}%, RR: {target_rr}")
+                            print(f"🎯 [Iteration 67] {symbol} {tier} Signal. Score: {ml_score:.4f}, Risk: {current_risk*100}%, RR: {target_rr}")
                             potential_signals.append({
                                 'symbol': symbol,
                                 'side': side,
@@ -1159,7 +1185,7 @@ def run_strategy():
                                 if not is_squeezed and ml_score < 0.68: reason += "No Squeeze "
                                 if not ema_aligned and ml_score < 0.68: reason += "EMA Not Aligned "
                                 if not ema20_slope_up: reason += "EMA20 Slope Down"
-                                print(f"🛡️ [Iteration 66 Filter] {symbol} score {ml_score:.4f} but rejected: {reason}")
+                                print(f"🛡️ [Iteration 67] {symbol} score {ml_score:.4f} but rejected: {reason}")
                             else:
                                 print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} < 0.63. Signal rejected.")
                             increment_ai_filtered_count()
@@ -1321,7 +1347,7 @@ def manage_positions(prices_rsi):
         
         if not state.get('partial_tp_done', False):
             if (side == 'LONG' and current_price >= rr_1_2_price) or (side == 'SHORT' and current_price <= rr_1_2_price):
-                msg = f"💰 [Iteration 53] {symbol} 達到 1.2 RR！執行 50% 減倉止盈。\n剩餘 50% 開啟 EMA 10 移動止損。"
+                msg = f"💰 [Iteration 67] {symbol} 達到 1.2 RR！執行 50% 減倉止盈。\n剩餘 50% 開啟 EMA 10 移動止損。"
                 send_telegram_msg(msg)
                 
                 # Execute 50% reduction
@@ -1338,7 +1364,7 @@ def manage_positions(prices_rsi):
             df_exit['ema10'] = calculate_ema(df_exit, 10)
             ema10 = df_exit['ema10'].iloc[-1]
             if (side == 'LONG' and current_price < ema10) or (side == 'SHORT' and current_price > ema10):
-                msg = f"📈 [Iteration 53] {symbol} 跌破 EMA 10！全數平倉獲利了結。"
+                msg = f"📈 [Iteration 67] {symbol} 跌破 EMA 10！全數平倉獲利了結。"
                 send_telegram_msg(msg)
                 cancel_sl_order(symbol, state.get('sl_order_id'))
                 state['status'] = 'Closed'
@@ -1357,7 +1383,7 @@ def manage_positions(prices_rsi):
         if side == 'LONG':
             # Iteration 26: Exit Logic (BB Mid/Upper)
             if current_price >= latest_exit['bb_upper']:
-                msg = f"🚀 [Iteration 26] {symbol} 觸及布林上軌！全數平倉獲利了結。"
+                msg = f"🚀 [Iteration 67] {symbol} 觸及布林上軌！全數平倉獲利了結。"
                 send_telegram_msg(msg)
                 cancel_sl_order(symbol, state.get('sl_order_id'))
                 state['status'] = 'Closed'
@@ -1370,7 +1396,7 @@ def manage_positions(prices_rsi):
         # 3. SL (Iteration 53: ATR-based SL)
         sl_price = state.get('sl_price')
         if (side == 'LONG' and current_price <= sl_price) or (side == 'SHORT' and current_price >= sl_price):
-            msg = f"❌ [Iteration 53] {symbol} 觸發止損！\n現價：{current_price:.2f} | 止損價：{sl_price:.2f}"
+            msg = f"❌ [Iteration 67] {symbol} 觸發止損！\n現價：{current_price:.2f} | 止損價：{sl_price:.2f}"
             send_telegram_msg(msg)
             cancel_sl_order(symbol, state.get('sl_order_id'))
             state['status'] = 'Closed'
@@ -1393,7 +1419,7 @@ def manage_positions(prices_rsi):
         entry_time = datetime.fromisoformat(state['entry_time'])
         if (datetime.utcnow() - entry_time).total_seconds() >= 172800: # 48 hours
             if current_price > entry_price:
-                msg = f"⏳ [Iteration 30] {symbol} 持倉超過 48 小時且獲利為正，強行平倉釋放資金！"
+                msg = f"⏳ [Iteration 67] {symbol} 持倉超過 48 小時且獲利為正，強行平倉釋放資金！"
                 send_telegram_msg(msg)
                 cancel_sl_order(symbol, state.get('sl_order_id'))
                 state['status'] = 'Closed'
@@ -1427,7 +1453,7 @@ def close_partial_position(symbol, qty):
 
 
 if __name__ == "__main__":
-    send_telegram_msg("🚀 [System Heartbeat] Iteration 43_Hard_SL_Auto_Recovery 正在 GCE 啟動。交易所硬止損與全域異常恢復機制已就緒。")
+    send_telegram_msg("🚀 [System Heartbeat] Iteration 67_Dynamic_Sniper 正在 GCE 啟動。高頻掃描與動態保本機制已就緒。")
     import sys
     if "--check-accounting" in sys.argv:
         print("📊 [ACCOUNTING CHECK]")
@@ -1451,10 +1477,10 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 43 - Hard SL & Auto-Recovery"
+    STRATEGY_VERSION = "Iteration 67 - Dynamic Sniper"
     last_heartbeat_time = 0
     last_summary_date = None
-    send_telegram_msg("🚀 Iteration 43_Hard_SL_Auto_Recovery 已於遠端正式啟動，交易所硬止損與全域異常恢復機制已就緒。")
+    send_telegram_msg("🚀 Iteration 67_Dynamic_Sniper 已於遠端正式啟動，高頻掃描與動態保本機制已就緒。")
 
     while True:
         try:
