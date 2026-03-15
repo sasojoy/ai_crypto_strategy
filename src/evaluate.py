@@ -8,7 +8,7 @@ import json
 from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels, calculate_rsi_slope
 from src.features import extract_features
 
-def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=14):
+def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=30):
     exchange = ccxt.binance()
     since = exchange.parse8601((datetime.now() - timedelta(days=days)).isoformat())
     all_ohlcv = []
@@ -25,7 +25,7 @@ def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=14):
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     return df
 
-def run_evaluation(df, initial_balance=10000, ml_threshold=0.69):
+def run_evaluation(df, initial_balance=10000, ml_threshold=0.646):
     if df.empty: return {"score": 0, "profit": 0, "win_rate": 0, "max_dd": 0, "trades": 0}
 
     # Load Model
@@ -38,6 +38,8 @@ def run_evaluation(df, initial_balance=10000, ml_threshold=0.69):
     # Indicators for logic
     df['atr'] = calculate_atr(df, 14)
     df['ema200'] = calculate_ema(df, 200)
+    df['ema50'] = calculate_ema(df, 50)
+    df['rsi'] = calculate_rsi(df)
     
     # Feature extraction for ML
     df_features = extract_features(df)
@@ -65,7 +67,7 @@ def run_evaluation(df, initial_balance=10000, ml_threshold=0.69):
         
         if not in_position:
             # Iteration 61.3 Logic: ML Threshold + Trend Filter
-            if latest['ml_prob'] >= ml_threshold and latest['close'] > latest['ema200']:
+            if latest['ml_prob'] >= ml_threshold and latest['close'] > latest['ema200'] and latest['close'] > latest['ema50'] and (55 <= latest['rsi'] <= 70):
                 in_position = True
                 side = 'LONG'
                 entry_price = latest['close']
@@ -94,15 +96,21 @@ def run_evaluation(df, initial_balance=10000, ml_threshold=0.69):
                     in_position = False
 
     trades_df = pd.DataFrame(trades)
-    total_trades = len(trades_df[trades_df['profit'] != 0])
-    win_rate = (trades_df["profit"] > 0).sum() / total_trades if total_trades > 0 else 0
-    net_profit = balance - initial_balance
-    
-    if total_trades > 0:
-        trades_df["cum_profit"] = trades_df["profit"].cumsum() + initial_balance
-        peak = trades_df["cum_profit"].cummax()
-        max_dd = abs(((trades_df["cum_profit"] - peak) / peak).min())
+    if not trades_df.empty:
+        total_trades = len(trades_df[trades_df['profit'] != 0])
+        win_rate = (trades_df["profit"] > 0).sum() / total_trades if total_trades > 0 else 0
+        net_profit = balance - initial_balance
+        
+        if total_trades > 0:
+            trades_df["cum_profit"] = trades_df["profit"].cumsum() + initial_balance
+            peak = trades_df["cum_profit"].cummax()
+            max_dd = abs(((trades_df["cum_profit"] - peak) / peak).min())
+        else:
+            max_dd = 0
     else:
+        total_trades = 0
+        win_rate = 0
+        net_profit = 0
         max_dd = 0
         
     return {"profit": net_profit, "win_rate": win_rate, "max_dd": max_dd, "trades": total_trades}
@@ -110,9 +118,9 @@ def run_evaluation(df, initial_balance=10000, ml_threshold=0.69):
 if __name__ == "__main__":
     symbol = 'BTC/USDT'
     print(f"🚀 Running Local Evaluation for {symbol} (Last 14 days)...")
-    df = fetch_backtest_data(symbol, days=14)
+    df = fetch_backtest_data(symbol, days=30)
     if not df.empty:
-        res = run_evaluation(df, ml_threshold=0.69)
+        res = run_evaluation(df, ml_threshold=0.646)
         print("\n" + "="*30)
         print("📊 REAL-WORLD BACKTEST RESULTS")
         print("="*30)

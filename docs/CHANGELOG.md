@@ -1,3 +1,10 @@
+## [Iteration 64] - 2026-03-14
+### Added
+- High-Win-Rate Mode: ml_threshold raised to 0.85.
+- 4H Trend Filter: Price must be above 4H EMA50.
+- RSI Momentum Filter: 15m RSI must be between 55 and 70.
+- Enhanced Space Check: Upside potential requirement raised to 2.5%.
+
 ## [Iteration 63] - 2026-03-14
 ### Added
 - Space-to-Resistance check: Only allow entry if upside potential > 1.5%.

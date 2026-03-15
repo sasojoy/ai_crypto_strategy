@@ -282,7 +282,7 @@ def find_4h_structure(df_4h):
 
 def check_upside_potential(symbol, entry_price, df_1h):
     """
-    Iteration 63: Space-to-Resistance Check
+    Iteration 64: Space-to-Resistance Check
     Only allow entry if there is at least 1.5% upside to the recent 24h high.
     """
     if df_1h.empty or len(df_1h) < 24:
@@ -291,7 +291,7 @@ def check_upside_potential(symbol, entry_price, df_1h):
     recent_high = df_1h.iloc[-24:]['high'].max()
     upside_pct = (recent_high - entry_price) / entry_price
     
-    if upside_pct < 0.015:
+    if upside_pct < 0.025:
         print(f"🛡️ [Space Check] {symbol} upside {upside_pct:.2%} < 1.5% to resistance ({recent_high:.2f}). Skipping.")
         return False
     return True
@@ -599,6 +599,11 @@ def get_daily_stats():
 
 def run_strategy():
     params = load_params()
+
+    # Iteration 64.1: Fix variable initialization to prevent crash
+    regime_mode = "PROTECT"
+    indicators_signal = False
+
     # Iteration 55: Initialize ML Model
     ml_model = CryptoMLModel()
     ml_model.load()
@@ -635,7 +640,7 @@ def run_strategy():
     
     # Iteration 60: Dynamic Environment Filter (Regime Filter)
     regime_mode = "趨勢擴張"
-    ml_threshold = 0.69
+    ml_threshold = 0.85
     min_rr = 1.3
     rsi_threshold_boost = 0
     aggressive_macd = False
@@ -650,7 +655,7 @@ def run_strategy():
         btc_bullish = df_btc_ml['close'].iloc[-1] > btc_ema50_ml > btc_ema200_ml
         
         if btc_vol_24h_change < -0.20:
-            print(f"🚫 [Iteration 63] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            print(f"🚫 [Iteration 64] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
             return {}
         if btc_vol_24h_change > 0.20 and btc_bullish:
             regime_mode = "多頭追擊"
@@ -659,7 +664,7 @@ def run_strategy():
             print(f"🔥 [Iteration 60] 多頭追擊模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
         elif btc_vol_24h_change < 0:
             regime_mode = "震盪防禦"
-            ml_threshold = 0.75
+            ml_threshold = 0.85
             min_rr = 1.3
             print(f"🛡️ [Iteration 59] 低量防禦模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
         else:
@@ -694,8 +699,9 @@ def run_strategy():
 
             # 4H Trend Filter (Strict Iteration 21)
             df_4h['ema200'] = calculate_ema(df_4h, 200)
+            df_4h['ema50'] = calculate_ema(df_4h, 50)
             latest_4h = df_4h.iloc[-1]
-            trend_4h = "Long" if latest_4h['close'] > latest_4h['ema200'] else "Short"
+            trend_4h = "Long" if latest_4h['close'] > latest_4h['ema200'] and latest_4h['close'] > latest_4h['ema50'] else "Short"
 
             latest = df.iloc[-1]
             prev = df.iloc[-2]
@@ -731,6 +737,7 @@ def run_strategy():
             df_4h = fetch_4h_data(symbol)
             if df_4h.empty: continue
             df_4h['ema200'] = calculate_ema(df_4h, 200)
+            df_4h['ema50'] = calculate_ema(df_4h, 50)
             
             support_4h, resistance_4h = find_4h_structure(df_4h)
             support_strength = "N/A"
@@ -904,7 +911,7 @@ def run_strategy():
             time_filter_ok = not (0 <= current_hour < 4)
             
             # Final Signal Logic
-            long_signal = (trend_entry or bottom_entry or squeeze_breakout) and time_filter_ok
+            long_signal = (trend_entry or bottom_entry or squeeze_breakout) and time_filter_ok and (55 <= latest["rsi"] <= 70)
             
             # Special Case: Squeeze Breakout uses 50% position size
             is_squeeze_trade = squeeze_breakout and not (trend_entry or bottom_entry)
@@ -1138,7 +1145,7 @@ def run_strategy():
             continue
 
         # Iteration 50: Slippage & Depth Protection
-        # Iteration 63: Space-to-Resistance Check
+        # Iteration 64: Space-to-Resistance Check
         df_1h_check = fetch_1h_data(symbol)
         if not check_upside_potential(symbol, entry_price, df_1h_check):
             continue
