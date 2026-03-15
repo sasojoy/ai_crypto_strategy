@@ -328,15 +328,19 @@ def check_upside_potential(symbol, entry_price, df_1h):
     Iteration 67: Space-to-Resistance Check
     Only allow entry if there is at least 1.2% upside to the recent 24h high.
     """
-    if df_1h.empty or len(df_1h) < 24:
+    if not isinstance(df_1h, pd.DataFrame) or df_1h.empty or len(df_1h) < 24:
         return True
     
-    recent_high = df_1h.iloc[-24:]['high'].max()
-    upside_pct = (recent_high - entry_price) / entry_price
-    
-    if upside_pct < 0.012:
-        print(f"🛡️ [Space Check] {symbol} upside {upside_pct:.2%} < 1.2% to resistance ({recent_high:.2f}). Skipping.")
-        return False
+    try:
+        recent_high = df_1h.iloc[-24:]['high'].max()
+        upside_pct = (recent_high - entry_price) / entry_price
+        
+        if upside_pct < 0.012:
+            print(f"🛡️ [Iteration 67] [Space Check] {symbol} upside {upside_pct:.2%} < 1.2% to resistance ({recent_high:.2f}). Skipping.")
+            return False
+    except Exception as e:
+        print(f"Error in check_upside_potential for {symbol}: {e}")
+        return True
     return True
 
 
@@ -952,12 +956,14 @@ def run_strategy():
             bottom_entry = False
             if bottom_fishing_mode:
                 # RSI < 32, MACD Bullish Divergence
-                macd_bullish_div = calculate_macd_divergence(df).iloc[-1]
+                macd_bullish_div_series = calculate_macd_divergence(df)
+                macd_bullish_div = macd_bullish_div_series.iloc[-1] if hasattr(macd_bullish_div_series, 'iloc') else macd_bullish_div_series
                 if latest['rsi'] < 32 and macd_bullish_div:
                     bottom_entry = True
             
             # 2. Squeeze Breakout Strategy
-            squeeze_index = calculate_squeeze_index(df).iloc[-1]
+            squeeze_index_series = calculate_squeeze_index(df)
+            squeeze_index = squeeze_index_series.iloc[-1] if hasattr(squeeze_index_series, 'iloc') else squeeze_index_series
             squeeze_breakout = False
             if squeeze_index < 0.3 and latest['close'] > latest['bb_upper']:
                 squeeze_breakout = True
@@ -1156,9 +1162,10 @@ def run_strategy():
                                 # Tier 3 requires higher score and basic trend alignment
                                 ema20_5m = calculate_ema(df_5m, 20)
                                 ema50_5m = calculate_ema(df_5m, 50)
-                                ema_aligned_5m = ema20_5m.iloc[-1] > ema50_5m.iloc[-1]
-                                ema20_slope_up_5m = ema20_5m.iloc[-1] > ema20_5m.iloc[-2]
-                                rsi_5m = calculate_rsi(df_5m).iloc[-1]
+                                ema_aligned_5m = (ema20_5m.iloc[-1] if hasattr(ema20_5m, 'iloc') else ema20_5m) > (ema50_5m.iloc[-1] if hasattr(ema50_5m, 'iloc') else ema50_5m)
+                                ema20_slope_up_5m = (ema20_5m.iloc[-1] if hasattr(ema20_5m, 'iloc') else ema20_5m) > (ema20_5m.iloc[-2] if hasattr(ema20_5m, 'iloc') else ema20_5m)
+                                rsi_5m_series = calculate_rsi(df_5m)
+                                rsi_5m = rsi_5m_series.iloc[-1] if hasattr(rsi_5m_series, 'iloc') else rsi_5m_series
                                 
                                 if ml_score_5m > 0.70 and ema_aligned_5m and ema20_slope_up_5m and (55 <= rsi_5m <= 70):
                                     current_risk = 0.008
@@ -1361,37 +1368,40 @@ def manage_positions(prices_rsi):
         # 2. EMA 10 Trailing Stop (for remaining 50%)
         if state.get('partial_tp_done', False):
             df_exit = fetch_15m_data(symbol)
-            df_exit['ema10'] = calculate_ema(df_exit, 10)
-            ema10 = df_exit['ema10'].iloc[-1]
-            if (side == 'LONG' and current_price < ema10) or (side == 'SHORT' and current_price > ema10):
-                msg = f"📈 [Iteration 67] {symbol} 跌破 EMA 10！全數平倉獲利了結。"
-                send_telegram_msg(msg)
-                cancel_sl_order(symbol, state.get('sl_order_id'))
-                state['status'] = 'Closed'
-                state['exit_price'] = current_price
-                state['exit_time'] = datetime.utcnow().isoformat()
-                state['exit_reason'] = 'EMA 10 Trailing'
-                save_order_state(symbol, state)
-                continue
+            if not df_exit.empty:
+                df_exit['ema10'] = calculate_ema(df_exit, 10)
+                ema10_series = df_exit['ema10']
+                ema10 = ema10_series.iloc[-1] if hasattr(ema10_series, 'iloc') else ema10_series
+                if (side == 'LONG' and current_price < ema10) or (side == 'SHORT' and current_price > ema10):
+                    msg = f"📈 [Iteration 67] {symbol} 跌破 EMA 10！全數平倉獲利了結。"
+                    send_telegram_msg(msg)
+                    cancel_sl_order(symbol, state.get('sl_order_id'))
+                    state['status'] = 'Closed'
+                    state['exit_price'] = current_price
+                    state['exit_time'] = datetime.utcnow().isoformat()
+                    state['exit_reason'] = 'EMA 10 Trailing'
+                    save_order_state(symbol, state)
+                    continue
 
         # Iteration 26: Exit Logic (BB Mid/Upper)
         # Fetch latest BB for exit
         df_exit = fetch_15m_data(symbol)
-        df_exit['bb_upper'], df_exit['bb_lower'], df_exit['bb_mid'], _ = calculate_bollinger_bands(df_exit, 20, 2)
-        latest_exit = df_exit.iloc[-1]
+        if not df_exit.empty:
+            df_exit['bb_upper'], df_exit['bb_lower'], df_exit['bb_mid'], _ = calculate_bollinger_bands(df_exit, 20, 2)
+            latest_exit = df_exit.iloc[-1] if hasattr(df_exit, 'iloc') else df_exit
 
-        if side == 'LONG':
-            # Iteration 26: Exit Logic (BB Mid/Upper)
-            if current_price >= latest_exit['bb_upper']:
-                msg = f"🚀 [Iteration 67] {symbol} 觸及布林上軌！全數平倉獲利了結。"
-                send_telegram_msg(msg)
-                cancel_sl_order(symbol, state.get('sl_order_id'))
-                state['status'] = 'Closed'
-                state['exit_price'] = current_price
-                state['exit_time'] = datetime.utcnow().isoformat()
-                state['exit_reason'] = 'BB Upper'
-                save_order_state(symbol, state)
-                continue
+            if side == 'LONG':
+                # Iteration 26: Exit Logic (BB Mid/Upper)
+                if current_price >= latest_exit['bb_upper']:
+                    msg = f"🚀 [Iteration 67] {symbol} 觸及布林上軌！全數平倉獲利了結。"
+                    send_telegram_msg(msg)
+                    cancel_sl_order(symbol, state.get('sl_order_id'))
+                    state['status'] = 'Closed'
+                    state['exit_price'] = current_price
+                    state['exit_time'] = datetime.utcnow().isoformat()
+                    state['exit_reason'] = 'BB Upper'
+                    save_order_state(symbol, state)
+                    continue
 
         # 3. SL (Iteration 53: ATR-based SL)
         sl_price = state.get('sl_price')
