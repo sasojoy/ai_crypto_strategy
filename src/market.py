@@ -952,14 +952,14 @@ def run_strategy():
             bottom_entry = False
             if bottom_fishing_mode:
                 # RSI < 32, MACD Bullish Divergence
-                macd_bullish_div = calculate_macd_divergence(df)
-                if latest['rsi'] < 32 and macd_bullish_div.iloc[-1]:
+                macd_bullish_div = calculate_macd_divergence(df).iloc[-1]
+                if latest['rsi'] < 32 and macd_bullish_div:
                     bottom_entry = True
             
             # 2. Squeeze Breakout Strategy
-            squeeze_index = calculate_squeeze_index(df)
+            squeeze_index = calculate_squeeze_index(df).iloc[-1]
             squeeze_breakout = False
-            if squeeze_index.iloc[-1] < 0.3 and latest['close'] > latest['bb_upper']:
+            if squeeze_index < 0.3 and latest['close'] > latest['bb_upper']:
                 squeeze_breakout = True
             
             # 3. Time-Filter (Exclude 00:00 - 04:00 UTC - Low Liquidity)
