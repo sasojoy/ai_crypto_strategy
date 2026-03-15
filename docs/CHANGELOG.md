@@ -1,3 +1,8 @@
+## [Iteration 63] - 2026-03-14
+### Added
+- Space-to-Resistance check: Only allow entry if upside potential > 1.5%.
+- Risk reduction: Lowered total_risk_pct to 0.8% for capital preservation.
+
 # Changelog
 
 ## [Iteration 62] - 2026-03-14

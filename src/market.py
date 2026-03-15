@@ -280,6 +280,23 @@ def find_4h_structure(df_4h):
     
     return support, resistance
 
+def check_upside_potential(symbol, entry_price, df_1h):
+    """
+    Iteration 63: Space-to-Resistance Check
+    Only allow entry if there is at least 1.5% upside to the recent 24h high.
+    """
+    if df_1h.empty or len(df_1h) < 24:
+        return True
+    
+    recent_high = df_1h.iloc[-24:]['high'].max()
+    upside_pct = (recent_high - entry_price) / entry_price
+    
+    if upside_pct < 0.015:
+        print(f"🛡️ [Space Check] {symbol} upside {upside_pct:.2%} < 1.5% to resistance ({recent_high:.2f}). Skipping.")
+        return False
+    return True
+
+
 
 def log_data(timestamp, price, rsi, ema200):
     log_file = os.path.join(DATA_DIR, 'history.csv')
@@ -600,7 +617,7 @@ def run_strategy():
     
     # Iteration 19: Dynamic Equity-Based Risking
     balance = get_account_balance()
-    risk_pct = params.get('risk_pct', 0.015) # Default 1.5%
+    risk_pct = 0.008 # Default 1.5%
 
     # Iteration 23: BTC Sentiment Filter
     df_btc_1h = fetch_1h_data('BTC/USDT')
@@ -633,7 +650,7 @@ def run_strategy():
         btc_bullish = df_btc_ml['close'].iloc[-1] > btc_ema50_ml > btc_ema200_ml
         
         if btc_vol_24h_change < -0.20:
-            print(f"🚫 [Iteration 62] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            print(f"🚫 [Iteration 63] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
             return {}
         if btc_vol_24h_change > 0.20 and btc_bullish:
             regime_mode = "多頭追擊"
@@ -1121,6 +1138,11 @@ def run_strategy():
             continue
 
         # Iteration 50: Slippage & Depth Protection
+        # Iteration 63: Space-to-Resistance Check
+        df_1h_check = fetch_1h_data(symbol)
+        if not check_upside_potential(symbol, entry_price, df_1h_check):
+            continue
+
         if not check_order_book_depth(symbol, current_position_value):
             print(f"🛡️ [Slippage Shield] {symbol} depth insufficient or slippage > 0.5%. Entry aborted.")
             continue
