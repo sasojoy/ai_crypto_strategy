@@ -25,7 +25,7 @@ def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=30):
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     return df
 
-def run_evaluation(df, initial_balance=10000, ml_threshold=0.646):
+def run_evaluation(df, initial_balance=10000):
     if df.empty: return {"score": 0, "profit": 0, "win_rate": 0, "max_dd": 0, "trades": 0}
 
     # Load Model
@@ -39,7 +39,9 @@ def run_evaluation(df, initial_balance=10000, ml_threshold=0.646):
     df['atr'] = calculate_atr(df, 14)
     df['ema200'] = calculate_ema(df, 200)
     df['ema50'] = calculate_ema(df, 50)
+    df['ema20'] = calculate_ema(df, 20)
     df['rsi'] = calculate_rsi(df)
+    _, _, df['bb_width'], _ = calculate_bollinger_bands(df)
     
     # Feature extraction for ML
     df_features = extract_features(df)
@@ -53,6 +55,9 @@ def run_evaluation(df, initial_balance=10000, ml_threshold=0.646):
     df['ml_prob'] = 0.0
     df.loc[df_features.index, 'ml_prob'] = probs
 
+    print(f"ML Prob Max: {df['ml_prob'].max():.4f}, Mean: {df['ml_prob'].mean():.4f}, Min: {df['ml_prob'].min():.4f}")
+
+
     balance = initial_balance
     trades = []
     in_position = False
@@ -62,21 +67,44 @@ def run_evaluation(df, initial_balance=10000, ml_threshold=0.646):
     pos_size = 0
     side = None
 
-    for i in range(50, len(df)):
+    for i in range(100, len(df)):
         latest = df.iloc[i]
         
         if not in_position:
-            # Iteration 61.3 Logic: ML Threshold + Trend Filter
-            if latest['ml_prob'] >= ml_threshold and latest['close'] > latest['ema200'] and latest['close'] > latest['ema50'] and (55 <= latest['rsi'] <= 70):
+            # Iteration 65 Logic: Tiered Risk + BB Squeeze + EMA Alignment
+            ml_score = latest['ml_prob']
+            
+            # BB Squeeze Filter (20-percentile)
+            bb_width_20_pct = df['bb_width'].iloc[i-100:i].quantile(0.20)
+            is_squeezed = latest['bb_width'] < bb_width_20_pct
+            
+            # EMA Alignment (4H proxy using 15m data: 4H EMA20 is roughly 15m EMA320)
+            # But for simplicity in backtest, let's use 1h proxy or just 15m alignment
+            ema_aligned = latest['ema20'] > latest['ema50']
+
+            passed_filter = False
+            current_risk = 0
+            target_rr = 0
+
+            if ml_score >= 0.70:
+                current_risk = 0.012
+                target_rr = 1.8
+                passed_filter = True
+            elif ml_score >= 0.60:
+                current_risk = 0.008
+                target_rr = 1.3
+                passed_filter = is_squeezed and ema_aligned
+
+            if passed_filter and (55 <= latest['rsi'] <= 70) and latest['close'] > latest['ema200']:
                 in_position = True
                 side = 'LONG'
                 entry_price = latest['close']
                 
                 sl_dist = 2 * latest['atr']
                 sl_price = entry_price - sl_dist
-                tp_price = entry_price + (sl_dist * 1.3) # RR 1.8
+                tp_price = entry_price + (sl_dist * target_rr)
                 
-                risk_amount = balance * 0.015
+                risk_amount = balance * current_risk
                 pos_size = risk_amount / sl_dist if sl_dist > 0 else 0
                 
                 trades.append({'entry_time': latest['timestamp'], 'entry_price': entry_price, 'side': side, 'profit': 0})
@@ -120,7 +148,7 @@ if __name__ == "__main__":
     print(f"🚀 Running Local Evaluation for {symbol} (Last 14 days)...")
     df = fetch_backtest_data(symbol, days=30)
     if not df.empty:
-        res = run_evaluation(df, ml_threshold=0.646)
+        res = run_evaluation(df)
         print("\n" + "="*30)
         print("📊 REAL-WORLD BACKTEST RESULTS")
         print("="*30)

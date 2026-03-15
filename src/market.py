@@ -597,6 +597,18 @@ def get_daily_stats():
     return equity, floating_pnl, realized_pnl, total_risk_pct
 
 
+
+def check_ema_alignment(df_4h):
+    """
+    Iteration 65: Confirm 4H EMA20 > EMA50 for strong trend alignment.
+    """
+    if len(df_4h) < 50:
+        return False
+    ema20 = calculate_ema(df_4h, 20)
+    ema50 = calculate_ema(df_4h, 50)
+    return ema20.iloc[-1] > ema50.iloc[-1]
+
+
 def run_strategy():
     params = load_params()
 
@@ -1064,19 +1076,50 @@ def run_strategy():
                             'vol_growth': vol_growth
                         })
                         
-                        # Step 3: Filter by score > 0.65
-                        if ml_score > ml_threshold:
+                        # Step 3: Iteration 65 - Tiered Risk Management & BB Squeeze Filter
+                        # Calculate BB Width Percentile for Squeeze Filter
+                        _, _, bb_width, _ = calculate_bollinger_bands(df_ml)
+                        bb_width_20_pct = bb_width.rolling(100).quantile(0.20).iloc[-1]
+                        is_squeezed = bb_width.iloc[-1] < bb_width_20_pct
+                        
+                        # Check 4H EMA Alignment
+                        ema_aligned = check_ema_alignment(df_4h)
+
+                        if ml_score >= 0.70:
+                            current_risk = 0.012
+                            target_rr = 1.8
+                            tier = "Tier 1 (High Conviction)"
+                            passed_filter = True
+                        elif ml_score >= 0.60:
+                            current_risk = 0.008
+                            target_rr = 1.3
+                            tier = "Tier 2 (Squeeze Required)"
+                            # Tier 2 requires BB Squeeze and EMA Alignment
+                            passed_filter = is_squeezed and ema_aligned
+                        else:
+                            passed_filter = False
+
+                        if passed_filter:
+                            print(f"🎯 [Iteration 65] {symbol} {tier} Signal. Score: {ml_score:.4f}, Risk: {current_risk*100}%, RR: {target_rr}")
                             potential_signals.append({
                                 'symbol': symbol,
                                 'side': side,
                                 'vol_growth': vol_growth,
                                 'latest': latest,
                                 'prices_rsi': prices_rsi[symbol],
-                                'risk_multiplier': risk_multiplier,
-                                'ml_score': ml_score
+                                'risk_multiplier': current_risk / 0.008, # Adjust based on base risk
+                                'ml_score': ml_score,
+                                'target_rr': target_rr,
+                                'tier': tier
                             })
                         else:
-                            print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} <= 0.65. Signal rejected.")
+                            if ml_score >= 0.60:
+                                reason = ""
+                                if not is_squeezed: reason += "No Squeeze "
+                                if not ema_aligned: reason += "EMA Not Aligned"
+                                print(f"🛡️ [Iteration 65 Filter] {symbol} score {ml_score:.4f} but rejected: {reason}")
+                            else:
+                                print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} <= 0.60. Signal rejected.")
                             increment_ai_filtered_count()
         except Exception as e:
             print(f"Error in strategy execution for {symbol}: {e}")
@@ -1134,14 +1177,14 @@ def run_strategy():
         
         sl_price = entry_price - sl_distance
         
-        # Iteration 55: Fixed RR = 1.5 (Focus on logic validation)
-        fixed_rr = 1.3
+        # Iteration 65: Use dynamic RR from signal
+        fixed_rr = signal.get('target_rr', 1.3)
         tp_price = entry_price + (sl_distance * fixed_rr)
         
-        # R/R Filter (Iteration 55: Min 1.5)
+        # R/R Filter (Iteration 65: Use dynamic target_rr)
         actual_rr = (tp_price - entry_price) / sl_distance if sl_distance > 0 else 0
-        if actual_rr < 1.3:
-            print(f"🛡️ [R/R Filter] {symbol} R/R {actual_rr:.2f} < 1.5. Skipping.")
+        if actual_rr < fixed_rr:
+            print(f"🛡️ [R/R Filter] {symbol} R/R {actual_rr:.2f} < {fixed_rr}. Skipping.")
             continue
 
         # Iteration 50: Slippage & Depth Protection
