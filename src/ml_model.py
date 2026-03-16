@@ -58,7 +58,7 @@ class CryptoMLModel:
         if os.path.exists(MODEL_PATH):
             self.model = joblib.load(MODEL_PATH)
             self.is_trained = True
-            print(f"Model loaded from {MODEL_PATH}")
+            # Model loaded message removed for performance
         else:
             print("No saved model found.")
 

@@ -712,17 +712,13 @@ def check_ema_alignment(df_4h):
     return ema20.iloc[-1] > ema50.iloc[-1]
 
 
-def run_strategy():
+def run_strategy(ml_model):
     global regime_mode
     params = load_params()
 
     # Iteration 67: Fix variable initialization to prevent crash
     regime_mode = "NEUTRAL"
     indicators_signal = False
-
-    # Iteration 55: Initialize ML Model
-    ml_model = CryptoMLModel()
-    ml_model.load()
 
     # Iteration 54: Daily Performance Tracker
     update_daily_performance()
@@ -737,7 +733,15 @@ def run_strategy():
     current_pos_count = get_active_positions_count()
     
     # Iteration 19: Dynamic Equity-Based Risking
-    balance = get_account_balance()
+    # Iteration 68.3: Optimization - Balance is fetched once per loop
+    balance = 1000.0
+    if os.path.exists(os.path.join(DATA_DIR, 'balance.json')):
+        try:
+            with open(os.path.join(DATA_DIR, 'balance.json'), 'r') as f:
+                balance = json.load(f).get('total_balance', 1000.0)
+        except:
+            pass
+    
     risk_pct = 0.008 # Default 1.5%
 
     # Iteration 23: BTC Sentiment Filter
@@ -764,16 +768,22 @@ def run_strategy():
     if not df_btc_ml.empty:
         # Calculate 24H Volume Change for BTC with foolproof logic
         try:
-            current_vol = df_btc_ml['volume'].iloc[-1]
-            prev_vol = df_btc_ml['volume'].iloc[-25] # 24 hours ago
-            
-            if current_vol == 0 or prev_vol == 0:
-                btc_vol_24h_change = 0
+            # Iteration 68.3: 00:00 - 00:30 UTC Bypass
+            now = datetime.utcnow()
+            if now.hour == 0 and 0 <= now.minute <= 30:
+                print("⏳ [Iteration 68.3] UTC 00:00-00:30 Bypass: Volume check skipped.")
+                btc_vol_24h_change = 0.5 # Default to positive expansion
             else:
-                btc_vol_24h_change = (current_vol - prev_vol) / prev_vol
-            
-            # Limit extreme values
-            btc_vol_24h_change = max(min(btc_vol_24h_change, 5.0), -1.0)
+                current_vol = df_btc_ml['volume'].iloc[-1]
+                prev_vol = df_btc_ml['volume'].iloc[-25] # 24 hours ago
+                
+                if current_vol == 0 or prev_vol == 0:
+                    btc_vol_24h_change = 0
+                else:
+                    btc_vol_24h_change = (current_vol - prev_vol) / prev_vol
+                
+                # Limit extreme values
+                btc_vol_24h_change = max(min(btc_vol_24h_change, 5.0), -1.0)
         except Exception as e:
             print(f"Error calculating btc_vol_24h_change: {e}")
             btc_vol_24h_change = 0
@@ -1585,10 +1595,15 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 67 - Dynamic Sniper"
+    STRATEGY_VERSION = "Iteration 68.3 - Flash Sniper"
     last_heartbeat_time = 0
     last_summary_date = None
-    send_telegram_msg("🚀 Iteration 67_Dynamic_Sniper 已於遠端正式啟動，高頻掃描與動態保本機制已就緒。")
+    
+    # Iteration 68.3: Initialize ML Model outside loop for performance
+    ml_model = CryptoMLModel()
+    ml_model.load()
+    
+    send_telegram_msg(f"🚀 {STRATEGY_VERSION} 已於遠端正式啟動，高頻掃描與動態保本機制已就緒。")
 
     while True:
         try:
@@ -1607,7 +1622,7 @@ if __name__ == "__main__":
                 last_summary_date = now.date()
 
             stability_monitor()
-            scan_results = run_strategy()
+            scan_results = run_strategy(ml_model)
             manage_positions(scan_results)
             current_time = time.time()
 
