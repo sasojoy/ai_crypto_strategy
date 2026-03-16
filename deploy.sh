@@ -33,4 +33,4 @@ $PM2_PATH delete all || true
 $PM2_PATH start ecosystem.config.js
 $PM2_PATH save
 
-echo "✨ Deployment Complete! Check logs with: $PM2_PATH logs Iteration67_Final"
+echo "✨ Deployment Complete! Check logs with: $PM2_PATH logs Iteration67_Final --lines 20 --no-daemon"

@@ -794,17 +794,23 @@ def run_strategy(ml_model):
         btc_bullish = df_btc_ml['close'].iloc[-1] > btc_ema50_ml > btc_ema200_ml
         
         # Iteration 68: Aggressive Pursuit Mode (BTC Vol > 100%)
-        is_pursuit_mode = btc_vol_24h_change > 1.0
+        # Iteration 68.4: Dynamic Volume Tolerance
+        # If BTC price > EMA50 and price is at 24H high, allow pursuit even if vol is slightly negative
+        btc_24h_high = df_btc_ml['high'].tail(24).max()
+        btc_at_high = df_btc_ml['close'].iloc[-1] >= btc_24h_high * 0.995
+        
+        is_pursuit_mode = btc_vol_24h_change > 1.0 or (btc_bullish and btc_at_high and btc_vol_24h_change > -0.5)
         pursuit_ai_threshold = 0.72
         
-        if btc_vol_24h_change < -0.20:
+        if btc_vol_24h_change < -0.20 and not (btc_bullish and btc_at_high):
             print(f"🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
             return {}
-        if btc_vol_24h_change > 0.20 and btc_bullish:
+        
+        if is_pursuit_mode:
             regime_mode = "多頭追擊"
             rsi_threshold_boost = 10 # 45 -> 55
             aggressive_macd = True
-            print(f"🔥 [Iteration 67] 多頭追擊模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            print(f"🔥 [Iteration 68.4] 多頭追擊模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%}, At High: {btc_at_high})")
         elif btc_vol_24h_change < 0:
             regime_mode = "震盪防禦"
             ml_threshold = 0.85
@@ -1600,11 +1606,12 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 68.3 - Flash Sniper"
+    STRATEGY_VERSION = "Iteration 68.4 - Flash Sniper"
     last_heartbeat_time = 0
     last_summary_date = None
     
-    # Iteration 68.3: Initialize ML Model outside loop for performance
+    # Iteration 68.4: Initialize ML Model at startup
+    print("🤖 [System] Loading ML Model for Iteration 68.4...")
     ml_model = CryptoMLModel()
     ml_model.load()
     
