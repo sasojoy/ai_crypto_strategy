@@ -1250,8 +1250,13 @@ def run_strategy(ml_model):
                             df_5m = fetch_5m_data(symbol)
                             if not df_5m.empty:
                                 df_features_5m = extract_features(df_5m)
-                                X_5m = df_features_5m[model.feature_names_in_].fillna(0)
-                                ml_score_5m = model.predict_proba(X_5m)[:, 1][-1]
+                                # Iteration 68.3: Use the passed ml_model instance
+                                if hasattr(ml_model.model, 'feature_names_in_'):
+                                    X_5m = df_features_5m[ml_model.model.feature_names_in_].fillna(0)
+                                    ml_score_5m = ml_model.model.predict_proba(X_5m)[:, 1][-1]
+                                else:
+                                    # Fallback if feature_names_in_ is not available
+                                    ml_score_5m = ml_model.predict_proba(df_features_5m.tail(1))[0]
                                 # Tier 3 requires higher score and basic trend alignment
                                 ema20_5m = calculate_ema(df_5m, 20)
                                 ema50_5m = calculate_ema(df_5m, 50)
