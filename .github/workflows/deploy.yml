@@ -58,9 +58,9 @@ jobs:
               echo "Deploying market monitor with PM2..."
               export PYTHONPATH=$PYTHONPATH:.
 
-              # 4. PM2 Deployment Logic (Iteration 43: Hard SL & Auto-Recovery)
+              # 4. PM2 Deployment Logic (Iteration 67: Dynamic Sniper)
               $PM2_BIN delete all || true
-              $PM2_BIN start src/market.py --name "Iteration43_Stable" --interpreter python3
+              $PM2_BIN start ecosystem.config.js
               $PM2_BIN save
 
               echo "✅ PM2 Status Verification:"
