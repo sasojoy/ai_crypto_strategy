@@ -49,7 +49,637 @@ Error in strategy execution for SOL/USDT: 'numpy.float64' object has no attribut
 Error in strategy execution for NEAR/USDT: 'numpy.float64' object has no attribute 'values'
 Error in strategy execution for AVAX/USDT: 'numpy.float64' object has no attribute 'values'
 Error in strategy execution for FET/USDT: 'numpy.float64' object has no attribute 'values'
-in UTC: datetime.datetime.now(datetime.UTC).
+Error in strategy execution for ARB/USDT: 'numpy.float64' object has no attribute 'values'
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72599.54, EMA50: 71406.09, OK: True
+🔥 [Iteration 67] 多頭追擊模式啟動 (BTC 24H Vol Change: 142.12%)
+Error in strategy execution for BTC/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ETH/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for SOL/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for NEAR/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for AVAX/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for FET/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ARB/USDT: 'numpy.float64' object has no attribute 'values'
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72647.15, EMA50: 71407.95, OK: True
+🔥 [Iteration 67] 多頭追擊模式啟動 (BTC 24H Vol Change: 145.54%)
+Error in strategy execution for BTC/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ETH/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for SOL/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for NEAR/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for AVAX/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for FET/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ARB/USDT: 'numpy.float64' object has no attribute 'values'
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72721.05, EMA50: 71410.85, OK: True
+🔥 [Iteration 67] 多頭追擊模式啟動 (BTC 24H Vol Change: 147.86%)
+Error in strategy execution for BTC/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ETH/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for SOL/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for NEAR/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for AVAX/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for FET/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ARB/USDT: 'numpy.float64' object has no attribute 'values'
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72781.27, EMA50: 71413.21, OK: True
+🔥 [Iteration 67] 多頭追擊模式啟動 (BTC 24H Vol Change: 149.47%)
+Error in strategy execution for BTC/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ETH/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for SOL/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for NEAR/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for AVAX/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for FET/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ARB/USDT: 'numpy.float64' object has no attribute 'values'
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72787.40, EMA50: 71413.45, OK: True
+🔥 [Iteration 67] 多頭追擊模式啟動 (BTC 24H Vol Change: 150.67%)
+Error in strategy execution for BTC/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ETH/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for SOL/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for NEAR/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for AVAX/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for FET/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ARB/USDT: 'numpy.float64' object has no attribute 'values'
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Telegram token or chat ID not found in environment variables.
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+📈 Daily performance logged: 2026-03-16 | Balance: 1000.0
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72867.71, EMA50: 71473.48, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -94.67%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72963.48, EMA50: 71477.23, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -88.27%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72919.29, EMA50: 71475.50, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -84.62%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72940.94, EMA50: 71476.35, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -81.30%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72911.53, EMA50: 71475.20, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -79.16%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72920.53, EMA50: 71475.55, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -74.50%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72942.43, EMA50: 71476.41, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -71.10%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72948.76, EMA50: 71476.66, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -69.68%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72950.01, EMA50: 71476.71, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -67.97%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72890.54, EMA50: 71474.37, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -67.03%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72836.98, EMA50: 71472.27, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -65.68%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72730.00, EMA50: 71468.08, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -61.99%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72761.63, EMA50: 71469.32, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -59.23%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72773.79, EMA50: 71469.80, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -57.67%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72714.94, EMA50: 71467.49, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -56.44%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72752.40, EMA50: 71468.96, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -55.51%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72855.19, EMA50: 71472.99, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -54.30%)
+Telegram token or chat ID not found in environment variables.
+Telegram token or chat ID not found in environment variables.
+Telegram report updated with active position details.
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72851.10, EMA50: 71472.83, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -53.24%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72700.01, EMA50: 71466.90, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -51.57%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72665.39, EMA50: 71465.54, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -50.20%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72647.36, EMA50: 71464.84, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -47.89%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72612.92, EMA50: 71463.49, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -44.69%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72580.93, EMA50: 71462.23, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -42.66%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72545.77, EMA50: 71460.85, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -38.65%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72549.99, EMA50: 71461.02, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -37.32%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72508.91, EMA50: 71459.41, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -35.45%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72524.55, EMA50: 71460.02, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -33.68%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72508.71, EMA50: 71459.40, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -32.86%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72508.27, EMA50: 71459.38, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -31.95%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72520.99, EMA50: 71459.88, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -30.20%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72542.82, EMA50: 71460.74, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -28.58%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72561.90, EMA50: 71461.49, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -26.81%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72538.01, EMA50: 71460.55, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -25.32%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72555.59, EMA50: 71461.24, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -24.21%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72644.95, EMA50: 71464.74, OK: True
+🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: -21.38%)
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72658.54, EMA50: 71465.28, OK: True
+🛡️ [Iteration 67] 低量防禦模式啟動 (BTC 24H Vol Change: -19.73%)
+Error in strategy execution for BTC/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ETH/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for SOL/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for NEAR/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for AVAX/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for FET/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ARB/USDT: 'numpy.float64' object has no attribute 'values'
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72628.30, EMA50: 71464.09, OK: True
+🛡️ [Iteration 67] 低量防禦模式啟動 (BTC 24H Vol Change: -13.64%)
+Error in strategy execution for BTC/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ETH/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for SOL/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for NEAR/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for AVAX/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for FET/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ARB/USDT: 'numpy.float64' object has no attribute 'values'
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72501.99, EMA50: 71459.14, OK: True
+🛡️ [Iteration 67] 低量防禦模式啟動 (BTC 24H Vol Change: -11.18%)
+Error in strategy execution for BTC/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ETH/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for SOL/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for NEAR/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for AVAX/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for FET/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ARB/USDT: 'numpy.float64' object has no attribute 'values'
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72499.99, EMA50: 71459.06, OK: True
+🛡️ [Iteration 67] 低量防禦模式啟動 (BTC 24H Vol Change: -7.77%)
+Error in strategy execution for BTC/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ETH/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for SOL/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for NEAR/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for AVAX/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for FET/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ARB/USDT: 'numpy.float64' object has no attribute 'values'
+/workspace/ai_crypto_strategy/src/market.py:1500: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:497: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:570: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72544.31, EMA50: 71460.80, OK: True
+🛡️ [Iteration 67] 低量防禦模式啟動 (BTC 24H Vol Change: -6.00%)
+Error in strategy execution for BTC/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ETH/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for SOL/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for NEAR/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for AVAX/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for FET/USDT: 'numpy.float64' object has no attribute 'values'
+Error in strategy execution for ARB/USDT: 'numpy.float64' object has no attribute 'values'
+time.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1539: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:536: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:609: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72608.81, EMA50: 71463.33, OK: True
+🛡️ [Iteration 67] 低量防禦模式啟動 (BTC 24H Vol Change: -13.41%)
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1539: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:536: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:609: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72453.48, EMA50: 71457.23, OK: True
+🛡️ [Iteration 67] 低量防禦模式啟動 (BTC 24H Vol Change: -9.39%)
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1539: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:536: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:609: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72527.02, EMA50: 71460.12, OK: True
+🛡️ [Iteration 67] 低量防禦模式啟動 (BTC 24H Vol Change: -7.17%)
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1539: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+Model loaded from models/rf_model.joblib
+/workspace/ai_crypto_strategy/src/market.py:536: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+/workspace/ai_crypto_strategy/src/market.py:609: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now = datetime.utcnow()
+🎯 [Iteration 67] Monitoring Selected Symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
+📊 [BTC Sentiment] Price: 72544.31, EMA50: 71460.80, OK: True
+🛡️ [Iteration 67] 低量防禦模式啟動 (BTC 24H Vol Change: -5.92%)
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  current_hour = datetime.utcnow().hour
+/workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
   current_hour = datetime.utcnow().hour
 /workspace/ai_crypto_strategy/src/market.py:1012: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
   current_hour = datetime.utcnow().hour

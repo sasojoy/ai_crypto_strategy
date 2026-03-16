@@ -52,6 +52,22 @@ def safe_get_bool(obj, index=-1):
         return bool(obj[index])
     return bool(obj)
 
+def fetch_btc_vol_with_retry(symbol='BTC/USDT', limit=48, retries=3):
+    """
+    Iteration 67.4: Fetch BTC volume with retry logic for UTC 00:00 stability.
+    """
+    for i in range(retries):
+        df = fetch_1h_data(symbol, limit=limit)
+        if not df.empty:
+            current_vol = df['volume'].iloc[-1]
+            if current_vol > 0:
+                return df
+            print(f"⚠️ [Retry {i+1}] BTC Volume is 0, retrying in 2s...")
+            time.sleep(2)
+    return pd.DataFrame()
+
+
+
 
 # Load environment variables
 load_dotenv()
@@ -736,7 +752,7 @@ def run_strategy():
     potential_signals = []
 
     # Iteration 55: Fetch BTC data for ML features
-    df_btc_ml = fetch_1h_data('BTC/USDT')
+    df_btc_ml = fetch_btc_vol_with_retry('BTC/USDT', limit=100)
     
     # Iteration 60: Dynamic Environment Filter (Regime Filter)
     regime_mode = "趨勢擴張"
@@ -746,8 +762,21 @@ def run_strategy():
     aggressive_macd = False
     
     if not df_btc_ml.empty:
-        # Calculate 24H Volume Change for BTC
-        btc_vol_24h_change = df_btc_ml['volume'].pct_change(24).iloc[-1]
+        # Calculate 24H Volume Change for BTC with foolproof logic
+        try:
+            current_vol = df_btc_ml['volume'].iloc[-1]
+            prev_vol = df_btc_ml['volume'].iloc[-25] # 24 hours ago
+            
+            if current_vol == 0 or prev_vol == 0:
+                btc_vol_24h_change = 0
+            else:
+                btc_vol_24h_change = (current_vol - prev_vol) / prev_vol
+            
+            # Limit extreme values
+            btc_vol_24h_change = max(min(btc_vol_24h_change, 5.0), -1.0)
+        except Exception as e:
+            print(f"Error calculating btc_vol_24h_change: {e}")
+            btc_vol_24h_change = 0
         
         # Iteration 60: Aggressive Trend Mode
         btc_ema50_ml = calculate_ema(df_btc_ml, 50).iloc[-1]
@@ -1602,13 +1631,19 @@ if __name__ == "__main__":
                     # Fetch 24h volume change (Iteration 52: Fix volume data)
                     vol_change_24h = 0
                     try:
-                        # For accuracy, we fetch 48h of 1h data
-                        df_48h = fetch_1h_data('BTC/USDT', limit=48)
+                        # For accuracy, we fetch 48h of 1h data with retry
+                        df_48h = fetch_btc_vol_with_retry('BTC/USDT', limit=48)
                         if len(df_48h) >= 48:
                             last_24h_vol = df_48h.iloc[-24:]['volume'].sum()
                             prev_24h_vol = df_48h.iloc[-48:-24]['volume'].sum()
-                            if prev_24h_vol > 0:
+                            
+                            if prev_24h_vol == 0 or last_24h_vol == 0:
+                                vol_change_24h = 0
+                            else:
                                 vol_change_24h = (last_24h_vol - prev_24h_vol) / prev_24h_vol * 100
+                            
+                            # Limit extreme values
+                            vol_change_24h = max(min(vol_change_24h, 500.0), -100.0)
                     except Exception as e:
                         print(f"Error calculating vol change: {e}")
                     
