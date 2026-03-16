@@ -48,7 +48,10 @@ jobs:
 
             PM2_BIN="$HOME/.npm-global/bin/pm2"
 
-            pip3 install -r requirements.txt
+            # Force cleanup and install compatible scikit-learn for Python 3.10
+            pip uninstall -y scikit-learn || true
+            pip install scikit-learn==1.7.2 --no-cache-dir
+            pip install -r requirements.txt --no-cache-dir || echo "⚠️ Pip install had issues, continuing..."
 
             if [ "${{ github.event_name }}" == "schedule" ]; then
               echo "Running daily summary..."

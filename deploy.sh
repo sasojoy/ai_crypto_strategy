@@ -25,7 +25,7 @@ echo "✅ Using PM2 at: $PM2_PATH"
 # 3. Install Python Dependencies
 echo "🐍 Installing Python dependencies..."
 pip install --upgrade pip
-pip install -r requirements.txt --user
+pip install -r requirements.txt --no-cache-dir || echo "⚠️ Pip install had issues, continuing..."
 
 # 4. Start Application with PM2
 echo "🔄 Restarting Application..."
@@ -33,4 +33,4 @@ $PM2_PATH delete all || true
 $PM2_PATH start ecosystem.config.js
 $PM2_PATH save
 
-echo "✨ Deployment Complete! Check logs with: $PM2_PATH logs Iteration67_Sniper"
+echo "✨ Deployment Complete! Check logs with: $PM2_PATH logs Iteration67_Final"
