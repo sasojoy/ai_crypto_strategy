@@ -783,6 +783,10 @@ def run_strategy():
         btc_ema200_ml = calculate_ema(df_btc_ml, 200).iloc[-1]
         btc_bullish = df_btc_ml['close'].iloc[-1] > btc_ema50_ml > btc_ema200_ml
         
+        # Iteration 68: Aggressive Pursuit Mode (BTC Vol > 100%)
+        is_pursuit_mode = btc_vol_24h_change > 1.0
+        pursuit_ai_threshold = 0.72
+        
         if btc_vol_24h_change < -0.20:
             print(f"🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
             return {}
@@ -1208,9 +1212,19 @@ def run_strategy():
                         ema20 = calculate_ema(df_ml, 20)
                         ema20_slope_up = ema20.iloc[-1] > ema20.iloc[-2]
 
+                        # Iteration 68: Pursuit Mode Logic
+                        ema20_1h = calculate_ema(df_ml, 20).iloc[-1]
+                        dist_ema20_pct = (latest['close'] - ema20_1h) / ema20_1h * 100 if ema20_1h > 0 else 999
+                        
                         passed_filter = False
                         tier = ""
-                        if ml_score >= 0.63:
+                        
+                        if is_pursuit_mode and ml_score >= pursuit_ai_threshold and 0 <= dist_ema20_pct <= 1.5:
+                            current_risk = 0.015 # Higher risk for pursuit
+                            target_rr = 1.5
+                            tier = "Tier 0 (Pursuit Mode)"
+                            passed_filter = True
+                        elif ml_score >= 0.63:
                             current_risk = 0.012
                             target_rr = 1.5
                             tier = "Tier 1 (High Conviction)"
@@ -1415,6 +1429,22 @@ def manage_positions(prices_rsi):
                 state['sl_price'] = new_sl
                 save_order_state(symbol, state)
                 send_telegram_msg(f"🛡️ [Iteration 67] {symbol} 已啟動保本止損 (Trailing to BE)。")
+
+        # Iteration 68: Trailing Stop (1% Trigger, 1% Distance)
+        # Track highest price reached
+        state['highest_price'] = max(state.get('highest_price', entry_price), current_price)
+        profit_from_entry = (state['highest_price'] - entry_price) / entry_price
+        
+        if profit_from_entry >= 0.01:
+            # Triggered 1% profit, calculate trailing SL (1% below highest)
+            trailing_sl = state['highest_price'] * 0.99
+            # Only update if new trailing SL is higher than current SL
+            if trailing_sl > state.get('sl_price', 0):
+                print(f"📈 [Iteration 68] {symbol} Trailing Stop Triggered. Highest: {state['highest_price']}, New SL: {trailing_sl}")
+                if update_sl_order(symbol, state.get('sl_order_id'), trailing_sl):
+                    state['sl_price'] = trailing_sl
+                    state['trailing_active'] = True
+                    save_order_state(symbol, state)
 
 
         # Iteration 53: Infinite RR Path
