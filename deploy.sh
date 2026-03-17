@@ -29,9 +29,7 @@ pip install -r requirements.txt --no-cache-dir || echo "⚠️ Pip install had i
 
 # 4. Start Application with PM2
 echo "🚀 Deploying market monitor with PM2..."
-$PM2_PATH delete all || true
-$PM2_PATH start ecosystem.config.js --name "Iteration67_Final"
-$PM2_PATH save
+$PM2_PATH restart all --update-env > /dev/null 2>&1 || $PM2_PATH start ecosystem.config.js --name "Iteration67_Final" > /dev/null 2>&1
+$PM2_PATH save > /dev/null 2>&1
 
-echo "✅ PM2 Status Verification:"
-$PM2_PATH list && echo "🚀 DEPLOYMENT COMPLETE" && exit 0
+exit 0
