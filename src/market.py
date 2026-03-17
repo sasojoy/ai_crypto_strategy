@@ -756,7 +756,8 @@ def run_strategy(ml_model):
     potential_signals = []
 
     # Iteration 55: Fetch BTC data for ML features
-    df_btc_ml = fetch_btc_vol_with_retry('BTC/USDT', limit=100)
+    # Iteration 69: Increase limit to 250 for BTC features (EMA200 requirement)
+    df_btc_ml = fetch_btc_vol_with_retry('BTC/USDT', limit=250)
     
     # Iteration 60: Dynamic Environment Filter (Regime Filter)
     regime_mode = "趨勢擴張"
@@ -1160,6 +1161,15 @@ def run_strategy(ml_model):
                 elif not stoch_rsi_ok: missed_reason = "StochRSI No Cross"
                 elif not (squeeze_tier1 or squeeze_tier2 or trend_decay_active): missed_reason = "No Squeeze/Trend Decay"
 
+            # Iteration 69: AI Score Calculation (Moved up for Heartbeat Visibility)
+            ml_score = 0.5 # Default
+            df_ml = fetch_1h_data(symbol, limit=250)
+            if not df_ml.empty and not df_btc_ml.empty:
+                features = extract_features(df_ml, df_btc_ml)
+                if not features.empty:
+                    ml_score = float(ml_model.predict_proba(features.tail(1))[0])
+                    print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
+
             # Store scan results for heartbeat
             prices_rsi[symbol] = {
                 'price': latest['close'],
@@ -1181,7 +1191,8 @@ def run_strategy(ml_model):
                 'squeeze_index': squeeze_index, # Iteration 46
                 'missed_reason': missed_reason, # Iteration 46
                 'signal_preview': signal_preview, # Iteration 47
-                'support_strength': support_strength # Iteration 55
+                'support_strength': support_strength, # Iteration 55
+                'ml_score': ml_score # Iteration 69: Always include for heartbeat
             }
 
             if long_signal or short_signal:
@@ -1201,26 +1212,18 @@ def run_strategy(ml_model):
                 # Calculate Volume Growth Rate for Correlation Detection
                 vol_growth = (latest['volume'] - avg_vol_5) / avg_vol_5 if avg_vol_5 > 0 else 0
                 
-                # Iteration 55: AI-Enhanced Decision Flow
-                # Step 1: Extract features for the current symbol
-                df_ml = fetch_1h_data(symbol)
-                if not df_ml.empty and not df_btc_ml.empty:
-                    features = extract_features(df_ml, df_btc_ml)
-                    if not features.empty:
-                        # Step 2: Get ML probability score
-                        ml_score = ml_model.predict_proba(features.tail(1))[0]
-                        print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
-                        
-                        # Update prices_rsi with ml_score for heartbeat
-                        prices_rsi[symbol]['ml_score'] = ml_score
-                        
-                        # Iteration 55: Record prediction for audit
-                        record_ai_prediction(symbol, side, ml_score, {
-                            'rsi': latest['rsi'],
-                            'adx': latest['adx'],
-                            'atr': latest['atr'],
-                            'vol_growth': vol_growth
-                        })
+                # Iteration 69: AI-Enhanced Decision Flow (Already calculated above)
+                if ml_score > 0:
+                    # Update prices_rsi with ml_score for heartbeat (redundant but safe)
+                    prices_rsi[symbol]['ml_score'] = ml_score
+                    
+                    # Iteration 55: Record prediction for audit
+                    record_ai_prediction(symbol, side, ml_score, {
+                        'rsi': latest['rsi'],
+                        'adx': latest['adx'],
+                        'atr': latest['atr'],
+                        'vol_growth': vol_growth
+                    })
                         
                         # Step 3: Iteration 65 - Tiered Risk Management & BB Squeeze Filter
                         # Calculate BB Width Percentile for Squeeze Filter

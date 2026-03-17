@@ -6,6 +6,23 @@
 
 ---
 
+## [Iteration 69 | AI Confidence Recovery] - 2026-03-14
+### 觸發原因
+*   戰報顯示 AI 分數鎖死在 0.00 或 50.0%，模型預測流程斷開。
+*   特徵提取器因數據長度不足（EMA200 需要 200+ 點）導致 `dropna()` 後特徵集為空。
+
+### 具體修改
+1.  **數據長度補齊**：將 `fetch_1h_data` 與 `fetch_btc_vol_with_retry` 的 limit 從 100 提升至 250，確保 EMA200 有足夠計算空間。
+2.  **預測流程提前**：將 AI Score 計算邏輯從「信號觸發後」提前至「掃描循環中」，確保 Heartbeat 戰報能即時顯示所有幣種的 AI 評分。
+3.  **類型強制轉換**：加入 `float()` 轉換，確保 `ml_score` 在傳遞至 Telegram 通知時格式正確。
+4.  **預設值優化**：將未成功計算時的預設值設為 0.5（中立），而非 0.00。
+
+### 預期指標
+*   Telegram 戰報 AI Confidence 恢復正常波動（如 0.65, 0.72）。
+*   `logs/trading.log` 中不再出現 `Score: 0.0000`。
+
+---
+
 ## [Iteration 68.9 | Final Sniper] - 2026-03-14
 ### 觸發原因
 *   GitHub Actions 部署超時 (Timeout) 導致 CI/CD 流程中斷。
