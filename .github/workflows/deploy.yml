@@ -54,11 +54,13 @@ jobs:
             pip install -r requirements.txt --no-cache-dir || echo "⚠️ Pip install had issues, continuing..."
 
             if [ "${{ github.event_name }}" == "schedule" ]; then
-              echo "Running daily summary..."
+              echo "📅 Running daily summary (Scheduled)..."
               export PYTHONPATH=$PYTHONPATH:.
               python3 -m src.summary
+              echo "✅ Summary completed. Skipping PM2 restart to preserve cache."
+              exit 0
             else
-              echo "Deploying market monitor with PM2..."
+              echo "🚀 Deploying market monitor with PM2 (Push Trigger)..."
               export PYTHONPATH=$PYTHONPATH:.
 
               # 4. PM2 Deployment Logic (Iteration 68.9: Final Sniper)

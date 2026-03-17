@@ -8,7 +8,9 @@ def generate_daily_summary():
     log_file = 'data/history.csv'
     try:
         df = pd.read_csv(log_file)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        # Iteration 69.1: Robust Date Parsing
+        df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed', errors='coerce')
+        df = df.dropna(subset=['timestamp'])
         
         # Get data for the last 24 hours
         yesterday = datetime.now() - timedelta(days=1)
