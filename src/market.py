@@ -134,20 +134,28 @@ def get_top_relative_strength_symbols():
     print(f"🎯 [Iteration 68.9 | Flash Sniper] Monitoring Selected Symbols: {selected_symbols}")
     return selected_symbols
 
+# Global exchange instance (Iteration 69.2: Prevent rate limiting)
+exchange = ccxt.binance({
+    'enableRateLimit': True,
+    'options': {
+        'defaultType': 'spot'
+    }
+})
+
 def fetch_15m_data(symbol='BTC/USDT'):
-    exchange = ccxt.binance()
-    timeframe = '15m'
-    limit = 300
-    ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
-    df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-    return df
-
-
+    try:
+        timeframe = '15m'
+        limit = 300
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        return df
+    except Exception as e:
+        print(f"Error fetching 15m data for {symbol}: {e}")
+        return pd.DataFrame()
 
 def fetch_5m_data(symbol='BTC/USDT'):
     try:
-        exchange = ccxt.binance()
         timeframe = '5m'
         limit = 300
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
@@ -168,7 +176,6 @@ def fetch_4h_data(symbol='BTC/USDT'):
     Fetch 4-hour data to determine the major trend.
     """
     try:
-        exchange = ccxt.binance()
         timeframe = '4h'
         limit = 200
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
@@ -182,8 +189,6 @@ def fetch_4h_data(symbol='BTC/USDT'):
 
 def fetch_ohlcv(symbol, timeframe="1h", limit=100):
     try:
-        import ccxt
-        exchange = ccxt.binance()
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
         df = pd.DataFrame(ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
@@ -195,7 +200,6 @@ def fetch_ohlcv(symbol, timeframe="1h", limit=100):
 
 def fetch_1h_data(symbol='BTC/USDT', limit=100):
     try:
-        exchange = ccxt.binance()
         timeframe = '1h'
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
@@ -1616,16 +1620,22 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 68.9 | Final Sniper"
+    STRATEGY_VERSION = "Iteration 69.2 | Final Sniper"
     last_heartbeat_time = 0
     last_summary_date = None
     
+    # Iteration 69.2: Startup Notification (Immediate)
+    try:
+        send_telegram_msg(f"🚀 【{STRATEGY_VERSION}】已在生產環境正式啟動，正在載入模型與初始化數據...")
+    except Exception as e:
+        print(f"Failed to send startup notification: {e}")
+
     # Iteration 68.9: Initialize ML Model at startup
     print(f"🤖 [System] Loading ML Model for {STRATEGY_VERSION}...")
     ml_model = CryptoMLModel()
     ml_model.load()
     
-    send_telegram_msg(f"🚀 {STRATEGY_VERSION} 已於遠端正式啟動，高頻掃描與動態保本機制已就緒。")
+    print(f"✅ {STRATEGY_VERSION} Initialization Complete.")
 
     while True:
         try:

@@ -63,13 +63,18 @@ jobs:
               echo "🚀 Deploying market monitor with PM2 (Push Trigger)..."
               export PYTHONPATH=$PYTHONPATH:.
 
-              # 4. PM2 Deployment Logic (Iteration 68.9: Final Sniper)
+              # 4. PM2 Deployment Logic (Iteration 69.2: Final Sniper)
               $PM2_BIN delete all || true
               $PM2_BIN start ecosystem.config.js
               $PM2_BIN save
 
               echo "✅ PM2 Status Verification:"
               $PM2_BIN list
+              
+              # Iteration 69.2: Deployment Notification
+              export PYTHONPATH=$PYTHONPATH:.
+              python3 -c "from src.notifier import send_telegram_msg; send_telegram_msg('✅ GCE 部署腳本執行完畢，等待系統核心啟動...')"
+
               echo "✅ Deployment completed successfully at $(date)"
               exit 0
             fi

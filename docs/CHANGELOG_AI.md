@@ -6,6 +6,23 @@
 
 ---
 
+## [Iteration 69.2 | Startup Visibility & Stability] - 2026-03-14
+### 觸發原因
+*   系統部署後失聯，PM2 出現頻繁重啟（Crash Loop）。
+*   懷疑頻繁創建 `ccxt.binance()` 實例導致連線不穩定或被交易所限流。
+
+### 具體修改
+1.  **啟動即時通知**：在 `market.py` 入口處加入強制 Telegram 通知，確保系統啟動第一時間發出信號。
+2.  **部署完成通知**：在 GitHub Actions 腳本末尾加入部署完成通知，區分「部署成功」與「核心啟動」。
+3.  **連線池優化**：將 `ccxt.binance()` 實例化移至全局變數 `exchange`，所有數據抓取函數共用同一個連線池，並開啟 `enableRateLimit`。
+4.  **版本同步**：全系統更新為 `Iteration 69.2 | Final Sniper`。
+
+### 預期指標
+*   部署後 1 分鐘內收到「部署完畢」與「核心啟動」兩條通知。
+*   PM2 重啟次數歸零，系統穩定運行。
+
+---
+
 ## [Iteration 69 | AI Confidence Recovery] - 2026-03-14
 ### 觸發原因
 *   戰報顯示 AI 分數鎖死在 0.00 或 50.0%，模型預測流程斷開。
