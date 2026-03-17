@@ -1307,13 +1307,10 @@ def run_strategy(ml_model):
                     })
                 else:
                     if ml_score >= 0.63:
-                        reason = ""
-                        if not is_squeezed and ml_score < 0.68: reason += "No Squeeze "
-                        if not ema_aligned and ml_score < 0.68: reason += "EMA Not Aligned "
-                        if not ema20_slope_up: reason += "EMA20 Slope Down"
-                        print(f"🛡️ [Iteration 68.9 | Flash Sniper] {symbol} score {ml_score:.4f} but rejected: {reason}")
+                        reason = f"Mode: {mode}, Dist: {dist_to_support:.2%}"
+                        print(f"🛡️ [Iteration 71 | Hybrid Sniper] {symbol} score {ml_score:.4f} but rejected: {reason}")
                     else:
-                        print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} < 0.63. Signal rejected.")
+                        print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} < {ai_threshold}. Signal rejected.")
                     increment_ai_filtered_count()
         except Exception as e:
             print(f"Error in strategy execution for {symbol}: {e}")
