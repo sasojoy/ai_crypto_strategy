@@ -131,7 +131,7 @@ def get_top_relative_strength_symbols():
     Focus on high-conviction assets (BTC, ETH, SOL) and reduce exposure to experimental ones.
     """
     selected_symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
-    print(f"🎯 [Iteration 67] Monitoring Selected Symbols: {selected_symbols}")
+    print(f"🎯 [Iteration 68.6 | Flash Sniper] Monitoring Selected Symbols: {selected_symbols}")
     return selected_symbols
 
 def fetch_15m_data(symbol='BTC/USDT'):
@@ -392,7 +392,7 @@ def check_upside_potential(symbol, entry_price, df_1h):
         upside_pct = (recent_high - entry_price) / entry_price
         
         if upside_pct < 0.012:
-            print(f"🛡️ [Iteration 67] [Space Check] {symbol} upside {upside_pct:.2%} < 1.2% to resistance ({recent_high:.2f}). Skipping.")
+            print(f"🛡️ [Iteration 68.6 | Flash Sniper] [Space Check] {symbol} upside {upside_pct:.2%} < 1.2% to resistance ({recent_high:.2f}). Skipping.")
             return False
     except Exception as e:
         print(f"Error in check_upside_potential for {symbol}: {e}")
@@ -810,21 +810,21 @@ def run_strategy(ml_model):
         pursuit_ai_threshold = 0.72
         
         if btc_vol_24h_change < -0.20 and not (btc_bullish and btc_at_high):
-            print(f"🚫 [Iteration 67] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            print(f"🚫 [Iteration 68.6 | Flash Sniper] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
             return {}
         
         if is_pursuit_mode:
             regime_mode = "多頭追擊"
             rsi_threshold_boost = 10 # 45 -> 55
             aggressive_macd = True
-            print(f"🔥 [Iteration 68.4] 多頭追擊模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%}, At High: {btc_at_high})")
+            print(f"🔥 [Iteration 68.6 | Flash Sniper] 多頭追擊模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%}, At High: {btc_at_high})")
         elif btc_vol_24h_change < 0:
             regime_mode = "震盪防禦"
             ml_threshold = 0.85
             min_rr = 1.3
-            print(f"🛡️ [Iteration 67] 低量防禦模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            print(f"🛡️ [Iteration 68.6 | Flash Sniper] 低量防禦模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
         else:
-            print(f"🚀 [Iteration 67] 趨勢擴張模式 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            print(f"🚀 [Iteration 68.6 | Flash Sniper] 趨勢擴張模式 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
 
     for symbol in symbols:
         try:
@@ -922,7 +922,7 @@ def run_strategy(ml_model):
             # 1. MTF Filter (1H EMA 200)
             df_1h = fetch_1h_data(symbol)
             if df_1h.empty:
-                print(f"⚠️ [Iteration 67] {symbol} 1H data empty. Skipping.")
+                print(f"⚠️ [Iteration 68.6 | Flash Sniper] {symbol} 1H data empty. Skipping.")
                 continue
             df_1h['ema200'] = calculate_ema(df_1h, 200)
             trend_1h_strong = latest['close'] > df_1h.iloc[-1]['ema200']
@@ -1040,7 +1040,7 @@ def run_strategy(ml_model):
                     macd_golden_cross = df['macd_line'].iloc[-1] > df['macd_signal'].iloc[-1] and df['macd_line'].iloc[-2] <= df['macd_signal'].iloc[-2]
                     if df['macd_line'].iloc[-1] > 0 and df['macd_signal'].iloc[-1] > 0 and macd_golden_cross:
                         macd_aggressive_signal = True
-                        print(f"🔥 [Iteration 67] {symbol} MACD Aggressive Signal Detected!")
+                        print(f"🔥 [Iteration 68.6 | Flash Sniper] {symbol} MACD Aggressive Signal Detected!")
 
                 # Iteration 60: [Dynamic RSI] Boost RSI limit in Aggressive Mode
                 rsi_limit = 45 + rsi_threshold_boost
@@ -1106,7 +1106,7 @@ def run_strategy(ml_model):
                     if (datetime.utcnow() - exit_time).total_seconds() < 1800: # 30 mins
                         # Only allow if RSI is lower than previous entry
                         if latest['rsi'] >= last_state.get('entry_rsi', 0):
-                            print(f"🛡️ [Iteration 67] {symbol} 處於止損保護期，且 RSI 未創新低。跳過進場。")
+                            print(f"🛡️ [Iteration 68.6 | Flash Sniper] {symbol} 處於止損保護期，且 RSI 未創新低。跳過進場。")
                             long_signal = False
 
             short_signal = False # Iteration 29/30/31 focus on Long Pullback Strategy
@@ -1189,13 +1189,13 @@ def run_strategy(ml_model):
                 # Iteration 23: BTC Sentiment & Funding Rate Filter
                 if side == 'LONG':
                     if not btc_sentiment_ok:
-                        print(f"🚫 [Iteration 67] {symbol} Long signal ignored: BTC Sentiment Bearish.")
+                        print(f"🚫 [Iteration 68.6 | Flash Sniper] {symbol} Long signal ignored: BTC Sentiment Bearish.")
                         continue
                     
                     if symbol in ['DOGE/USDT', 'XRP/USDT']:
                         funding_rate = fetch_funding_rate(symbol)
                         if funding_rate > 0.0005:
-                            print(f"🚫 [Iteration 67] {symbol} Long signal ignored: Funding Rate too high ({funding_rate*100:.4f}%).")
+                            print(f"🚫 [Iteration 68.6 | Flash Sniper] {symbol} Long signal ignored: Funding Rate too high ({funding_rate*100:.4f}%).")
                             continue
 
                 # Calculate Volume Growth Rate for Correlation Detection
@@ -1285,7 +1285,7 @@ def run_strategy(ml_model):
                                     passed_filter = True
 
                         if passed_filter:
-                            print(f"🎯 [Iteration 67] {symbol} {tier} Signal. Score: {ml_score:.4f}, Risk: {current_risk*100}%, RR: {target_rr}")
+                            print(f"🎯 [Iteration 68.6 | Flash Sniper] {symbol} {tier} Signal. Score: {ml_score:.4f}, Risk: {current_risk*100}%, RR: {target_rr}")
                             potential_signals.append({
                                 'symbol': symbol,
                                 'side': side,
@@ -1303,7 +1303,7 @@ def run_strategy(ml_model):
                                 if not is_squeezed and ml_score < 0.68: reason += "No Squeeze "
                                 if not ema_aligned and ml_score < 0.68: reason += "EMA Not Aligned "
                                 if not ema20_slope_up: reason += "EMA20 Slope Down"
-                                print(f"🛡️ [Iteration 67] {symbol} score {ml_score:.4f} but rejected: {reason}")
+                                print(f"🛡️ [Iteration 68.6 | Flash Sniper] {symbol} score {ml_score:.4f} but rejected: {reason}")
                             else:
                                 print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} < 0.63. Signal rejected.")
                             increment_ai_filtered_count()
@@ -1451,12 +1451,12 @@ def manage_positions(prices_rsi):
         profit_pct = (current_price - entry_price) / entry_price if side == 'LONG' else (entry_price - current_price) / entry_price
         if not state.get('be_sl_active', False) and profit_pct >= 0.008:
             new_sl = entry_price
-            print(f"🛡️ [Iteration 67] {symbol} profit {profit_pct:.2%} >= 0.8%. Moving SL to Break-Even: {new_sl}")
+            print(f"🛡️ [Iteration 68.6 | Flash Sniper] {symbol} profit {profit_pct:.2%} >= 0.8%. Moving SL to Break-Even: {new_sl}")
             if update_sl_order(symbol, state.get('sl_order_id'), new_sl):
                 state['be_sl_active'] = True
                 state['sl_price'] = new_sl
                 save_order_state(symbol, state)
-                send_telegram_msg(f"🛡️ [Iteration 67] {symbol} 已啟動保本止損 (Trailing to BE)。")
+                send_telegram_msg(f"🛡️ [Iteration 68.6 | Flash Sniper] {symbol} 已啟動保本止損 (Trailing to BE)。")
 
         # Iteration 68: Trailing Stop (1% Trigger, 1% Distance)
         # Track highest price reached
@@ -1481,7 +1481,7 @@ def manage_positions(prices_rsi):
         
         if not state.get('partial_tp_done', False):
             if (side == 'LONG' and current_price >= rr_1_2_price) or (side == 'SHORT' and current_price <= rr_1_2_price):
-                msg = f"💰 [Iteration 67] {symbol} 達到 1.2 RR！執行 50% 減倉止盈。\n剩餘 50% 開啟 EMA 10 移動止損。"
+                msg = f"💰 [Iteration 68.6 | Flash Sniper] {symbol} 達到 1.2 RR！執行 50% 減倉止盈。\n剩餘 50% 開啟 EMA 10 移動止損。"
                 send_telegram_msg(msg)
                 
                 # Execute 50% reduction
@@ -1499,7 +1499,7 @@ def manage_positions(prices_rsi):
                 df_exit['ema10'] = calculate_ema(df_exit, 10)
                 ema10 = safe_get_float(df_exit['ema10'])
                 if (side == 'LONG' and current_price < ema10) or (side == 'SHORT' and current_price > ema10):
-                    msg = f"📈 [Iteration 67] {symbol} 跌破 EMA 10！全數平倉獲利了結。"
+                    msg = f"📈 [Iteration 68.6 | Flash Sniper] {symbol} 跌破 EMA 10！全數平倉獲利了結。"
                     send_telegram_msg(msg)
                     cancel_sl_order(symbol, state.get('sl_order_id'))
                     state['status'] = 'Closed'
@@ -1519,7 +1519,7 @@ def manage_positions(prices_rsi):
             if side == 'LONG':
                 # Iteration 26: Exit Logic (BB Mid/Upper)
                 if current_price >= bb_upper:
-                    msg = f"🚀 [Iteration 67] {symbol} 觸及布林上軌！全數平倉獲利了結。"
+                    msg = f"🚀 [Iteration 68.6 | Flash Sniper] {symbol} 觸及布林上軌！全數平倉獲利了結。"
                     send_telegram_msg(msg)
                     cancel_sl_order(symbol, state.get('sl_order_id'))
                     state['status'] = 'Closed'
@@ -1532,7 +1532,7 @@ def manage_positions(prices_rsi):
         # 3. SL (Iteration 53: ATR-based SL)
         sl_price = state.get('sl_price')
         if (side == 'LONG' and current_price <= sl_price) or (side == 'SHORT' and current_price >= sl_price):
-            msg = f"❌ [Iteration 67] {symbol} 觸發止損！\n現價：{current_price:.2f} | 止損價：{sl_price:.2f}"
+            msg = f"❌ [Iteration 68.6 | Flash Sniper] {symbol} 觸發止損！\n現價：{current_price:.2f} | 止損價：{sl_price:.2f}"
             send_telegram_msg(msg)
             cancel_sl_order(symbol, state.get('sl_order_id'))
             state['status'] = 'Closed'
@@ -1555,7 +1555,7 @@ def manage_positions(prices_rsi):
         entry_time = datetime.fromisoformat(state['entry_time'])
         if (datetime.utcnow() - entry_time).total_seconds() >= 172800: # 48 hours
             if current_price > entry_price:
-                msg = f"⏳ [Iteration 67] {symbol} 持倉超過 48 小時且獲利為正，強行平倉釋放資金！"
+                msg = f"⏳ [Iteration 68.6 | Flash Sniper] {symbol} 持倉超過 48 小時且獲利為正，強行平倉釋放資金！"
                 send_telegram_msg(msg)
                 cancel_sl_order(symbol, state.get('sl_order_id'))
                 state['status'] = 'Closed'
@@ -1613,12 +1613,12 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 68.5 - Flash Sniper"
+    STRATEGY_VERSION = "Iteration 68.6 - Flash Sniper"
     last_heartbeat_time = 0
     last_summary_date = None
     
-    # Iteration 68.4: Initialize ML Model at startup
-    print("🤖 [System] Loading ML Model for Iteration 68.4...")
+    # Iteration 68.6: Initialize ML Model at startup
+    print(f"🤖 [System] Loading ML Model for {STRATEGY_VERSION}...")
     ml_model = CryptoMLModel()
     ml_model.load()
     
@@ -1645,8 +1645,8 @@ if __name__ == "__main__":
             manage_positions(scan_results)
             current_time = time.time()
 
-            # Iteration 43: 30-minute Heartbeat
-            if current_time - last_heartbeat_time >= 1800:
+            # Iteration 68.6: 15-minute Heartbeat
+            if current_time - last_heartbeat_time >= 900:
                 # Collect active position data
                 active_positions = []
                 
