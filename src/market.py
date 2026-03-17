@@ -1242,57 +1242,58 @@ def run_strategy(ml_model):
                     ema20 = calculate_ema(df_ml, 20)
                     ema20_slope_up = ema20.iloc[-1] > ema20.iloc[-2]
 
-                    # Iteration 68: Pursuit Mode Logic
+                    # Iteration 71: Hybrid Sniper | Laddered Logic
+                    # Determine Mode based on BTC 24H Volume Change
+                    # btc_status is calculated at the beginning of run_strategy
+                    vol_24h = btc_status.get('vol_change_24h', 0)
+                    btc_price = btc_status.get('price', 0)
+                    btc_ema20 = btc_status.get('ema20', 0)
+                    
+                    # Iteration 68: Pursuit Mode Logic (Pre-calculate distance)
                     ema20_1h = calculate_ema(df_ml, 20).iloc[-1]
                     dist_ema20_pct = (latest['close'] - ema20_1h) / ema20_1h * 100 if ema20_1h > 0 else 999
                     
-                    passed_filter = False
-                    tier = ""
+                    mode = "Standard"
+                    ai_threshold = 0.68
+                    support_ema = "ema50"
+                    support_dist = 0.015
+                    
+                    if vol_24h > 30 and btc_price > btc_ema20:
+                        mode = "Aggressive (強勢進攻)"
+                        ai_threshold = 0.65
+                        support_ema = "ema50"
+                        support_dist = 0.02
+                    elif vol_24h < 0:
+                        mode = "Defensive (低量避險)"
+                        ai_threshold = 0.72
+                        support_ema = "ema200"
+                        support_dist = 0.02
+                    
+                    # Calculate distance to required support EMA
+                    if support_ema == "ema50":
+                        target_ema_val = calculate_ema(df_ml, 50).iloc[-1]
+                    else:
+                        target_ema_val = ema200 # Already calculated
                         
-                    if is_pursuit_mode and ml_score >= pursuit_ai_threshold and 0 <= dist_ema20_pct <= 1.5:
+                    dist_to_support = abs(latest['close'] - target_ema_val) / target_ema_val if target_ema_val > 0 else 999
+                    
+                    passed_filter = False
+                    tier = f"Tier 1 ({mode})"
+                    
+                    if ml_score >= ai_threshold and dist_to_support <= support_dist:
+                        current_risk = 0.012 # Standard 1.2% Risk
+                        target_rr = 1.5
+                        passed_filter = True
+                        
+                    # Iteration 68: Pursuit Mode Logic (Override if extremely strong)
+                    if not passed_filter and is_pursuit_mode and ml_score >= 0.85 and 0 <= dist_ema20_pct <= 1.5:
                         current_risk = 0.015 # Higher risk for pursuit
                         target_rr = 1.5
                         tier = "Tier 0 (Pursuit Mode)"
                         passed_filter = True
-                    elif ml_score >= 0.63:
-                        current_risk = 0.012
-                        target_rr = 1.5
-                        tier = "Tier 1 (High Conviction)"
-                        passed_filter = ema20_slope_up
-                    elif ml_score >= 0.58:
-                        current_risk = 0.005
-                        target_rr = 2.0
-                        tier = "Tier 2 (Speculative)"
-                        passed_filter = is_squeezed and ema_aligned and ema20_slope_up
-                    
-                    # Iteration 67: 5m Auxiliary Scan
-                    if not passed_filter:
-                        df_5m = fetch_5m_data(symbol)
-                        if not df_5m.empty:
-                            df_features_5m = extract_features(df_5m)
-                            # Iteration 68.3: Use the passed ml_model instance
-                            if hasattr(ml_model.model, 'feature_names_in_'):
-                                X_5m = df_features_5m[ml_model.model.feature_names_in_].fillna(0)
-                                ml_score_5m = ml_model.model.predict_proba(X_5m)[:, 1][-1]
-                            else:
-                                # Fallback if feature_names_in_ is not available
-                                ml_score_5m = ml_model.predict_proba(df_features_5m.tail(1))[0]
-                                # Tier 3 requires higher score and basic trend alignment
-                    ema20_5m = calculate_ema(df_5m, 20)
-                    ema50_5m = calculate_ema(df_5m, 50)
-                    ema_aligned_5m = safe_get_float(ema20_5m) > safe_get_float(ema50_5m)
-                    ema20_slope_up_5m = safe_get_float(ema20_5m) > safe_get_float(ema20_5m, -2)
-                    rsi_5m_series = calculate_rsi(df_5m)
-                    rsi_5m = safe_get_float(rsi_5m_series)
-                    
-                    if ml_score_5m > 0.70 and ema_aligned_5m and ema20_slope_up_5m and (55 <= rsi_5m <= 70):
-                        current_risk = 0.008
-                        target_rr = 1.5
-                        tier = "Tier 3 (5m Auxiliary)"
-                        passed_filter = True
 
                 if passed_filter:
-                    print(f"🎯 [Iteration 68.9 | Flash Sniper] {symbol} {tier} Signal. Score: {ml_score:.4f}, Risk: {current_risk*100}%, RR: {target_rr}")
+                    print(f"🎯 [Iteration 71 | Hybrid Sniper] {symbol} {tier} Signal. Score: {ml_score:.4f}, Mode: {mode}")
                     potential_signals.append({
                         'symbol': symbol,
                         'side': side,
@@ -1465,17 +1466,17 @@ def manage_positions(prices_rsi):
                 save_order_state(symbol, state)
                 send_telegram_msg(f"🛡️ [Iteration 68.9 | Flash Sniper] {symbol} 已啟動保本止損 (Trailing to BE)。")
 
-        # Iteration 68: Trailing Stop (1% Trigger, 1% Distance)
+        # Iteration 71: Trailing Stop (1% Trigger, 1.8% Distance)
         # Track highest price reached
         state['highest_price'] = max(state.get('highest_price', entry_price), current_price)
         profit_from_entry = (state['highest_price'] - entry_price) / entry_price
         
         if profit_from_entry >= 0.01:
-            # Triggered 1% profit, calculate trailing SL (1% below highest)
-            trailing_sl = state['highest_price'] * 0.99
+            # Triggered 1% profit, calculate trailing SL (1.8% below highest)
+            trailing_sl = state['highest_price'] * 0.982
             # Only update if new trailing SL is higher than current SL
             if trailing_sl > state.get('sl_price', 0):
-                print(f"📈 [Iteration 68] {symbol} Trailing Stop Triggered. Highest: {state['highest_price']}, New SL: {trailing_sl}")
+                print(f"📈 [Iteration 71] {symbol} Trailing Stop Triggered. Highest: {state['highest_price']}, New SL: {trailing_sl}")
                 if update_sl_order(symbol, state.get('sl_order_id'), trailing_sl):
                     state['sl_price'] = trailing_sl
                     state['trailing_active'] = True
