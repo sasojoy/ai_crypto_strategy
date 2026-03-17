@@ -1613,11 +1613,11 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 68.6 - Flash Sniper"
+    STRATEGY_VERSION = "Iteration 68.7 - Final Sniper"
     last_heartbeat_time = 0
     last_summary_date = None
     
-    # Iteration 68.6: Initialize ML Model at startup
+    # Iteration 68.7: Initialize ML Model at startup
     print(f"🤖 [System] Loading ML Model for {STRATEGY_VERSION}...")
     ml_model = CryptoMLModel()
     ml_model.load()
