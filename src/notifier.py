@@ -144,10 +144,10 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     from src.health_check import run_full_health_check
     health_report = run_full_health_check()
     
-    # Iteration 61.3: Regime Mode Display
+    # Iteration 68.4: Regime Mode Display
     regime_mode = btc_status.get('regime_mode', '未知') if btc_status else '未知'
     
-    msg = f"🚀 【Iteration 61.3 | 系統健康監控】\n"
+    msg = f"🚀 【{version} | 系統健康監控】\n"
     msg += f"📊 戰績：[勝率 {win_rate*100:.0f}%] | [Risk: {risk_level}]\n"
     msg += f"🏥 系統狀態：\n{health_report}\n"
     msg += f"🤖 AI Confidence: {avg_ai_score*100:.1f}% ({ai_status})\n"
@@ -204,11 +204,21 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
 
     # 2. Scan Summary & Entry Readiness
     msg += "\n⚪ 進場完成度 (15m 戰備)：\n"
-    for symbol, data in scan_results.items():
+    
+    # Iteration 68.4: Sort by AI score and show top 3
+    sorted_results = sorted(
+        scan_results.items(), 
+        key=lambda x: x[1].get('ml_score', 0), 
+        reverse=True
+    )[:3]
+
+    for symbol, data in sorted_results:
         score = 0
         details = []
         
-        # Condition 1: EMA200 Above
+        # AI Score
+        ml_score = data.get('ml_score', 0)
+        details.append(f"AI: {ml_score:.2f}")
         price = data.get('price', 0)
         ema200 = data.get('ema200', 0)
         dist_ema200 = data.get('dist_ema200_pct', 0)
@@ -263,7 +273,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: Iteration 61.3 | Aggressive Trend | 模式: 100% 模擬觀測"
+    msg += f"版本: {version} | 模式: 100% 模擬觀測"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")
