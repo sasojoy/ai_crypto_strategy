@@ -1,46 +1,39 @@
-# AI Crypto Strategy - Iteration 61.3 (GCE Optimized)
+# AI Crypto Strategy - Iteration 68.9 | Final Sniper
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 核心邏輯 (Iteration 61.3)
+## 🌟 當前策略狀態 (Iteration 68.9 | Final Sniper)
 
-### 1. 動態環境過濾 (Regime Filter)
-- **多頭追擊**：BTC 24H 量能增長 > 20% 且處於多頭排列時，啟動激進模式。
-- **震盪防禦**：量能萎縮時，AI 門檻下修至 **0.68**，並嚴格執行 **1.8 RR** 過濾。
-- **趨勢擴張**：標準模式下使用 0.65 AI 門檻。
+### 1. 核心邏輯：追擊 + 移動止損 (Pursuit & Trailing)
+- **多頭追擊模式**：當 BTC 24H 量能增長 > 100% 或處於 24H 高點且量能穩定時啟動。
+- **AI 信心門檻**：固定為 **0.72**，確保在高勝率區間進場。
+- **移動止損 (Trailing Stop)**：
+    - **觸發門檻**：獲利達 1% 時啟動。
+    - **回撤距離**：1% 動態追蹤，鎖定利潤。
+- **保本機制**：獲利達 0.8% 時自動將止損移至進場價 (Break-even)。
 
-### 2. AI 決策系統
-- **隨機森林模型**：整合 RSI, ADX, ATR 與量能增長特徵進行即時預測。
-- **動態門檻**：根據市場環境自動調整 AI 信心門檻 (0.65 - 0.75)。
+### 2. 數據邊界保護
+- **換日線保護**：UTC 00:00 - 00:30 自動跳過量能檢查，避免數據缺失導致的異常判定。
+- **異常值 Clip**：若檢測到量能跌幅 > 80%，系統強制歸零並發出警告，防止數據錯誤。
 
-### 3. 風險管理
-- **RR 門檻**：防禦模式下強制要求 Risk-Reward Ratio >= 1.8。
-- **倉位控制**：基於 ATR 的波動率調整倉位，單筆風險控制在 1.5%。
+## 🛠️ 快速診斷手冊 (Quick Diagnosis)
 
-## 🚀 [System Health] 依賴版本
-- **Python**: 3.10 (GCE Compatible)
-- **Pandas**: >=2.0.0, <2.3.0
-- **Scikit-Learn**: >=1.0.0 (Local Retrained)
-- **CCXT**: >=4.0.0
+| 症狀 | 可能原因 | 檢查動作 |
+| :--- | :--- | :--- |
+| **GitHub Actions Timeout** | 部署腳本包含阻塞指令 | 檢查 `deploy.sh` 是否有 `pm2 log` 或 `tail` |
+| **不進場 (No Trades)** | AI 分數未達標 | 查看 `logs/trading.log` 中的 `Score: 0.xx` |
+| **量能顯示 -97%** | 交易所 API 換日數據缺失 | 系統會自動觸發「軍規四」保護，無需人工干預 |
+| **Telegram 無心跳** | 進程崩潰或 API 限制 | 執行 `pm2 status` 檢查，確認心跳頻率為 15min |
 
-## 🛠️ 操作說明
-
-### 1. 啟動交易機器人
-```bash
-pm2 start "python3 -u -m src.market" --name "AI_Strategy_Bot"
-```
-
-### 2. 監控與日誌
-- **即時日誌**：`pm2 logs AI_Strategy_Bot`
-- **更版紀錄**：查看 [docs/CHANGELOG.md](./docs/CHANGELOG.md)
-
----
+## 🚀 運維軍規
+本專案嚴格遵守 [docs/DEVOPS_RULES.md](./docs/DEVOPS_RULES.md) 中的「六大軍規」，確保系統穩定性。
 
 ## 📂 目錄結構
 ```text
 ai_crypto_strategy/
 ├── docs/
-│   └── CHANGELOG.md        # 版本演進詳細紀錄
+│   ├── DEVOPS_RULES.md     # 最高運維軍規
+│   └── CHANGELOG_AI.md     # AI 策略變更日誌
 ├── config/
 │   └── params.json         # 策略參數
 ├── models/
@@ -54,66 +47,3 @@ ai_crypto_strategy/
 
 ---
 *Last Updated: 2026-03-14*
-EOF > README.md
-# AI Crypto Strategy - Iteration 61.3 (GCE Optimized)
-
-這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
-
-## 🌟 核心邏輯 (Iteration 61.3)
-
-### 1. 動態環境過濾 (Regime Filter)
-- **多頭追擊**：BTC 24H 量能增長 > 20% 且處於多頭排列時，啟動激進模式。
-- **震盪防禦**：量能萎縮時，AI 門檻下修至 **0.68**，並嚴格執行 **1.8 RR** 過濾。
-- **趨勢擴張**：標準模式下使用 0.65 AI 門檻。
-
-### 2. AI 決策系統
-- **隨機森林模型**：整合 RSI, ADX, ATR 與量能增長特徵進行即時預測。
-- **動態門檻**：根據市場環境自動調整 AI 信心門檻 (0.65 - 0.75)。
-
-### 3. 風險管理
-- **RR 門檻**：防禦模式下強制要求 Risk-Reward Ratio >= 1.8。
-- **倉位控制**：基於 ATR 的波動率調整倉位，單筆風險控制在 1.5%。
-
-## 🚀 [System Health] 依賴版本
-- **Python**: 3.10 (GCE Compatible)
-- **Pandas**: >=2.0.0, <2.3.0
-- **Scikit-Learn**: >=1.0.0 (Local Retrained)
-- **CCXT**: >=4.0.0
-
-## 🛠️ 操作說明
-
-### 1. 啟動交易機器人
-```bash
-pm2 start "python3 -u -m src.market" --name "AI_Strategy_Bot"
-```
-
-### 2. 監控與日誌
-- **即時日誌**：`pm2 logs AI_Strategy_Bot`
-- **更版紀錄**：查看 [docs/CHANGELOG.md](./docs/CHANGELOG.md)
-
----
-
-## 📂 目錄結構
-```text
-ai_crypto_strategy/
-├── docs/
-│   └── CHANGELOG.md        # 版本演進詳細紀錄
-├── config/
-│   └── params.json         # 策略參數
-├── models/
-│   └── rf_model.joblib     # 訓練好的 AI 模型
-├── src/
-│   ├── market.py           # 核心交易執行器
-│   ├── train_model.py      # 模型訓練腳本
-│   └── notifier.py         # 通知與標籤管理
-└── requirements.txt        # 淨化後的依賴清單
-```
-
----
-*Last Updated: 2026-03-14*
-
-## ⚠️ Performance Warning (Iteration 61.3)
-- **勝率**: 26.09%
-- **總盈虧**: -$925.17 (Last 30 days BTC/USDT)
-- **交易次數**: 23
-- **警示**: 舊邏輯在縮量市場表現極差，已於 Iteration 62 緊急修正。
