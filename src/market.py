@@ -1229,91 +1229,91 @@ def run_strategy(ml_model):
                         'vol_growth': vol_growth
                     })
                         
-                        # Step 3: Iteration 65 - Tiered Risk Management & BB Squeeze Filter
-                        # Calculate BB Width Percentile for Squeeze Filter
-                        _, _, bb_width, _ = calculate_bollinger_bands(df_ml)
-                        bb_width_20_pct = bb_width.rolling(100).quantile(0.20).iloc[-1]
-                        is_squeezed = bb_width.iloc[-1] < bb_width_20_pct
-                        
-                        # Check 4H EMA Alignment
-                        ema_aligned = check_ema_alignment(df_4h)
-                        
-                        # Iteration 66: EMA20 Slope Filter (1h)
-                        ema20 = calculate_ema(df_ml, 20)
-                        ema20_slope_up = ema20.iloc[-1] > ema20.iloc[-2]
+                    # Step 3: Iteration 65 - Tiered Risk Management & BB Squeeze Filter
+                    # Calculate BB Width Percentile for Squeeze Filter
+                    _, _, bb_width, _ = calculate_bollinger_bands(df_ml)
+                    bb_width_20_pct = bb_width.rolling(100).quantile(0.20).iloc[-1]
+                    is_squeezed = bb_width.iloc[-1] < bb_width_20_pct
+                    
+                    # Check 4H EMA Alignment
+                    ema_aligned = check_ema_alignment(df_4h)
+                    
+                    # Iteration 66: EMA20 Slope Filter (1h)
+                    ema20 = calculate_ema(df_ml, 20)
+                    ema20_slope_up = ema20.iloc[-1] > ema20.iloc[-2]
 
-                        # Iteration 68: Pursuit Mode Logic
-                        ema20_1h = calculate_ema(df_ml, 20).iloc[-1]
-                        dist_ema20_pct = (latest['close'] - ema20_1h) / ema20_1h * 100 if ema20_1h > 0 else 999
+                    # Iteration 68: Pursuit Mode Logic
+                    ema20_1h = calculate_ema(df_ml, 20).iloc[-1]
+                    dist_ema20_pct = (latest['close'] - ema20_1h) / ema20_1h * 100 if ema20_1h > 0 else 999
+                    
+                    passed_filter = False
+                    tier = ""
                         
-                        passed_filter = False
-                        tier = ""
-                        
-                        if is_pursuit_mode and ml_score >= pursuit_ai_threshold and 0 <= dist_ema20_pct <= 1.5:
-                            current_risk = 0.015 # Higher risk for pursuit
-                            target_rr = 1.5
-                            tier = "Tier 0 (Pursuit Mode)"
-                            passed_filter = True
-                        elif ml_score >= 0.63:
-                            current_risk = 0.012
-                            target_rr = 1.5
-                            tier = "Tier 1 (High Conviction)"
-                            passed_filter = ema20_slope_up
-                        elif ml_score >= 0.58:
-                            current_risk = 0.005
-                            target_rr = 2.0
-                            tier = "Tier 2 (Speculative)"
-                            passed_filter = is_squeezed and ema_aligned and ema20_slope_up
-                        
-                        # Iteration 67: 5m Auxiliary Scan
-                        if not passed_filter:
-                            df_5m = fetch_5m_data(symbol)
-                            if not df_5m.empty:
-                                df_features_5m = extract_features(df_5m)
-                                # Iteration 68.3: Use the passed ml_model instance
-                                if hasattr(ml_model.model, 'feature_names_in_'):
-                                    X_5m = df_features_5m[ml_model.model.feature_names_in_].fillna(0)
-                                    ml_score_5m = ml_model.model.predict_proba(X_5m)[:, 1][-1]
-                                else:
-                                    # Fallback if feature_names_in_ is not available
-                                    ml_score_5m = ml_model.predict_proba(df_features_5m.tail(1))[0]
-                                # Tier 3 requires higher score and basic trend alignment
-                                ema20_5m = calculate_ema(df_5m, 20)
-                                ema50_5m = calculate_ema(df_5m, 50)
-                                ema_aligned_5m = safe_get_float(ema20_5m) > safe_get_float(ema50_5m)
-                                ema20_slope_up_5m = safe_get_float(ema20_5m) > safe_get_float(ema20_5m, -2)
-                                rsi_5m_series = calculate_rsi(df_5m)
-                                rsi_5m = safe_get_float(rsi_5m_series)
-                                
-                                if ml_score_5m > 0.70 and ema_aligned_5m and ema20_slope_up_5m and (55 <= rsi_5m <= 70):
-                                    current_risk = 0.008
-                                    target_rr = 1.5
-                                    tier = "Tier 3 (5m Auxiliary)"
-                                    passed_filter = True
-
-                        if passed_filter:
-                            print(f"🎯 [Iteration 68.9 | Flash Sniper] {symbol} {tier} Signal. Score: {ml_score:.4f}, Risk: {current_risk*100}%, RR: {target_rr}")
-                            potential_signals.append({
-                                'symbol': symbol,
-                                'side': side,
-                                'vol_growth': vol_growth,
-                                'latest': latest,
-                                'prices_rsi': prices_rsi[symbol],
-                                'risk_multiplier': current_risk / 0.008, # Adjust based on base risk
-                                'ml_score': ml_score,
-                                'target_rr': target_rr,
-                                'tier': tier
-                            })
-                        else:
-                            if ml_score >= 0.63:
-                                reason = ""
-                                if not is_squeezed and ml_score < 0.68: reason += "No Squeeze "
-                                if not ema_aligned and ml_score < 0.68: reason += "EMA Not Aligned "
-                                if not ema20_slope_up: reason += "EMA20 Slope Down"
-                                print(f"🛡️ [Iteration 68.9 | Flash Sniper] {symbol} score {ml_score:.4f} but rejected: {reason}")
+                    if is_pursuit_mode and ml_score >= pursuit_ai_threshold and 0 <= dist_ema20_pct <= 1.5:
+                        current_risk = 0.015 # Higher risk for pursuit
+                        target_rr = 1.5
+                        tier = "Tier 0 (Pursuit Mode)"
+                        passed_filter = True
+                    elif ml_score >= 0.63:
+                        current_risk = 0.012
+                        target_rr = 1.5
+                        tier = "Tier 1 (High Conviction)"
+                        passed_filter = ema20_slope_up
+                    elif ml_score >= 0.58:
+                        current_risk = 0.005
+                        target_rr = 2.0
+                        tier = "Tier 2 (Speculative)"
+                        passed_filter = is_squeezed and ema_aligned and ema20_slope_up
+                    
+                    # Iteration 67: 5m Auxiliary Scan
+                    if not passed_filter:
+                        df_5m = fetch_5m_data(symbol)
+                        if not df_5m.empty:
+                            df_features_5m = extract_features(df_5m)
+                            # Iteration 68.3: Use the passed ml_model instance
+                            if hasattr(ml_model.model, 'feature_names_in_'):
+                                X_5m = df_features_5m[ml_model.model.feature_names_in_].fillna(0)
+                                ml_score_5m = ml_model.model.predict_proba(X_5m)[:, 1][-1]
                             else:
-                                print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} < 0.63. Signal rejected.")
-                            increment_ai_filtered_count()
+                                # Fallback if feature_names_in_ is not available
+                                ml_score_5m = ml_model.predict_proba(df_features_5m.tail(1))[0]
+                                # Tier 3 requires higher score and basic trend alignment
+                    ema20_5m = calculate_ema(df_5m, 20)
+                    ema50_5m = calculate_ema(df_5m, 50)
+                    ema_aligned_5m = safe_get_float(ema20_5m) > safe_get_float(ema50_5m)
+                    ema20_slope_up_5m = safe_get_float(ema20_5m) > safe_get_float(ema20_5m, -2)
+                    rsi_5m_series = calculate_rsi(df_5m)
+                    rsi_5m = safe_get_float(rsi_5m_series)
+                    
+                    if ml_score_5m > 0.70 and ema_aligned_5m and ema20_slope_up_5m and (55 <= rsi_5m <= 70):
+                        current_risk = 0.008
+                        target_rr = 1.5
+                        tier = "Tier 3 (5m Auxiliary)"
+                        passed_filter = True
+
+                if passed_filter:
+                    print(f"🎯 [Iteration 68.9 | Flash Sniper] {symbol} {tier} Signal. Score: {ml_score:.4f}, Risk: {current_risk*100}%, RR: {target_rr}")
+                    potential_signals.append({
+                        'symbol': symbol,
+                        'side': side,
+                        'vol_growth': vol_growth,
+                        'latest': latest,
+                        'prices_rsi': prices_rsi[symbol],
+                        'risk_multiplier': current_risk / 0.008, # Adjust based on base risk
+                        'ml_score': ml_score,
+                        'target_rr': target_rr,
+                        'tier': tier
+                    })
+                else:
+                    if ml_score >= 0.63:
+                        reason = ""
+                        if not is_squeezed and ml_score < 0.68: reason += "No Squeeze "
+                        if not ema_aligned and ml_score < 0.68: reason += "EMA Not Aligned "
+                        if not ema20_slope_up: reason += "EMA20 Slope Down"
+                        print(f"🛡️ [Iteration 68.9 | Flash Sniper] {symbol} score {ml_score:.4f} but rejected: {reason}")
+                    else:
+                        print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} < 0.63. Signal rejected.")
+                    increment_ai_filtered_count()
         except Exception as e:
             print(f"Error in strategy execution for {symbol}: {e}")
 
@@ -1596,145 +1596,156 @@ def close_partial_position(symbol, qty):
 
 
 if __name__ == "__main__":
-    send_telegram_msg("🚀 [System Heartbeat] Iteration 67_Dynamic_Sniper 正在 GCE 啟動。高頻掃描與動態保本機制已就緒。")
-    import sys
-    if "--check-accounting" in sys.argv:
-        print("📊 [ACCOUNTING CHECK]")
-        balance = get_account_balance()
-        print(f"Total Balance: ${balance:.2f}")
-        if os.path.exists(os.path.join(DATA_DIR, 'trade_history.csv')):
-            df = pd.read_csv(os.path.join(DATA_DIR, 'trade_history.csv'))
-            print(f"Total Trades: {len(df)}")
-            print(f"Total PnL from History: ${df['pnl'].sum():.2f}")
-        else:
-            print("No trade history found.")
-        
-        symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT', 'FET/USDT', 'NEAR/USDT']
-        active_found = False
-        for s in symbols:
-            state = load_order_state(s)
-            if state and state.get('status') == 'Open':
-                print(f"📍 Active Position: {s} | Size: {state.get('pos_size', 0):.4f} | Entry: {state.get('entry_price', 0):.4f}")
-                active_found = True
-        if not active_found:
-            print("No active positions.")
-        sys.exit(0)
-
-    STRATEGY_VERSION = "Iteration 69.2 | Final Sniper"
-    last_heartbeat_time = 0
-    last_summary_date = None
-    
-    # Iteration 69.2: Startup Notification (Immediate)
     try:
-        send_telegram_msg(f"🚀 【{STRATEGY_VERSION}】已在生產環境正式啟動，正在載入模型與初始化數據...")
-    except Exception as e:
-        print(f"Failed to send startup notification: {e}")
+        send_telegram_msg("🚀 [System Heartbeat] Iteration 69.3 | Final Sniper 正在 GCE 啟動。")
+        import sys
+        if "--check-accounting" in sys.argv:
+            print("📊 [ACCOUNTING CHECK]")
+            balance = get_account_balance()
+            print(f"Total Balance: ${balance:.2f}")
+            if os.path.exists(os.path.join(DATA_DIR, 'trade_history.csv')):
+                df = pd.read_csv(os.path.join(DATA_DIR, 'trade_history.csv'))
+                print(f"Total Trades: {len(df)}")
+                print(f"Total PnL from History: ${df['pnl'].sum():.2f}")
+            else:
+                print("No trade history found.")
+            
+            symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT', 'FET/USDT', 'NEAR/USDT']
+            active_found = False
+            for s in symbols:
+                state = load_order_state(s)
+                if state and state.get('status') == 'Open':
+                    print(f"📍 Active Position: {s} | Size: {state.get('pos_size', 0):.4f} | Entry: {state.get('entry_price', 0):.4f}")
+                    active_found = True
+            if not active_found:
+                print("No active positions.")
+            sys.exit(0)
 
-    # Iteration 68.9: Initialize ML Model at startup
-    print(f"🤖 [System] Loading ML Model for {STRATEGY_VERSION}...")
-    ml_model = CryptoMLModel()
-    ml_model.load()
-    
-    print(f"✅ {STRATEGY_VERSION} Initialization Complete.")
-
-    while True:
+        STRATEGY_VERSION = "Iteration 69.3 | Final Sniper"
+        last_heartbeat_time = 0
+        last_summary_date = None
+        
+        # Iteration 69.2: Startup Notification (Immediate)
         try:
-            if check_kill_switch():
-                trigger_panic_sell_all()
-
-            now = datetime.utcnow()
-            if now.hour == 0 and now.minute == 0 and last_summary_date != now.date():
-                # Iteration 31: Daily Performance Message
-                # Simulated values for this iteration
-                equity = 1000.0 
-                daily_pnl = 0.0
-                best_symbol = "SOL/USDT"
-                max_dd = 0.0
-                send_daily_performance(now.date().isoformat(), equity, daily_pnl, best_symbol, max_dd)
-                last_summary_date = now.date()
-
-            stability_monitor()
-            scan_results = run_strategy(ml_model)
-            manage_positions(scan_results)
-            current_time = time.time()
-
-            # Iteration 68.9: 15-minute Heartbeat
-            if current_time - last_heartbeat_time >= 900:
-                # Collect active position data
-                active_positions = []
-                
-                # Iteration 32: Fetch actual realized PnL and balance
-                balance_data = {"total_balance": 1000.0, "realized_pnl": 0.0}
-                if os.path.exists(os.path.join(DATA_DIR, 'balance.json')):
-                    with open(os.path.join(DATA_DIR, 'balance.json'), 'r') as f:
-                        balance_data = json.load(f)
-                
-                # Iteration 32: Calculate Daily PnL from CSV
-                daily_pnl = 0
-                if os.path.exists(os.path.join(DATA_DIR, 'trade_history.csv')):
-                    try:
-                        df_history = pd.read_csv(os.path.join(DATA_DIR, 'trade_history.csv'))
-                        today_str = datetime.utcnow().strftime('%Y-%m-%d')
-                        df_today = df_history[df_history['timestamp'].str.startswith(today_str)]
-                        daily_pnl = df_today['pnl'].sum()
-                    except Exception as e:
-                        print(f"Error calculating daily PnL: {e}")
-
-                equity = balance_data.get('total_balance', 1000.0)
-                
-                symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT', 'FET/USDT', 'NEAR/USDT']
-                for s in symbols:
-                    state = load_order_state(s)
-                    if state and state.get('status') == 'Open' and state.get('pos_size', 0) > 0:
-                        current_price = scan_results.get(s, {}).get('price', 0)
-                        entry_price = state.get('entry_price', 0)
-                        pnl = round(((current_price - entry_price) / entry_price) * 100, 2) if entry_price > 0 else 0
-                        active_positions.append({
-                            'symbol': s,
-                            'status': state.get('status'),
-                            'pnl': pnl,
-                            'size_usd': state.get('pos_size', 0) * current_price,
-                            'entry_price': entry_price
-                        })
-                
-                send_hourly_audit(equity, daily_pnl, active_positions)
-                
-                # Iteration 35: Rich Heartbeat with Data Visualization
-                df_btc = fetch_1h_data('BTC/USDT')
-                if not df_btc.empty:
-                    btc_price = df_btc.iloc[-1]['close']
-                    btc_ema50 = calculate_ema(df_btc, 50).iloc[-1]
-                    
-                    # Fetch 24h volume change (Iteration 52: Fix volume data)
-                    vol_change_24h = 0
-                    try:
-                        # For accuracy, we fetch 48h of 1h data with retry
-                        df_48h = fetch_btc_vol_with_retry('BTC/USDT', limit=48)
-                        if len(df_48h) >= 48:
-                            last_24h_vol = df_48h.iloc[-24:]['volume'].sum()
-                            prev_24h_vol = df_48h.iloc[-48:-24]['volume'].sum()
-                            
-                            if prev_24h_vol == 0 or last_24h_vol == 0:
-                                vol_change_24h = 0
-                            else:
-                                vol_change_24h = (last_24h_vol - prev_24h_vol) / prev_24h_vol * 100
-                            
-                            # Limit extreme values
-                            vol_change_24h = max(min(vol_change_24h, 500.0), -100.0)
-                    except Exception as e:
-                        print(f"Error calculating vol change: {e}")
-                    
-                    btc_status = {
-                        'price': btc_price,
-                        'ema50': btc_ema50,
-                        'is_bullish': btc_price > btc_ema50,
-                        'vol_change_24h': vol_change_24h,
-                        'regime_mode': regime_mode
-                    }
-                    # Iteration 68.5: Use dynamic version string
-                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), STRATEGY_VERSION, btc_status)
-                
-                last_heartbeat_time = current_time
+            send_telegram_msg(f"🚀 【{STRATEGY_VERSION}】已在生產環境正式啟動，正在載入模型與初始化數據...")
         except Exception as e:
-            print(f"Loop error: {e}")
-        time.sleep(60)
+            print(f"Failed to send startup notification: {e}")
+
+        # Iteration 68.9: Initialize ML Model at startup
+        print(f"🤖 [System] Loading ML Model for {STRATEGY_VERSION}...")
+        ml_model = CryptoMLModel()
+        ml_model.load()
+        
+        print(f"✅ {STRATEGY_VERSION} Initialization Complete.")
+        send_telegram_msg(f"🚀 系統核心已上線 | {STRATEGY_VERSION}")
+
+        while True:
+            try:
+                if check_kill_switch():
+                    trigger_panic_sell_all()
+
+                now = datetime.utcnow()
+                if now.hour == 0 and now.minute == 0 and last_summary_date != now.date():
+                    # Iteration 31: Daily Performance Message
+                    # Simulated values for this iteration
+                    equity = 1000.0 
+                    daily_pnl = 0.0
+                    best_symbol = "SOL/USDT"
+                    max_dd = 0.0
+                    send_daily_performance(now.date().isoformat(), equity, daily_pnl, best_symbol, max_dd)
+                    last_summary_date = now.date()
+
+                stability_monitor()
+                scan_results = run_strategy(ml_model)
+                manage_positions(scan_results)
+                current_time = time.time()
+
+                # Iteration 68.9: 15-minute Heartbeat
+                if current_time - last_heartbeat_time >= 900:
+                    # Collect active position data
+                    active_positions = []
+                    
+                    # Iteration 32: Fetch actual realized PnL and balance
+                    balance_data = {"total_balance": 1000.0, "realized_pnl": 0.0}
+                    if os.path.exists(os.path.join(DATA_DIR, 'balance.json')):
+                        with open(os.path.join(DATA_DIR, 'balance.json'), 'r') as f:
+                            balance_data = json.load(f)
+                    
+                    # Iteration 32: Calculate Daily PnL from CSV
+                    daily_pnl = 0
+                    if os.path.exists(os.path.join(DATA_DIR, 'trade_history.csv')):
+                        try:
+                            df_history = pd.read_csv(os.path.join(DATA_DIR, 'trade_history.csv'))
+                            today_str = datetime.utcnow().strftime('%Y-%m-%d')
+                            df_today = df_history[df_history['timestamp'].str.startswith(today_str)]
+                            daily_pnl = df_today['pnl'].sum()
+                        except Exception as e:
+                            print(f"Error calculating daily PnL: {e}")
+
+                    equity = balance_data.get('total_balance', 1000.0)
+                    
+                    symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT', 'FET/USDT', 'NEAR/USDT']
+                    for s in symbols:
+                        state = load_order_state(s)
+                        if state and state.get('status') == 'Open' and state.get('pos_size', 0) > 0:
+                            current_price = scan_results.get(s, {}).get('price', 0)
+                            entry_price = state.get('entry_price', 0)
+                            pnl = round(((current_price - entry_price) / entry_price) * 100, 2) if entry_price > 0 else 0
+                            active_positions.append({
+                                'symbol': s,
+                                'status': state.get('status'),
+                                'pnl': pnl,
+                                'size_usd': state.get('pos_size', 0) * current_price,
+                                'entry_price': entry_price
+                            })
+                    
+                    send_hourly_audit(equity, daily_pnl, active_positions)
+                    
+                    # Iteration 35: Rich Heartbeat with Data Visualization
+                    df_btc = fetch_1h_data('BTC/USDT')
+                    if not df_btc.empty:
+                        btc_price = df_btc.iloc[-1]['close']
+                        btc_ema50 = calculate_ema(df_btc, 50).iloc[-1]
+                        
+                        # Fetch 24h volume change (Iteration 52: Fix volume data)
+                        vol_change_24h = 0
+                        try:
+                            # For accuracy, we fetch 48h of 1h data with retry
+                            df_48h = fetch_btc_vol_with_retry('BTC/USDT', limit=48)
+                            if len(df_48h) >= 48:
+                                last_24h_vol = df_48h.iloc[-24:]['volume'].sum()
+                                prev_24h_vol = df_48h.iloc[-48:-24]['volume'].sum()
+                                
+                                if prev_24h_vol == 0 or last_24h_vol == 0:
+                                    vol_change_24h = 0
+                                else:
+                                    vol_change_24h = (last_24h_vol - prev_24h_vol) / prev_24h_vol * 100
+                                
+                                # Limit extreme values
+                                vol_change_24h = max(min(vol_change_24h, 500.0), -100.0)
+                        except Exception as e:
+                            print(f"Error calculating vol change: {e}")
+                        
+                        btc_status = {
+                            'price': btc_price,
+                            'ema50': btc_ema50,
+                            'is_bullish': btc_price > btc_ema50,
+                            'vol_change_24h': vol_change_24h,
+                            'regime_mode': regime_mode
+                        }
+                        # Iteration 68.5: Use dynamic version string
+                        send_rich_heartbeat(active_positions, scan_results, len(active_positions), STRATEGY_VERSION, btc_status)
+                    
+                    last_heartbeat_time = current_time
+            except Exception as e:
+                print(f"Loop error: {e}")
+            time.sleep(60)
+    except Exception as fatal_e:
+        error_msg = f"❌ 核心啟動崩潰: {str(fatal_e)}"
+        print(error_msg)
+        try:
+            from src.notifier import send_telegram_msg
+            send_telegram_msg(error_msg)
+        except:
+            pass
+        sys.exit(1)

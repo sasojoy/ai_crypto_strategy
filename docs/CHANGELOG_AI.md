@@ -6,6 +6,23 @@
 
 ---
 
+## [Iteration 69.3 | Syntax Fix & Fatal Error Catching] - 2026-03-14
+### 觸發原因
+*   系統部署後失聯，經診斷發現 `market.py` 存在 `IndentationError` (縮進錯誤)。
+*   PM2 頻繁重啟是因為語法錯誤導致 Python 無法編譯執行。
+
+### 具體修改
+1.  **語法修復**：修正了 `market.py` 中關於 AI 決策流與 BB Squeeze 過濾器的縮進錯誤。
+2.  **全局錯誤捕獲**：在 `if __name__ == "__main__":` 加入最外層 `try...except`，若啟動失敗會立即發送 Telegram 報警。
+3.  **狀態確認通知**：加入「🚀 系統核心已上線」通知，確保用戶能明確區分初始化完成。
+4.  **版本同步**：全系統更新為 `Iteration 69.3 | Final Sniper`。
+
+### 預期指標
+*   部署後 1 分鐘內收到「🚀 系統核心已上線」通知。
+*   PM2 狀態顯示 `online` 且重啟次數不再增加。
+
+---
+
 ## [Iteration 69.2 | Startup Visibility & Stability] - 2026-03-14
 ### 觸發原因
 *   系統部署後失聯，PM2 出現頻繁重啟（Crash Loop）。
