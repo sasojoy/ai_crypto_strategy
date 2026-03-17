@@ -28,9 +28,17 @@ pip install --upgrade pip
 pip install -r requirements.txt --no-cache-dir || echo "⚠️ Pip install had issues, continuing..."
 
 # 4. Start Application with PM2
-echo "🔄 Restarting Application..."
+echo "🚀 Deploying market monitor with PM2..."
 $PM2_PATH delete all || true
-$PM2_PATH start ecosystem.config.js
+$PM2_PATH start ecosystem.config.js --name "Iteration67_Final"
 $PM2_PATH save
 
-echo "✨ Deployment Complete! Check logs with: $PM2_PATH logs Iteration67_Final --lines 20 --no-daemon"
+# 關鍵點：不要使用會掛起的 log 指令
+echo "✅ PM2 Status Verification:"
+$PM2_PATH list
+
+# 使用 --no-daemon 模式只打印一次即退出，不要持續監控
+$PM2_PATH logs --lines 20 --no-daemon
+
+echo "✨ Deployment complete. Exiting cleanly."
+exit 0
