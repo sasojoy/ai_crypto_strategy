@@ -33,12 +33,8 @@ $PM2_PATH delete all || true
 $PM2_PATH start ecosystem.config.js --name "Iteration67_Final"
 $PM2_PATH save
 
-# 關鍵點：不要使用會掛起的 log 指令
 echo "✅ PM2 Status Verification:"
-$PM2_PATH list
-
-# 使用 --no-daemon 模式只打印一次即退出，不要持續監控
-$PM2_PATH logs --lines 20 --no-daemon
+$PM2_PATH status
 
 echo "✨ Deployment complete. Exiting cleanly."
 exit 0

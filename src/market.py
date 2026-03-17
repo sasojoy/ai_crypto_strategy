@@ -774,13 +774,20 @@ def run_strategy(ml_model):
                 print("⏳ [Iteration 68.3] UTC 00:00-00:30 Bypass: Volume check skipped.")
                 btc_vol_24h_change = 0.5 # Default to positive expansion
             else:
-                current_vol = df_btc_ml['volume'].iloc[-1]
-                prev_vol = df_btc_ml['volume'].iloc[-25] # 24 hours ago
+                # Iteration 68.5: Correct 24H Volume Change calculation
+                # Compare sum of last 24h vs sum of previous 24h
+                current_24h_vol = df_btc_ml['volume'].iloc[-24:].sum()
+                prev_24h_vol = df_btc_ml['volume'].iloc[-48:-24].sum()
                 
-                if current_vol == 0 or prev_vol == 0:
+                if prev_24h_vol == 0:
                     btc_vol_24h_change = 0
                 else:
-                    btc_vol_24h_change = (current_vol - prev_vol) / prev_vol
+                    btc_vol_24h_change = (current_24h_vol - prev_24h_vol) / prev_24h_vol
+                
+                # Iteration 68.5: Volume data anomaly detection
+                if btc_vol_24h_change < -0.8:
+                    print(f"⚠️ Volume data anomaly detected: {btc_vol_24h_change:.2%}. Forcing to 0.")
+                    btc_vol_24h_change = 0
                 
                 # Limit extreme values
                 btc_vol_24h_change = max(min(btc_vol_24h_change, 5.0), -1.0)
@@ -1606,7 +1613,7 @@ if __name__ == "__main__":
             print("No active positions.")
         sys.exit(0)
 
-    STRATEGY_VERSION = "Iteration 68.4 - Flash Sniper"
+    STRATEGY_VERSION = "Iteration 68.5 - Flash Sniper"
     last_heartbeat_time = 0
     last_summary_date = None
     
@@ -1711,8 +1718,8 @@ if __name__ == "__main__":
                         'vol_change_24h': vol_change_24h,
                         'regime_mode': regime_mode
                     }
-                    # Iteration 61: Integrated Health Check in Heartbeat
-                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), "Iteration 61", btc_status)
+                    # Iteration 68.5: Use dynamic version string
+                    send_rich_heartbeat(active_positions, scan_results, len(active_positions), STRATEGY_VERSION, btc_status)
                 
                 last_heartbeat_time = current_time
         except Exception as e:
