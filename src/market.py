@@ -753,11 +753,14 @@ def run_strategy(ml_model):
     risk_pct = 0.008 # Default 1.5%
 
     # Iteration 23: BTC Sentiment Filter
-    df_btc_1h = fetch_1h_data('BTC/USDT')
+    df_btc_1h = fetch_1h_data('BTC/USDT', limit=500)
     btc_sentiment_ok = False
     if not df_btc_1h.empty:
-        btc_ema50 = calculate_ema(df_btc_1h, 50).iloc[-1]
+        # Iteration 71.8: Debugging BTC Price
         btc_price = df_btc_1h.iloc[-1]['close']
+        print(f"DEBUG: BTC Close Price = {btc_price:.2f}")
+        
+        btc_ema50 = calculate_ema(df_btc_1h, 50).iloc[-1]
         btc_sentiment_ok = btc_price > btc_ema50
         print(f"📊 [BTC Sentiment] Price: {btc_price:.2f}, EMA50: {btc_ema50:.2f}, OK: {btc_sentiment_ok}")
 
