@@ -51,7 +51,7 @@ def send_hourly_audit(equity, realized_pnl, active_positions):
     msg += (
         f"📈 帳戶總淨值: ${equity:,.2f}\n"
         f"----------------------------\n"
-        f"狀態：Iteration 61.3 | Aggressive Trend 運行中"
+        f"狀態：🚀 【Iteration 71.2 | Hybrid Sniper | 核心修復】"
     )
     send_telegram_msg(msg)
 
@@ -82,7 +82,7 @@ def send_daily_performance(date, equity, daily_pnl, best_symbol, max_dd):
     api_limit = "999/1200" # Placeholder
     
     msg = (
-        f"📅 【每日對帳戰報 - Iteration 50】: {date}\n"
+        f"📅 【每日對帳戰報 - Iteration 71.2】: {date}\n"
         f"----------------------------\n"
         f"💰 淨值: ${equity:,.2f} | 當日損益: ${daily_pnl:,.2f}\n"
         f"🏆 表現最佳幣種: {best_symbol}\n"
@@ -93,7 +93,7 @@ def send_daily_performance(date, equity, daily_pnl, best_symbol, max_dd):
         f"   • 實際 vs 預期: 一致 ✅\n"
         f"   • 剩餘 API 額度: {api_limit}\n"
         f"----------------------------\n"
-        f"狀態：終極防禦系統 已啟動"
+        f"狀態：🚀 【Iteration 71.2 | Hybrid Sniper | 核心修復】"
     )
     send_telegram_msg(msg)
 
@@ -273,7 +273,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: {version} | 模式: 100% 模擬觀測"
+    msg += f"版本: 🚀 【Iteration 71.2 | Hybrid Sniper | 核心修復】"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")

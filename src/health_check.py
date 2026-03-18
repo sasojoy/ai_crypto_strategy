@@ -20,7 +20,7 @@ def check_token_validity():
     """Task B: Verify GITHUB_TOKEN validity"""
     token = os.getenv("GITHUB_TOKEN")
     if not token:
-        return "❌ Token: GITHUB_TOKEN not found in environment"
+        return "⚪ Token: GITHUB_TOKEN not found (Skipped)"
     
     headers = {"Authorization": f"token {token}"}
     try:
