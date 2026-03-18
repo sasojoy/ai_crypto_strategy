@@ -44,7 +44,25 @@ def extract_features(df, btc_df=None):
     ema20 = calculate_ema(df, 20)
     features['dist_ema20'] = (df['close'] - ema20) / ema20
     
-    return features.dropna()
+    # Iteration 71.3: Fix AI feature alignment and NaN handling
+    expected_features = [
+        'rsi', 'macd_hist', 'adx', 'atr_pct', 'vol_change_24h', 
+        'volatility_24h', 'relative_strength_btc', 'btc_volatility_24h', 
+        'dist_ema200', 'dist_ema20'
+    ]
+    
+    # Ensure all expected features exist
+    for feat in expected_features:
+        if feat not in features.columns:
+            features[feat] = 0.5
+            
+    # Reorder columns to match model training
+    features = features[expected_features]
+    
+    # Handle NaNs: backfill then fill remaining with neutral 0.5
+    features = features.bfill().fillna(0.5)
+    
+    return features
 
 def prepare_labels(df, horizon=4):
     """

@@ -198,7 +198,7 @@ def fetch_ohlcv(symbol, timeframe="1h", limit=100):
         return pd.DataFrame()
 
 
-def fetch_1h_data(symbol='BTC/USDT', limit=100):
+def fetch_1h_data(symbol='BTC/USDT', limit=500):
     try:
         timeframe = '1h'
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
@@ -1639,8 +1639,20 @@ if __name__ == "__main__":
         ml_model = CryptoMLModel()
         ml_model.load()
         
+        # Iteration 71.3: Data Pre-warmup (500 K-lines)
+        print(f"⏳ [System] Pre-warming data (500 K-lines)...")
+        warmup_symbols = get_top_relative_strength_symbols()
+        for i, s in enumerate(warmup_symbols):
+            progress = int((i / len(warmup_symbols)) * 100)
+            print(f"⏳ [{progress}%] Warming up {s}...")
+            if i % 2 == 0: # Reduce TG spam
+                send_telegram_msg(f"⏳ 正在同步數據 ({i}/{len(warmup_symbols)} 幣種)...")
+            # Fetch 500 1h candles to ensure EMA200 is ready
+            fetch_1h_data(s, limit=500)
+            time.sleep(0.5) # Rate limit protection
+        
         print(f"✅ {STRATEGY_VERSION} Initialization Complete.")
-        send_telegram_msg(f"🚀 系統核心已上線 | {STRATEGY_VERSION}")
+        send_telegram_msg(f"✅ 數據預熱完成，系統核心已上線 | {STRATEGY_VERSION}")
 
         while True:
             try:
