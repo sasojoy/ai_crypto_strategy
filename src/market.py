@@ -734,6 +734,10 @@ def run_strategy(ml_model):
     # Iteration 16: Dynamic Symbol Selection
     symbols = get_top_relative_strength_symbols()
     prices_rsi = {}
+    
+    # Iteration 71.2: Pre-populate prices_rsi with basic data for heartbeat
+    for s in symbols:
+        prices_rsi[s] = {'price': 0, 'rsi': 50, 'ml_score': 0.5, 'missed_reason': 'Initializing'}
     current_pos_count = get_active_positions_count()
     
     # Iteration 19: Dynamic Equity-Based Risking
@@ -816,7 +820,8 @@ def run_strategy(ml_model):
         
         if btc_vol_24h_change < -0.20 and not (btc_bullish and btc_at_high):
             print(f"🚫 [Iteration 68.9 | Flash Sniper] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
-            return {}
+            # Iteration 71.2: Return empty scan results but allow heartbeat to see symbols
+            return prices_rsi
         
         if is_pursuit_mode:
             regime_mode = "多頭追擊"
@@ -1595,7 +1600,7 @@ def close_partial_position(symbol, qty):
 
 if __name__ == "__main__":
     try:
-        send_telegram_msg("🚀 [System Heartbeat] Iteration 69.3 | Final Sniper 正在 GCE 啟動。")
+        send_telegram_msg("🚀 [System Heartbeat] 🚀 【Iteration 71.2 | Hybrid Sniper | 核心修復】 正在 GCE 啟動。")
         import sys
         if "--check-accounting" in sys.argv:
             print("📊 [ACCOUNTING CHECK]")
@@ -1619,7 +1624,7 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "Iteration 69.3 | Final Sniper"
+        STRATEGY_VERSION = "🚀 【Iteration 71.2 | Hybrid Sniper | 核心修復】"
         last_heartbeat_time = 0
         last_summary_date = None
         
@@ -1655,6 +1660,16 @@ if __name__ == "__main__":
 
                 stability_monitor()
                 scan_results = run_strategy(ml_model)
+                
+                # Iteration 71.2: Diagnose empty scan_results
+                print(f"🔍 [System] Scan complete. Found {len(scan_results)} results.")
+                if len(scan_results) == 0:
+                    print("⚠️ [ALARM] scan_results is EMPTY!")
+                    try:
+                        send_telegram_msg("⚠️ 【Iteration 71.2 報警】掃描結果為空，請檢查 API 連線或市場過濾邏輯。")
+                    except:
+                        pass
+
                 manage_positions(scan_results)
                 current_time = time.time()
 
