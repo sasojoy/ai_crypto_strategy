@@ -6,10 +6,15 @@ def extract_features(df, btc_df=None):
     """
     Iteration 71.7: Robust Feature Extractor
     """
-    # 1. Force chronological order
-    df = df.sort_values('timestamp', ascending=True).reset_index(drop=True)
+    # 1. Force chronological order (Iteration 71.10: Native Sort)
+    if 'timestamp' in df.columns:
+        df = df.sort_values('timestamp', ascending=True)
+    df = df.sort_index(ascending=True)
+    
     if btc_df is not None:
-        btc_df = btc_df.sort_values('timestamp', ascending=True).reset_index(drop=True)
+        if 'timestamp' in btc_df.columns:
+            btc_df = btc_df.sort_values('timestamp', ascending=True)
+        btc_df = btc_df.sort_index(ascending=True)
 
     features = pd.DataFrame(index=df.index)
     
