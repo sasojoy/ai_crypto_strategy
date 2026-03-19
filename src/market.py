@@ -147,6 +147,9 @@ def fetch_15m_data(symbol='BTC/USDT'):
         timeframe = '15m'
         limit = 300
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+        if ohlcv is None or len(ohlcv) == 0:
+            print(f"⚠️ Warning: fetch_ohlcv returned None or empty for {symbol} ({timeframe})")
+            return pd.DataFrame()
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         return df
@@ -159,6 +162,9 @@ def fetch_5m_data(symbol='BTC/USDT'):
         timeframe = '5m'
         limit = 300
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+        if ohlcv is None or len(ohlcv) == 0:
+            print(f"⚠️ Warning: fetch_ohlcv returned None or empty for {symbol} ({timeframe})")
+            return pd.DataFrame()
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         return df
@@ -179,6 +185,9 @@ def fetch_4h_data(symbol='BTC/USDT'):
         timeframe = '4h'
         limit = 200
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+        if ohlcv is None or len(ohlcv) == 0:
+            print(f"⚠️ Warning: fetch_ohlcv returned None or empty for {symbol} ({timeframe})")
+            return pd.DataFrame()
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         return df
@@ -190,6 +199,9 @@ def fetch_4h_data(symbol='BTC/USDT'):
 def fetch_ohlcv(symbol, timeframe="1h", limit=100):
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+        if ohlcv is None or len(ohlcv) == 0:
+            print(f"⚠️ Warning: fetch_ohlcv returned None or empty for {symbol} ({timeframe})")
+            return pd.DataFrame()
         df = pd.DataFrame(ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
         return df
@@ -202,6 +214,9 @@ def fetch_1h_data(symbol='BTC/USDT', limit=500):
     try:
         timeframe = '1h'
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+        if ohlcv is None or len(ohlcv) == 0:
+            print(f"⚠️ Warning: fetch_ohlcv returned None or empty for {symbol} ({timeframe})")
+            return pd.DataFrame()
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         return df

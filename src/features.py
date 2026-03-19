@@ -54,10 +54,15 @@ def extract_features(df, btc_df=None):
     # 4. Robust NaN Handling
     features = features.bfill().ffill().fillna(0.5)
 
-    # Debugging
+    # Debugging (Iteration 71.14: NoneType Protection)
     if not features.empty:
         last_row = features.iloc[-1]
         print(f"🔍 [Feature Debug] RSI: {last_row['rsi']:.2f}, DistEMA200: {last_row['dist_ema200']:.4f}")
+    else:
+        print("⚠️ Warning: Features DataFrame is empty! Returning default 0.5 values.")
+        # Create a single-row DataFrame with default 0.5 values
+        features = pd.DataFrame([0.5] * len(expected_features), index=expected_features).T
+        features.columns = expected_features
 
     return features
 
