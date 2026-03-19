@@ -8,7 +8,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from src.notifier import send_telegram_msg, send_kill_switch_alert, send_rich_heartbeat, send_entry_notification, send_hourly_audit, send_daily_performance
 from src.logger import log_trade
-from src.indicators import calculate_rsi, calculate_ema, calculate_atr, calculate_macd, calculate_adx, calculate_bollinger_bands, calculate_heikin_ashi, calculate_sr_levels, calculate_rsi_slope, calculate_stoch_rsi
+from src.indicators import *
 
 from src.features import extract_features
 from src.ml_model import CryptoMLModel
