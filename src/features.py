@@ -4,8 +4,20 @@ from src.indicators import calculate_rsi, calculate_macd, calculate_adx, calcula
 
 def extract_features(df, btc_df=None):
     """
-    Iteration 71.10: Native Logic Overwrite
+    Iteration 71.15: Guardrail Engineering
     """
+    expected_features = [
+        'rsi', 'macd_hist', 'adx', 'atr_pct', 'vol_change_24h', 
+        'volatility_24h', 'relative_strength_btc', 'btc_volatility_24h', 
+        'dist_ema200', 'dist_ema20'
+    ]
+
+    # 0. Guardrail: Handle None or Empty DataFrame
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+        print("⚠️ Warning: extract_features received None or empty DataFrame! Returning neutral 0.5 features.")
+        neutral_features = pd.DataFrame([[0.5] * len(expected_features)], columns=expected_features)
+        return neutral_features
+
     # 1. Force chronological order (Native Sort)
     if 'timestamp' in df.columns:
         df = df.sort_values('timestamp', ascending=True)
