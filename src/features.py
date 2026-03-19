@@ -4,9 +4,9 @@ from src.indicators import calculate_rsi, calculate_macd, calculate_adx, calcula
 
 def extract_features(df, btc_df=None):
     """
-    Iteration 71.7: Robust Feature Extractor
+    Iteration 71.10: Native Logic Overwrite
     """
-    # 1. Force chronological order (Iteration 71.10: Native Sort)
+    # 1. Force chronological order (Native Sort)
     if 'timestamp' in df.columns:
         df = df.sort_values('timestamp', ascending=True)
     df = df.sort_index(ascending=True)
@@ -17,7 +17,7 @@ def extract_features(df, btc_df=None):
         btc_df = btc_df.sort_index(ascending=True)
 
     features = pd.DataFrame(index=df.index)
-    
+
     # 2. Calculate Indicators
     features['rsi'] = calculate_rsi(df)
     _, _, macd_hist = calculate_macd(df)
@@ -26,7 +26,7 @@ def extract_features(df, btc_df=None):
     features['atr_pct'] = calculate_atr(df) / df['close']
     features['vol_change_24h'] = df['volume'].pct_change(24)
     features['volatility_24h'] = df['close'].pct_change().rolling(window=24).std()
-    
+
     if btc_df is not None:
         btc_close = btc_df['close'].reindex(df.index, method='ffill')
         coin_returns = df['close'].pct_change(24)
@@ -36,13 +36,13 @@ def extract_features(df, btc_df=None):
     else:
         features['relative_strength_btc'] = 0
         features['btc_volatility_24h'] = 0
-        
+
     ema200 = calculate_ema(df, 200)
     features['dist_ema200'] = (df['close'] - ema200) / ema200
     ema20 = calculate_ema(df, 20)
     features['dist_ema20'] = (df['close'] - ema20) / ema20
-    
-    # 3. Feature Alignment
+
+    # 3. Feature Alignment (Iteration 71.10: Strict Reindex)
     expected_features = [
         'rsi', 'macd_hist', 'adx', 'atr_pct', 'vol_change_24h', 
         'volatility_24h', 'relative_strength_btc', 'btc_volatility_24h', 
@@ -50,16 +50,15 @@ def extract_features(df, btc_df=None):
     ]
     
     features = features.reindex(columns=expected_features)
-    
+
     # 4. Robust NaN Handling
-    # Use bfill then ffill to cover all NaNs, then fillna(0.5) as absolute fallback
     features = features.bfill().ffill().fillna(0.5)
-    
+
     # Debugging
     if not features.empty:
         last_row = features.iloc[-1]
         print(f"🔍 [Feature Debug] RSI: {last_row['rsi']:.2f}, DistEMA200: {last_row['dist_ema200']:.4f}")
-    
+
     return features
 
 def prepare_labels(df, horizon=4):
