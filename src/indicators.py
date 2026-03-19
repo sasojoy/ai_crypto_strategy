@@ -74,3 +74,26 @@ def calculate_stoch_rsi(df, period=14, smooth_k=3, smooth_d=3):
     k = stoch_rsi.rolling(window=smooth_k).mean() * 100
     d = k.rolling(window=smooth_d).mean() * 100
     return k, d
+
+def calculate_squeeze_index(df, period=20):
+    """
+    Iteration 52: Squeeze Index (Native)
+    """
+    sma = df['close'].rolling(window=period).mean()
+    std = df['close'].rolling(window=period).std()
+    bb_width = (sma + (std * 2)) - (sma - (std * 2))
+    
+    # Keltner Channel (using ATR)
+    atr = calculate_atr(df, period)
+    kc_width = (sma + (atr * 1.5)) - (sma - (atr * 1.5))
+    
+    return bb_width / kc_width if not kc_width.empty else 1.0
+
+def calculate_macd_divergence(df, window=20):
+    """
+    Iteration 52: MACD Bullish Divergence (Native)
+    """
+    macd_line, _, _ = calculate_macd(df)
+    price_lower_low = df['low'] < df['low'].shift(window)
+    macd_higher_low = macd_line > macd_line.shift(window)
+    return (price_lower_low & macd_higher_low).astype(int)
