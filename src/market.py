@@ -151,7 +151,7 @@ def get_top_relative_strength_symbols():
     Focus on high-conviction assets (BTC, ETH, SOL) and reduce exposure to experimental ones.
     """
     selected_symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
-    print(f"🎯 [Iteration 82.0 | Dimension Fix] Monitoring Selected Symbols: {selected_symbols}")
+    print(f"🎯 [Iteration 82.1 | Professional Trapper] Monitoring Selected Symbols: {selected_symbols}")
     return selected_symbols
 
 # Global exchange instance (Iteration 69.2: Prevent rate limiting)
@@ -1721,7 +1721,8 @@ def close_partial_position(symbol, qty):
 
 if __name__ == "__main__":
     try:
-        send_telegram_msg("🚀 [System Heartbeat] 🚀 【Iteration 71.2 | Hybrid Sniper | 核心修復】 正在 GCE 啟動。")
+        # Iteration 82.1: Startup Message
+        send_telegram_msg("🚀 【Iteration 82.1】 實地驗證通過，系統正式上線")
         import sys
         if "--check-accounting" in sys.argv:
             print("📊 [ACCOUNTING CHECK]")

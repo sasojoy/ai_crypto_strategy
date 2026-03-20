@@ -84,7 +84,12 @@ jobs:
             # Ensure $STAGING_DIR/ has a trailing slash to correctly overwrite $PROD_DIR/
             rsync -av --exclude='data/' --exclude='logs/' --exclude='.git/' "${STAGING_DIR}/" "${PROD_DIR}/"
             cd $PROD_DIR
-            pm2 restart all
+            
+            # Iteration 82.1: Robust PM2 Restart Logic
+            pm2 delete "Iteration82_Live" || true
+            pm2 start src/market.py --name "Iteration82_Live" --update-env
+            pm2 save
+            
             echo "✅ Deployment Successful!"
 
 

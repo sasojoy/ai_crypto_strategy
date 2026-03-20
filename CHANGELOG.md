@@ -3,6 +3,12 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+## [Iteration 82.1] - 2026-03-18
+### [Feat]
+- **Official Launch**: Updated PM2 deployment logic to use a dedicated process name `Iteration82_Live` with a robust "delete-then-start" sequence.
+- **Startup Notification**: Added an immediate Telegram message upon system startup to confirm successful deployment.
+- **Version Update**: Synchronized versioning to `Iteration 82.1 | Dimension Fix`.
+
 ## [Iteration 82.0] - 2026-03-18
 ### [Fix]
 - **Model Dimension Fix**: Resolved `too many indices for array` error by ensuring 2D input for `predict_proba` and correctly extracting class 1 probability.
