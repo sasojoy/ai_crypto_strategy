@@ -3,6 +3,13 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+## [Iteration 81.0] - 2026-03-18
+### [Fix]
+- **Indicator Alignment**: Fixed `ema200` KeyError by explicitly calculating and adding it to the main DataFrame.
+- **Deployment Hardening**: Fixed `rsync` path logic to ensure correct directory overwriting on GCE.
+- **Self-Healing**: Enhanced `setup_env.sh` with mandatory directory creation and cache cleanup.
+- **Debuggability**: Added real-time indicator index logging in `market.py`.
+
 ## [Iteration 79.1] - 2026-03-18
 ### [Fix]
 - **GitHub Secrets Alignment**: Corrected SSH configuration to use `SSH_HOST`, `SSH_USER`, and `SSH_KEY`.

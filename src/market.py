@@ -151,7 +151,7 @@ def get_top_relative_strength_symbols():
     Focus on high-conviction assets (BTC, ETH, SOL) and reduce exposure to experimental ones.
     """
     selected_symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
-    print(f"🎯 [Iteration 68.9 | Flash Sniper] Monitoring Selected Symbols: {selected_symbols}")
+    print(f"🎯 [Iteration 81.0 | Professional Trapper] Monitoring Selected Symbols: {selected_symbols}")
     return selected_symbols
 
 # Global exchange instance (Iteration 69.2: Prevent rate limiting)
@@ -930,6 +930,7 @@ def run_strategy(ml_model):
             df['rsi_slope'] = calculate_rsi_slope(df)
             df['ema20'] = calculate_ema(df, 20)
             df['ema50'] = calculate_ema(df, 50)
+            df['ema200'] = calculate_ema(df, 200)
 
             # 4H Trend Filter (Strict Iteration 21)
             df_4h['ema200'] = calculate_ema(df_4h, 200)
@@ -938,6 +939,7 @@ def run_strategy(ml_model):
             trend_4h = "Long" if latest_4h['close'] > latest_4h['ema200'] and latest_4h['close'] > latest_4h['ema50'] else "Short"
 
             latest = df.iloc[-1]
+            print(f"DEBUG Indicators for {symbol}: {latest.index.tolist()}")
             prev = df.iloc[-2]
 
             # 3. Volume Confirmation (Iteration 25: 2.5x)

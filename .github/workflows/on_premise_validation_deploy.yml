@@ -81,7 +81,8 @@ jobs:
             
             # 6. Production Sync & Restart (Only if Gate Passed)
             echo "🚀 Syncing to Production..."
-            rsync -av --exclude='data/' --exclude='logs/' --exclude='.git/' $STAGING_DIR/ $PROD_DIR/
+            # Ensure $STAGING_DIR/ has a trailing slash to correctly overwrite $PROD_DIR/
+            rsync -av --exclude='data/' --exclude='logs/' --exclude='.git/' "${STAGING_DIR}/" "${PROD_DIR}/"
             cd $PROD_DIR
             pm2 restart all
             echo "✅ Deployment Successful!"
