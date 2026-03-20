@@ -705,7 +705,7 @@ def save_order_state(symbol, state):
     with open(os.path.join(DATA_DIR, f'order_state_{symbol.replace("/", "_")}.json'), 'w') as f:
         json.dump(state, f)
     
-    # Iteration 74.0: Persistence for Active Trades
+    # Iteration 85.0: Persistence for Active Trades
     ACTIVE_TRADES_PATH = os.path.join(DATA_DIR, 'active_trades.json')
     active_trades = {}
     if os.path.exists(ACTIVE_TRADES_PATH):
@@ -919,7 +919,7 @@ def run_strategy(ml_model):
         
         if btc_vol_24h_change < -0.20 and not (btc_bullish and btc_at_high):
             print(f"🚫 [Iteration 68.9 | Flash Sniper] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
-            # Iteration 71.2: Return empty scan results but allow heartbeat to see symbols
+            # Iteration 85.0: Return empty scan results but allow heartbeat to see symbols
             return prices_rsi
         
         if is_pursuit_mode:
@@ -1183,7 +1183,7 @@ def run_strategy(ml_model):
             current_hour = datetime.utcnow().hour
             time_filter_ok = not (0 <= current_hour < 4)
             
-            # Iteration 74.0: High-Frequency & Confidence Ladder Logic
+            # Iteration 85.0: High-Frequency & Confidence Ladder Logic
             cond_rsi = latest['rsi'] < 45
             cond_ema_cross = latest['ema20'] > latest['ema50']
             cond_trend = latest['close'] > latest['ema200'] * 0.98
@@ -1220,7 +1220,7 @@ def run_strategy(ml_model):
             else:
                 pos_size_multiplier = 0.5
             
-            print(f"🔍 [Iteration 74.0] {symbol} AI Score: {ai_score:.2%}, Signal: {long_signal}, Multiplier: {pos_size_multiplier}x")
+            print(f"🔍 [Iteration 85.0] {symbol} AI Score: {ai_score:.2%}, Signal: {long_signal}, Multiplier: {pos_size_multiplier}x")
 
             # Iteration 50: Funding Rate Shield
             funding_rate = fetch_funding_rate(symbol)
@@ -1616,15 +1616,15 @@ def manage_positions(prices_rsi):
                 save_order_state(symbol, state)
                 send_telegram_msg(f"🛡️ [Iteration 68.9 | Flash Sniper] {symbol} 已啟動保本止損 (Trailing to BE)。")
 
-        # Iteration 74.0: Professional Trailing Stop Logic
+        # Iteration 85.0: Professional Trailing Stop Logic
         state['highest_price'] = max(state.get('highest_price', entry_price), current_price)
         profit_from_entry = (state['highest_price'] - entry_price) / entry_price
         
         if profit_from_entry >= 0.01:
-            # Iteration 74.0: Move SL to Entry + 0.5% after 1% profit
+            # Iteration 85.0: Move SL to Entry + 0.5% after 1% profit
             new_sl = entry_price * 1.005
             if new_sl > state.get('sl_price', 0):
-                print(f"🛡️ [Iteration 74.0] {symbol} Profit > 1%. Moving SL to Entry + 0.5%: {new_sl}")
+                print(f"🛡️ [Iteration 85.0] {symbol} Profit > 1%. Moving SL to Entry + 0.5%: {new_sl}")
                 if update_sl_order(symbol, state.get('sl_order_id'), new_sl):
                     state['sl_price'] = new_sl
                     state['trailing_active'] = True
@@ -1775,13 +1775,13 @@ if __name__ == "__main__":
         last_heartbeat_time = 0
         last_summary_date = None
         
-        # Iteration 74.0: Load Active Trades from Persistence
+        # Iteration 85.0: Load Active Trades from Persistence
         ACTIVE_TRADES_PATH = os.path.join(DATA_DIR, 'active_trades.json')
         if os.path.exists(ACTIVE_TRADES_PATH):
             try:
                 with open(ACTIVE_TRADES_PATH, 'r') as f:
                     persisted_trades = json.load(f)
-                    print(f"📦 [Iteration 74.0] Loaded {len(persisted_trades)} persisted trades.")
+                    print(f"📦 [Iteration 85.0] Loaded {len(persisted_trades)} persisted trades.")
             except Exception as e:
                 print(f"⚠️ Error loading persisted trades: {e}")
 
@@ -1796,7 +1796,7 @@ if __name__ == "__main__":
         ml_model = CryptoMLModel()
         ml_model.load()
         
-        # Iteration 74.0: Data Pre-warmup (500 K-lines)
+        # Iteration 85.0: Data Pre-warmup (500 K-lines)
         print(f"⏳ [System] Pre-warming data (500 K-lines)...")
         warmup_symbols = get_top_relative_strength_symbols()
         for i, s in enumerate(warmup_symbols):
@@ -1830,12 +1830,12 @@ if __name__ == "__main__":
                 stability_monitor()
                 scan_results = run_strategy(ml_model)
                 
-                # Iteration 71.2: Diagnose empty scan_results
+                # Iteration 85.0: Diagnose empty scan_results
                 print(f"🔍 [System] Scan complete. Found {len(scan_results)} results.")
                 if len(scan_results) == 0:
                     print("⚠️ [ALARM] scan_results is EMPTY!")
                     try:
-                        send_telegram_msg("⚠️ 【Iteration 71.2 報警】掃描結果為空，請檢查 API 連線或市場過濾邏輯。")
+                        send_telegram_msg("⚠️ 【Iteration 85.0 報警】掃描結果為空，請檢查 API 連線或市場過濾邏輯。")
                     except:
                         pass
 

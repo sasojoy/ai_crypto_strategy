@@ -51,7 +51,7 @@ def send_hourly_audit(equity, realized_pnl, active_positions):
     msg += (
         f"📈 帳戶總淨值: ${equity:,.2f}\n"
         f"----------------------------\n"
-        f"狀態：🚀 【Iteration 71.2 | Hybrid Sniper | 核心修復】"
+        f"狀態：🚀 【Iteration 85.0 | Hybrid Sniper | 核心修復】"
     )
     send_telegram_msg(msg)
 
@@ -82,7 +82,7 @@ def send_daily_performance(date, equity, daily_pnl, best_symbol, max_dd):
     api_limit = "999/1200" # Placeholder
     
     msg = (
-        f"📅 【每日對帳戰報 - Iteration 71.2】: {date}\n"
+        f"📅 【每日對帳戰報 - Iteration 85.0】: {date}\n"
         f"----------------------------\n"
         f"💰 淨值: ${equity:,.2f} | 當日損益: ${daily_pnl:,.2f}\n"
         f"🏆 表現最佳幣種: {best_symbol}\n"
@@ -93,7 +93,7 @@ def send_daily_performance(date, equity, daily_pnl, best_symbol, max_dd):
         f"   • 實際 vs 預期: 一致 ✅\n"
         f"   • 剩餘 API 額度: {api_limit}\n"
         f"----------------------------\n"
-        f"狀態：🚀 【Iteration 71.2 | Hybrid Sniper | 核心修復】"
+        f"狀態：🚀 【Iteration 85.0 | Hybrid Sniper | 核心修復】"
     )
     send_telegram_msg(msg)
 
@@ -215,17 +215,19 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     )[:3]
 
     for symbol, data in sorted_results:
-        # Iteration 85.0: Simplified Symbol Report
+        # Iteration 85.0: Simplified Symbol Report (AI > 55% Filter)
         ml_score = data.get('ml_score', 0)
         rsi = data.get('rsi', 50)
         missed = data.get('missed_reason', 'None')
         
-        # Only show detailed info if it's a high-potential trade or has a specific reason
-        msg += f"   • {symbol} | AI: {ml_score:.2f} | RSI: {rsi:.1f}\n"
-        if missed != 'None' and missed != 'Ready':
-            msg += f"     [Status] {missed}\n"
-        elif ml_score > 0.6:
-            msg += f"     🔥 [High Potential] AI Score: {ml_score:.2f}\n"
+        # Only show if AI score is significant or it's a ready symbol
+        if ml_score > 0.55 or missed == 'Ready':
+            msg += f"   • {symbol} | AI: {ml_score:.2f} | RSI: {rsi:.1f}\n"
+            if ml_score > 0.6:
+                msg += f"     🔥 [High Potential]\n"
+        elif missed != 'None' and missed != 'Ready':
+            # Still show symbols that are initializing so we know the system is working
+            msg += f"   • {symbol} | [Status] {missed}\n"
 
     # 3. Risk Check
     msg += f"\n🛡️ 風控檢查：\n"
