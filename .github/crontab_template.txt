@@ -1,3 +1,0 @@
-
-# 每 5 分鐘檢查一次 market.py 是否在運行，如果不在則重啟
-*/5 * * * * pgrep -f "src.market" > /dev/null || (cd ~/ai_crypto_strategy && export PYTHONPATH=$PYTHONPATH:. && nohup python3 -u -m src.market >> market.log 2>&1 &)

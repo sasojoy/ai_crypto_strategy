@@ -1,6 +1,17 @@
 
 stages:
+  - setup
   - validate
+  - deploy
+
+environment_setup:
+  stage: setup
+  image: python:3.10
+  script:
+    - chmod +x setup_env.sh
+    - ./setup_env.sh
+  only:
+    - main
 
 validate_strategy:
   stage: validate
@@ -24,5 +35,21 @@ validate_strategy:
           sys.exit(1)
       print('✅ Strategy Gate Passed!')
       "
+  only:
+    - main
+
+deploy_to_gce:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    - ssh $GCE_USER@$GCE_IP "cd /home/$GCE_USER/ai_crypto_strategy && git fetch origin main && git reset --hard origin/main && chmod +x setup_env.sh && ./setup_env.sh && pm2 restart all"
   only:
     - main

@@ -691,8 +691,8 @@ def save_order_state(symbol, state):
         try:
             with open(ACTIVE_TRADES_PATH, 'r') as f:
                 active_trades = json.load(f)
-        except:
-            pass
+        except Exception as e:
+            print(f"❌ [JSON PATH ERROR] Failed to read {ACTIVE_TRADES_PATH}: {e}")
     
     if state.get('status') == 'Open':
         active_trades[symbol] = {
@@ -713,8 +713,12 @@ def save_order_state(symbol, state):
 def load_order_state(symbol):
     path = os.path.join(DATA_DIR, f'order_state_{symbol.replace("/", "_")}.json')
     if os.path.exists(path):
-        with open(path, 'r') as f:
-            return json.load(f)
+        try:
+            with open(path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"❌ [JSON PATH ERROR] Failed to read {path}: {e}")
+            return None
     return None
 
 # Global Kill Switch State
