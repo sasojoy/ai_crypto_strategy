@@ -1175,6 +1175,10 @@ def run_strategy(ml_model):
             if squeeze_index < 0.3 and latest['close'] > latest['bb_upper']:
                 squeeze_breakout = True
             
+
+            # Iteration 84.0: Define is_squeeze_trade
+            is_squeeze_trade = squeeze_breakout or (squeeze_index < 0.5 and latest['rsi'] < 40)
+
             # 3. Time-Filter (Exclude 00:00 - 04:00 UTC - Low Liquidity)
             current_hour = datetime.utcnow().hour
             time_filter_ok = not (0 <= current_hour < 4)
@@ -1740,8 +1744,8 @@ def close_partial_position(symbol, qty):
 
 if __name__ == "__main__":
     try:
-        # Iteration 83.0: Startup Message
-        send_telegram_msg("🚀 【Iteration 83.0】 AI 邏輯修復完成，系統正式上線")
+        # Iteration 84.0: Startup Message
+        send_telegram_msg("🚀 【Iteration 84.0】 全功能封裝完成，系統正式上線")
         import sys
         if "--check-accounting" in sys.argv:
             print("📊 [ACCOUNTING CHECK]")
@@ -1765,7 +1769,7 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 83.0 | AI Logic Final Fix】"
+        STRATEGY_VERSION = "🚀 【Iteration 84.0 | Fully Operational Sniper】"
         last_heartbeat_time = 0
         last_summary_date = None
         

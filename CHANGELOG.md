@@ -3,6 +3,12 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+## [Iteration 84.0] - 2026-03-18
+### [Feat]
+- **Fully Operational Sniper**: Defined `is_squeeze_trade` logic to resolve `NameError`.
+- **Cleanup & Reset**: Updated deployment workflow to perform a full PM2 reset and staging area cleanup.
+- **Version Consolidation**: Unified all version strings to `Iteration 84.0 | Fully Operational Sniper`.
+
 ## [Iteration 83.0] - 2026-03-18
 ### [Fix]
 - **AI Prediction Flow**: Fixed `invalid index to scalar variable` by ensuring `predict_proba` returns a 2D array and adding robust extraction logic.
