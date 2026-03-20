@@ -669,6 +669,32 @@ def save_order_state(symbol, state):
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(os.path.join(DATA_DIR, f'order_state_{symbol.replace("/", "_")}.json'), 'w') as f:
         json.dump(state, f)
+    
+    # Iteration 74.0: Persistence for Active Trades
+    ACTIVE_TRADES_PATH = os.path.join(DATA_DIR, 'active_trades.json')
+    active_trades = {}
+    if os.path.exists(ACTIVE_TRADES_PATH):
+        try:
+            with open(ACTIVE_TRADES_PATH, 'r') as f:
+                active_trades = json.load(f)
+        except:
+            pass
+    
+    if state.get('status') == 'Open':
+        active_trades[symbol] = {
+            'entry_price': state.get('entry_price'),
+            'highest_price': state.get('highest_price'),
+            'pos_size_multiplier': state.get('pos_size_multiplier', 1.0),
+            'sl_price': state.get('sl_price'),
+            'trailing_active': state.get('trailing_active', False),
+            'side': state.get('side', 'LONG')
+        }
+    else:
+        if symbol in active_trades:
+            del active_trades[symbol]
+            
+    with open(ACTIVE_TRADES_PATH, 'w') as f:
+        json.dump(active_trades, f)
 
 def load_order_state(symbol):
     path = os.path.join(DATA_DIR, f'order_state_{symbol.replace("/", "_")}.json')
@@ -1096,11 +1122,29 @@ def run_strategy(ml_model):
             current_hour = datetime.utcnow().hour
             time_filter_ok = not (0 <= current_hour < 4)
             
-            # Final Signal Logic
-            long_signal = (trend_entry or bottom_entry or squeeze_breakout) and time_filter_ok and (55 <= latest["rsi"] <= 70)
+            # Iteration 74.0: High-Frequency & Confidence Ladder Logic
+            cond_rsi = latest['rsi'] < 45
+            cond_ema_cross = latest['ema20'] > latest['ema50']
+            cond_trend = latest['close'] > latest['ema200'] * 0.98
             
-            # Special Case: Squeeze Breakout uses 50% position size
-            is_squeeze_trade = squeeze_breakout and not (trend_entry or bottom_entry)
+            # AI Score from ML Model
+            # Iteration 74.0: Use the ml_model passed to run_strategy
+            features = extract_features(df.reset_index(), df_btc_ml.reset_index())
+            ai_score = ml_model.predict_proba(features)[:, 1][-1]
+            cond_ai = ai_score >= 0.55
+            
+            long_signal = cond_rsi and cond_ema_cross and cond_trend and cond_ai and time_filter_ok
+            
+            # Confidence Ladder Position Sizing
+            pos_size_multiplier = 1.0
+            if ai_score >= 0.70:
+                pos_size_multiplier = 1.5
+            elif ai_score >= 0.60:
+                pos_size_multiplier = 1.0
+            else:
+                pos_size_multiplier = 0.5
+            
+            print(f"🔍 [Iteration 74.0] {symbol} AI Score: {ai_score:.2%}, Signal: {long_signal}, Multiplier: {pos_size_multiplier}x")
 
             # Iteration 50: Funding Rate Shield
             funding_rate = fetch_funding_rate(symbol)
@@ -1486,19 +1530,17 @@ def manage_positions(prices_rsi):
                 save_order_state(symbol, state)
                 send_telegram_msg(f"🛡️ [Iteration 68.9 | Flash Sniper] {symbol} 已啟動保本止損 (Trailing to BE)。")
 
-        # Iteration 71: Trailing Stop (1% Trigger, 1.8% Distance)
-        # Track highest price reached
+        # Iteration 74.0: Professional Trailing Stop Logic
         state['highest_price'] = max(state.get('highest_price', entry_price), current_price)
         profit_from_entry = (state['highest_price'] - entry_price) / entry_price
         
         if profit_from_entry >= 0.01:
-            # Triggered 1% profit, calculate trailing SL (1.8% below highest)
-            trailing_sl = state['highest_price'] * 0.982
-            # Only update if new trailing SL is higher than current SL
-            if trailing_sl > state.get('sl_price', 0):
-                print(f"📈 [Iteration 71] {symbol} Trailing Stop Triggered. Highest: {state['highest_price']}, New SL: {trailing_sl}")
-                if update_sl_order(symbol, state.get('sl_order_id'), trailing_sl):
-                    state['sl_price'] = trailing_sl
+            # Iteration 74.0: Move SL to Entry + 0.5% after 1% profit
+            new_sl = entry_price * 1.005
+            if new_sl > state.get('sl_price', 0):
+                print(f"🛡️ [Iteration 74.0] {symbol} Profit > 1%. Moving SL to Entry + 0.5%: {new_sl}")
+                if update_sl_order(symbol, state.get('sl_order_id'), new_sl):
+                    state['sl_price'] = new_sl
                     state['trailing_active'] = True
                     save_order_state(symbol, state)
 
@@ -1642,10 +1684,20 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 71.2 | Hybrid Sniper | 核心修復】"
+        STRATEGY_VERSION = "🚀 【Iteration 74.0 | Professional Trapper & CI/CD】"
         last_heartbeat_time = 0
         last_summary_date = None
         
+        # Iteration 74.0: Load Active Trades from Persistence
+        ACTIVE_TRADES_PATH = os.path.join(DATA_DIR, 'active_trades.json')
+        if os.path.exists(ACTIVE_TRADES_PATH):
+            try:
+                with open(ACTIVE_TRADES_PATH, 'r') as f:
+                    persisted_trades = json.load(f)
+                    print(f"📦 [Iteration 74.0] Loaded {len(persisted_trades)} persisted trades.")
+            except Exception as e:
+                print(f"⚠️ Error loading persisted trades: {e}")
+
         # Iteration 69.2: Startup Notification (Immediate)
         try:
             send_telegram_msg(f"🚀 【{STRATEGY_VERSION}】已在生產環境正式啟動，正在載入模型與初始化數據...")
@@ -1657,14 +1709,14 @@ if __name__ == "__main__":
         ml_model = CryptoMLModel()
         ml_model.load()
         
-        # Iteration 71.3: Data Pre-warmup (500 K-lines)
+        # Iteration 74.0: Data Pre-warmup (500 K-lines)
         print(f"⏳ [System] Pre-warming data (500 K-lines)...")
         warmup_symbols = get_top_relative_strength_symbols()
         for i, s in enumerate(warmup_symbols):
             progress = int((i / len(warmup_symbols)) * 100)
-            print(f"⏳ [{progress}%] Warming up {s}...")
+            print(f"⏳ [{progress}%] Warming up {s} ({i}/{len(warmup_symbols)})...")
             if i % 2 == 0: # Reduce TG spam
-                send_telegram_msg(f"⏳ 正在同步數據 ({i}/{len(warmup_symbols)} 幣種)...")
+                send_telegram_msg(f"⏳ 正在同步數據 ({i}/{len(warmup_symbols)} 根)...")
             # Fetch 500 1h candles to ensure EMA200 is ready
             fetch_1h_data(s, limit=500)
             time.sleep(0.5) # Rate limit protection
