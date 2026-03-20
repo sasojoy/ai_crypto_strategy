@@ -1189,7 +1189,7 @@ def run_strategy(ml_model):
             cond_trend = latest['close'] > latest['ema200'] * 0.98
             
             # AI Score from ML Model
-            # Iteration 83.0: AI Prediction Flow Fix
+            # Iteration 85.0: Diagnostic Logging & AI Prediction Flow Fix
             features = extract_features(df.reset_index(), df_btc_ml.reset_index())
             try:
                 # Use tail(1) to get the latest features as a 2D DataFrame
@@ -1201,8 +1201,10 @@ def run_strategy(ml_model):
                     # Fallback if it's a scalar or 1D
                     ai_score = float(probs[1]) if len(probs) > 1 else 0.5
             except Exception as e:
-                print(f"⚠️ [AI Error] {symbol} Prediction failed: {e}")
-                print(f"FAILED FEATURES: {features.tail(1)}")
+                # Iteration 85.0: Detailed Diagnostic Logging
+                print(f"❌ AI Prediction Failed | Symbol: {symbol} | Error: {str(e)}")
+                print(f"📊 Feature Shape: {features.shape if hasattr(features, 'shape') else 'N/A'}")
+                print(f"🔢 Raw Features (Tail 1): \n{features.tail(1)}")
                 ai_score = 0.5
             
             cond_ai = ai_score >= 0.55
