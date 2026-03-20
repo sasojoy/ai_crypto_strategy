@@ -151,7 +151,7 @@ def get_top_relative_strength_symbols():
     Focus on high-conviction assets (BTC, ETH, SOL) and reduce exposure to experimental ones.
     """
     selected_symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
-    print(f"🎯 [Iteration 81.1 | Professional Trapper] Monitoring Selected Symbols: {selected_symbols}")
+    print(f"🎯 [Iteration 82.0 | Dimension Fix] Monitoring Selected Symbols: {selected_symbols}")
     return selected_symbols
 
 # Global exchange instance (Iteration 69.2: Prevent rate limiting)
@@ -1187,9 +1187,10 @@ def run_strategy(ml_model):
             cond_trend = latest['close'] > latest['ema200'] * 0.98
             
             # AI Score from ML Model
-            # Iteration 74.0: Use the ml_model passed to run_strategy
+            # Iteration 82.0: Dimension Fix - Ensure 2D input for predict_proba
             features = extract_features(df.reset_index(), df_btc_ml.reset_index())
-            ai_score = ml_model.predict_proba(features)[:, 1][-1]
+            # Use tail(1) to get the latest features as a 2D DataFrame
+            ai_score = float(ml_model.predict_proba(features.tail(1))[0][1])
             cond_ai = ai_score >= 0.55
             
             long_signal = cond_rsi and cond_ema_cross and cond_trend and cond_ai and time_filter_ok
@@ -1291,13 +1292,14 @@ def run_strategy(ml_model):
                 elif not stoch_rsi_ok: missed_reason = "StochRSI No Cross"
                 elif not (squeeze_tier1 or squeeze_tier2 or trend_decay_active): missed_reason = "No Squeeze/Trend Decay"
 
-            # Iteration 69: AI Score Calculation (Moved up for Heartbeat Visibility)
+            # Iteration 82.0: AI Score Calculation (Dimension Fix)
             ml_score = 0.5 # Default
             df_ml = fetch_1h_data(symbol, limit=250)
             if not df_ml.empty and not df_btc_ml.empty:
                 features = extract_features(df_ml, df_btc_ml)
                 if not features.empty:
-                    ml_score = float(ml_model.predict_proba(features.tail(1))[0])
+                    # Ensure 2D input and extract probability of class 1
+                    ml_score = float(ml_model.predict_proba(features.tail(1))[0][1])
                     print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
 
             # Store scan results for heartbeat

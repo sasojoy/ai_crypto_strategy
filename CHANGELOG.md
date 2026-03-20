@@ -3,6 +3,12 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+## [Iteration 82.0] - 2026-03-18
+### [Fix]
+- **Model Dimension Fix**: Resolved `too many indices for array` error by ensuring 2D input for `predict_proba` and correctly extracting class 1 probability.
+- **Feature Alignment**: Verified feature list order in `src/features.py` to match model expectations.
+- **Deployment**: Updated versioning and ensured deployment uses standardized SSH secrets.
+
 ## [Iteration 81.1] - 2026-03-18
 ### [Feat]
 - **Data Pre-warmup**: Increased OHLCV fetch limit to 500 and implemented a warmup check in `run_strategy` to ensure indicators like EMA200 are ready.
