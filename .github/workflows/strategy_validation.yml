@@ -7,7 +7,29 @@ on:
     branches: [ main ]
 
 jobs:
+  doc_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      - name: Check Documentation Updates
+        run: |
+          # Check if CHANGELOG.md was modified in the last commit
+          if ! git diff --name-only HEAD^ HEAD | grep -q "CHANGELOG.md"; then
+            echo "❌ Error: CHANGELOG.md must be updated in every push!"
+            exit 1
+          fi
+          # Check if README.md contains the current Iteration version
+          VERSION=$(grep "Iteration" CHANGELOG.md | head -n 1 | grep -o "Iteration [0-9.]*" | awk '{print $2}')
+          if ! grep -q "Iteration $VERSION" README.md; then
+            echo "❌ Error: README.md version ($VERSION) does not match CHANGELOG.md!"
+            exit 1
+          fi
+          echo "✅ Documentation Check Passed!"
+
   backtest:
+    needs: doc_check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

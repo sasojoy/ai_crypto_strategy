@@ -1,27 +1,40 @@
-# AI Crypto Strategy - 🚀 【Iteration 71.2 | Hybrid Sniper | 核心修復】
+# AI Crypto Strategy - 🚀 【Iteration 77.0 | Sovereignty & Documentation】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 71.2 | Hybrid Sniper | 核心修復)
+## 🌟 當前策略狀態 (Iteration 77.0 | Sovereignty & Documentation)
 
-### 1. 核心邏輯：階梯進攻 (Laddered Sniper)
-- **動態門檻參數**：
-    - **A (極強趨勢)**: 0.72
-    - **B (穩健趨勢)**: 0.68
-    - **C (震盪修復)**: 0.65
-- **核心修復 (71.2)**：
-    - 解決 `scan_results` 為空導致的報表失明問題。
-    - 即使在縮量禁止進場期間，仍保持基礎數據輸出至 Heartbeat。
-    - 固化 `PYTHONPATH` 於 `ecosystem.config.js`，確保模組加載穩定。
+### 1. 核心架構：三重防禦與進攻
+- **信心階梯 (Confidence Ladder)**：
+    - 根據 AI 分數動態調整倉位大小，實現「強勢重倉，弱勢輕倉」。
+- **追蹤止損 (Trailing Stop Loss, TSL)**：
+    - 具備持久化數據機制 (`data/active_trades.json`)，確保 PM2 重啟後止損邏輯不中斷。
+- **GitHub Actions 門禁 (Strategy Gate)**：
+    - 強制執行回測驗證，**Win Rate > 60%** 且 **Profit Factor > 1.8** 始可部署。
 
 ### 2. 品質保證 (Quality Assurance)
-- **Unit Test Base**: 已建立 `tests/` 目錄。
-- **指標驗證**: `tests/test_indicators.py` 通過 RSI, EMA, ATR 計算驗證。
-- **狀態**: Unit Tests Passed ✅
+- **環境自癒 (Self-Healing)**：透過 `setup_env.sh` 自動修復目錄結構與依賴版本 (`scikit-learn==1.7.2`)。
+- **路徑硬化 (Path Hardening)**：全系統採用絕對路徑，並具備 `❌ [JSON PATH ERROR]` 異常捕獲機制。
+- **狀態**: Unit Tests & Backtest Gate Passed ✅
 
-### 3. 數據邊界保護
-- **換日線保護**：UTC 00:00 - 00:30 自動跳過量能檢查，避免數據缺失導致的異常判定。
+### 3. 數據與文件規範
+- **文件同步 (Doc Sync)**：強制要求每次 Push 必須更新 `CHANGELOG.md` 與 `README.md` 版本號。
 - **異常值 Clip**：若檢測到量能跌幅 > 80%，系統強制歸零並發出警告，防止數據錯誤。
+
+## ⚙️ 安裝與部署 (Installation)
+
+### 1. 環境初始化
+在 GCE 或本地環境執行：
+```bash
+git clone https://github.com/sasojoy/ai_crypto_strategy.git
+cd ai_crypto_strategy
+bash setup_env.sh
+```
+
+### 2. 啟動系統
+```bash
+pm2 start ecosystem.config.js
+```
 
 ## 🛠️ 快速診斷手冊 (Quick Diagnosis)
 
