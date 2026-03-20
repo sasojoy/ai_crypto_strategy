@@ -3,11 +3,11 @@
 
 # CHANGELOG - AI Crypto Strategy
 
-## [Iteration 85.2] - 2026-03-21
+## [Iteration 85.3] - 2026-03-21
 ### [Fix]
-- **Import Fix**: Resolved `name 'datetime' is not defined` by adding `import datetime` and `from datetime import datetime, timedelta` in `src/market.py`.
-- **Global Cleanup**: Removed all legacy version strings ("Iteration 68.9", "Flash Sniper", "Hybrid Sniper").
-- **Version Consolidation**: Unified all version strings to `Iteration 85.2 | Elite Silent`.
+- **Final Syntax Patch**: Fixed `datetime` reference error and unified heartbeat logic.
+- **Global Cleanup**: Removed all legacy strings ("Iteration 82.1", "Iteration 68.9").
+- **Version Consolidation**: Unified all version strings to `Iteration 85.3 | Elite Silent`.
 
 ## [Iteration 85.1] - 2026-03-21
 ### [Feat]
