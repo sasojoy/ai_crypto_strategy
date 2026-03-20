@@ -35,13 +35,13 @@ jobs:
       - name: SSH and Validate on GCE
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.GCE_IP }}
-          username: ${{ secrets.GCE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
             # 1. Prepare Staging Area
-            STAGING_DIR="/home/${{ secrets.GCE_USER }}/staging_area"
-            PROD_DIR="/home/${{ secrets.GCE_USER }}/ai_crypto_strategy"
+            STAGING_DIR="/home/${{ secrets.SSH_USER }}/staging_area"
+            PROD_DIR="/home/${{ secrets.SSH_USER }}/ai_crypto_strategy"
             mkdir -p $STAGING_DIR
             cd $STAGING_DIR
             

@@ -3,6 +3,12 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+## [Iteration 79.1] - 2026-03-18
+### [Fix]
+- **GitHub Secrets Alignment**: Corrected SSH configuration to use `SSH_HOST`, `SSH_USER`, and `SSH_KEY`.
+- **Path Correction**: Updated staging and production paths based on `SSH_USER`.
+- **Documentation**: Synchronized environment variable names in `README.md`.
+
 ## [Iteration 79.0] - 2026-03-18
 ### [Feat]
 - **On-Premise Validation**: Migrated backtest validation from GitHub Actions to GCE `~/staging_area`.

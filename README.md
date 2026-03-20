@@ -1,8 +1,8 @@
-# AI Crypto Strategy - 🚀 【Iteration 79.0 | On-Premise Validation】
+# AI Crypto Strategy - 🚀 【Iteration 79.1 | Secrets Alignment】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 79.0 | On-Premise Validation)
+## 🌟 當前策略狀態 (Iteration 79.1 | Secrets Alignment)
 
 ### 1. 核心架構：實地驗證制 (On-Premise Validation)
 - **GCE 實地回測**：
@@ -25,7 +25,16 @@
 
 ## ⚙️ 安裝與部署 (Installation)
 
-### 1. 環境初始化
+### 1. 環境變數配置 (GitHub Secrets)
+請在 GitHub Repository 的 `Settings > Secrets and variables > Actions` 中配置以下變數：
+- `SSH_HOST`: GCE 實例的外部 IP。
+- `SSH_USER`: SSH 登入用戶名。
+- `SSH_KEY`: SSH 私鑰內容。
+- `GEMINI_API_KEY`: Google Gemini API 金鑰。
+- `TELEGRAM_BOT_TOKEN`: Telegram Bot Token。
+- `TELEGRAM_CHAT_ID`: Telegram 頻道或群組 ID。
+
+### 2. 環境初始化
 在 GCE 或本地環境執行：
 ```bash
 git clone https://github.com/sasojoy/ai_crypto_strategy.git
@@ -33,7 +42,7 @@ cd ai_crypto_strategy
 bash setup_env.sh
 ```
 
-### 2. 啟動系統
+### 3. 啟動系統
 ```bash
 pm2 start ecosystem.config.js
 ```
