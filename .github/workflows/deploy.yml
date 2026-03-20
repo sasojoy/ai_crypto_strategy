@@ -1,0 +1,34 @@
+
+
+
+
+name: Deploy to GCE
+
+on:
+  workflow_run:
+    workflows: ["Strategy Backtest"]
+    types:
+      - completed
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: SSH and Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.GCE_IP }}
+          username: ${{ secrets.GCE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/${{ secrets.GCE_USER }}/ai_crypto_strategy
+            git fetch origin main
+            git reset --hard origin/main
+            chmod +x setup_env.sh
+            bash setup_env.sh
+            pm2 restart all
+
+
+

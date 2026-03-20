@@ -102,24 +102,30 @@ regime_mode = "NEUTRAL"
 
 def load_params():
     params_path = os.path.join(CONFIG_DIR, 'params.json')
-    if not os.path.exists(params_path):
-        # Create default params if not exists
-        default_params = {"ema_f": 12, "ema_s": 26, "bb_std": 2}
-        with open(params_path, 'w') as f:
-            json.dump(default_params, f)
-        return default_params
-    with open(params_path, 'r') as f:
-        return json.load(f)
+    try:
+        if not os.path.exists(params_path):
+            # Create default params if not exists
+            default_params = {"ema_f": 12, "ema_s": 26, "bb_std": 2}
+            os.makedirs(CONFIG_DIR, exist_ok=True)
+            with open(params_path, 'w') as f:
+                json.dump(default_params, f)
+            return default_params
+        with open(params_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"❌ [JSON PATH ERROR] Failed to load params from {params_path}: {e}")
+        return {"ema_f": 12, "ema_s": 26, "bb_std": 2}
 
 def get_recent_performance():
     """
     Iteration 49: Track recent 10 trades for dynamic risk sizing
     """
+    history_path = os.path.join(DATA_DIR, 'trade_history.json')
     try:
-        if not os.path.exists(os.path.join(DATA_DIR, 'trade_history.json')):
+        if not os.path.exists(history_path):
             return 0.5, 0 # Default win rate 50%, 0 losses
         
-        with open(os.path.join(DATA_DIR, 'trade_history.json'), 'r') as f:
+        with open(history_path, 'r') as f:
             history = json.load(f)
         
         recent = history[-10:]

@@ -1,0 +1,49 @@
+
+
+
+name: Strategy Backtest
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy joblib ccxt scikit-learn==1.7.2
+          
+      - name: Run Backtest
+        run: |
+          python scripts/backtest.py
+          echo "📊 Backtest Results JSON Output:"
+          cat results.json
+          
+      - name: Validate Strategy Gate
+        run: |
+          python -c "
+          import json, sys
+          with open('results.json') as f:
+              res = json.load(f)
+          win_rate = res.get('win_rate', 0)
+          profit_factor = res.get('profit_factor', 0)
+          print(f'\nWin Rate: {win_rate}%, Profit Factor: {profit_factor}')
+          if win_rate < 60 or profit_factor < 1.8:
+              print('❌ Strategy Gate Failed: Win Rate < 60% or Profit Factor < 1.8')
+              sys.exit(1)
+          print('✅ Strategy Gate Passed!')
+          "
+
+
