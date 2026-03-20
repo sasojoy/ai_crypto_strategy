@@ -4,7 +4,8 @@ import ccxt
 import pandas as pd
 import json
 import shutil
-from datetime import datetime
+import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from src.notifier import send_telegram_msg, send_kill_switch_alert, send_rich_heartbeat, send_entry_notification, send_hourly_audit, send_daily_performance
 from src.logger import log_trade
@@ -446,7 +447,7 @@ def check_upside_potential(symbol, entry_price, df_1h):
         upside_pct = (recent_high - entry_price) / entry_price
         
         if upside_pct < 0.012:
-            print(f"🛡️ [Iteration 68.9 | Flash Sniper] [Space Check] {symbol} upside {upside_pct:.2%} < 1.2% to resistance ({recent_high:.2f}). Skipping.")
+            print(f"🛡️ [Iteration 85.2 | Elite Silent] [Space Check] {symbol} upside {upside_pct:.2%} < 1.2% to resistance ({recent_high:.2f}). Skipping.")
             return False
     except Exception as e:
         print(f"Error in check_upside_potential for {symbol}: {e}")
@@ -705,7 +706,7 @@ def save_order_state(symbol, state):
     with open(os.path.join(DATA_DIR, f'order_state_{symbol.replace("/", "_")}.json'), 'w') as f:
         json.dump(state, f)
     
-    # Iteration 85.0: Persistence for Active Trades
+    # Iteration 85.2: Persistence for Active Trades
     ACTIVE_TRADES_PATH = os.path.join(DATA_DIR, 'active_trades.json')
     active_trades = {}
     if os.path.exists(ACTIVE_TRADES_PATH):
@@ -815,7 +816,7 @@ def run_strategy(ml_model):
     symbols = get_top_relative_strength_symbols()
     prices_rsi = {}
     
-    # Iteration 85.0: Data Pre-warmup & Progress Tracking (Silent)
+    # Iteration 85.2: Data Pre-warmup & Progress Tracking (Silent)
     warmup_count = 0
     total_symbols = len(symbols)
     for i, s in enumerate(symbols):
@@ -832,7 +833,7 @@ def run_strategy(ml_model):
     if warmup_count < total_symbols:
         print(f"⚠️ [Warmup] Only {warmup_count}/{total_symbols} symbols ready. Continuing with partial data.")
     else:
-        # Iteration 85.1: Elite Silent - Console Only
+        # Iteration 85.2: Elite Silent - Console Only
         print(f"✅ 數據預熱完成 ({total_symbols}/{total_symbols})，開始執行策略。")
 
     current_pos_count = get_active_positions_count()
@@ -919,22 +920,22 @@ def run_strategy(ml_model):
         pursuit_ai_threshold = 0.72
         
         if btc_vol_24h_change < -0.20 and not (btc_bullish and btc_at_high):
-            print(f"🚫 [Iteration 68.9 | Flash Sniper] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
-            # Iteration 85.0: Return empty scan results but allow heartbeat to see symbols
+            print(f"🚫 [Iteration 85.2 | Elite Silent] 縮量進場禁止 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            # Iteration 85.2: Return empty scan results but allow heartbeat to see symbols
             return prices_rsi
         
         if is_pursuit_mode:
             regime_mode = "多頭追擊"
             rsi_threshold_boost = 10 # 45 -> 55
             aggressive_macd = True
-            print(f"🔥 [Iteration 68.9 | Flash Sniper] 多頭追擊模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%}, At High: {btc_at_high})")
+            print(f"🔥 [Iteration 85.2 | Elite Silent] 多頭追擊模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%}, At High: {btc_at_high})")
         elif btc_vol_24h_change < 0:
             regime_mode = "震盪防禦"
             ml_threshold = 0.85
             min_rr = 1.3
-            print(f"🛡️ [Iteration 68.9 | Flash Sniper] 低量防禦模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            print(f"🛡️ [Iteration 85.2 | Elite Silent] 低量防禦模式啟動 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
         else:
-            print(f"🚀 [Iteration 68.9 | Flash Sniper] 趨勢擴張模式 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
+            print(f"🚀 [Iteration 85.2 | Elite Silent] 趨勢擴張模式 (BTC 24H Vol Change: {btc_vol_24h_change:.2%})")
 
     for symbol in symbols:
         try:
@@ -1034,7 +1035,7 @@ def run_strategy(ml_model):
             # 1. MTF Filter (1H EMA 200)
             df_1h = fetch_1h_data(symbol)
             if df_1h.empty:
-                print(f"⚠️ [Iteration 68.9 | Flash Sniper] {symbol} 1H data empty. Skipping.")
+                print(f"⚠️ [Iteration 85.2 | Elite Silent] {symbol} 1H data empty. Skipping.")
                 continue
             df_1h['ema200'] = calculate_ema(df_1h, 200)
             trend_1h_strong = latest['close'] > df_1h.iloc[-1]['ema200']
@@ -1152,7 +1153,7 @@ def run_strategy(ml_model):
                     macd_golden_cross = df['macd_line'].iloc[-1] > df['macd_signal'].iloc[-1] and df['macd_line'].iloc[-2] <= df['macd_signal'].iloc[-2]
                     if df['macd_line'].iloc[-1] > 0 and df['macd_signal'].iloc[-1] > 0 and macd_golden_cross:
                         macd_aggressive_signal = True
-                        print(f"🔥 [Iteration 68.9 | Flash Sniper] {symbol} MACD Aggressive Signal Detected!")
+                        print(f"🔥 [Iteration 85.2 | Elite Silent] {symbol} MACD Aggressive Signal Detected!")
 
                 # Iteration 60: [Dynamic RSI] Boost RSI limit in Aggressive Mode
                 rsi_limit = 45 + rsi_threshold_boost
@@ -1184,13 +1185,13 @@ def run_strategy(ml_model):
             current_hour = datetime.utcnow().hour
             time_filter_ok = not (0 <= current_hour < 4)
             
-            # Iteration 85.0: High-Frequency & Confidence Ladder Logic
+            # Iteration 85.2: High-Frequency & Confidence Ladder Logic
             cond_rsi = latest['rsi'] < 45
             cond_ema_cross = latest['ema20'] > latest['ema50']
             cond_trend = latest['close'] > latest['ema200'] * 0.98
             
             # AI Score from ML Model
-            # Iteration 85.0: Diagnostic Logging & AI Prediction Flow Fix
+            # Iteration 85.2: Diagnostic Logging & AI Prediction Flow Fix
             features = extract_features(df.reset_index(), df_btc_ml.reset_index())
             try:
                 # Use tail(1) to get the latest features as a 2D DataFrame
@@ -1202,7 +1203,7 @@ def run_strategy(ml_model):
                     # Fallback if it's a scalar or 1D
                     ai_score = float(probs[1]) if len(probs) > 1 else 0.5
             except Exception as e:
-                # Iteration 85.0: Detailed Diagnostic Logging
+                # Iteration 85.2: Detailed Diagnostic Logging
                 print(f"❌ AI Prediction Failed | Symbol: {symbol} | Error: {str(e)}")
                 print(f"📊 Feature Shape: {features.shape if hasattr(features, 'shape') else 'N/A'}")
                 print(f"🔢 Raw Features (Tail 1): \n{features.tail(1)}")
@@ -1221,7 +1222,7 @@ def run_strategy(ml_model):
             else:
                 pos_size_multiplier = 0.5
             
-            print(f"🔍 [Iteration 85.0] {symbol} AI Score: {ai_score:.2%}, Signal: {long_signal}, Multiplier: {pos_size_multiplier}x")
+            print(f"🔍 [Iteration 85.2] {symbol} AI Score: {ai_score:.2%}, Signal: {long_signal}, Multiplier: {pos_size_multiplier}x")
 
             # Iteration 50: Funding Rate Shield
             funding_rate = fetch_funding_rate(symbol)
@@ -1255,7 +1256,7 @@ def run_strategy(ml_model):
                     if (datetime.utcnow() - exit_time).total_seconds() < 1800: # 30 mins
                         # Only allow if RSI is lower than previous entry
                         if latest['rsi'] >= last_state.get('entry_rsi', 0):
-                            print(f"🛡️ [Iteration 68.9 | Flash Sniper] {symbol} 處於止損保護期，且 RSI 未創新低。跳過進場。")
+                            print(f"🛡️ [Iteration 85.2 | Elite Silent] {symbol} 處於止損保護期，且 RSI 未創新低。跳過進場。")
                             long_signal = False
 
             short_signal = False # Iteration 29/30/31 focus on Long Pullback Strategy
@@ -1358,13 +1359,13 @@ def run_strategy(ml_model):
                 # Iteration 23: BTC Sentiment & Funding Rate Filter
                 if side == 'LONG':
                     if not btc_sentiment_ok:
-                        print(f"🚫 [Iteration 68.9 | Flash Sniper] {symbol} Long signal ignored: BTC Sentiment Bearish.")
+                        print(f"🚫 [Iteration 85.2 | Elite Silent] {symbol} Long signal ignored: BTC Sentiment Bearish.")
                         continue
                     
                     if symbol in ['DOGE/USDT', 'XRP/USDT']:
                         funding_rate = fetch_funding_rate(symbol)
                         if funding_rate > 0.0005:
-                            print(f"🚫 [Iteration 68.9 | Flash Sniper] {symbol} Long signal ignored: Funding Rate too high ({funding_rate*100:.4f}%).")
+                            print(f"🚫 [Iteration 85.2 | Elite Silent] {symbol} Long signal ignored: Funding Rate too high ({funding_rate*100:.4f}%).")
                             continue
 
                 # Calculate Volume Growth Rate for Correlation Detection
@@ -1396,7 +1397,7 @@ def run_strategy(ml_model):
                     ema20 = calculate_ema(df_ml, 20)
                     ema20_slope_up = ema20.iloc[-1] > ema20.iloc[-2]
 
-                    # Iteration 71: Hybrid Sniper | Laddered Logic
+                    # Iteration 71: Elite Silent | Laddered Logic
                     # Determine Mode based on BTC 24H Volume Change
                     # btc_status is calculated at the beginning of run_strategy
                     vol_24h = btc_status.get('vol_change_24h', 0)
@@ -1447,7 +1448,7 @@ def run_strategy(ml_model):
                         passed_filter = True
 
                 if passed_filter:
-                    print(f"🎯 [Iteration 71 | Hybrid Sniper] {symbol} {tier} Signal. Score: {ml_score:.4f}, Mode: {mode}")
+                    print(f"🎯 [Iteration 71 | Elite Silent] {symbol} {tier} Signal. Score: {ml_score:.4f}, Mode: {mode}")
                     potential_signals.append({
                         'symbol': symbol,
                         'side': side,
@@ -1462,7 +1463,7 @@ def run_strategy(ml_model):
                 else:
                     if ml_score >= 0.63:
                         reason = f"Mode: {mode}, Dist: {dist_to_support:.2%}"
-                        print(f"🛡️ [Iteration 71 | Hybrid Sniper] {symbol} score {ml_score:.4f} but rejected: {reason}")
+                        print(f"🛡️ [Iteration 71 | Elite Silent] {symbol} score {ml_score:.4f} but rejected: {reason}")
                     else:
                         print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} < {ai_threshold}. Signal rejected.")
                     increment_ai_filtered_count()
@@ -1610,22 +1611,22 @@ def manage_positions(prices_rsi):
         profit_pct = (current_price - entry_price) / entry_price if side == 'LONG' else (entry_price - current_price) / entry_price
         if not state.get('be_sl_active', False) and profit_pct >= 0.008:
             new_sl = entry_price
-            print(f"🛡️ [Iteration 68.9 | Flash Sniper] {symbol} profit {profit_pct:.2%} >= 0.8%. Moving SL to Break-Even: {new_sl}")
+            print(f"🛡️ [Iteration 85.2 | Elite Silent] {symbol} profit {profit_pct:.2%} >= 0.8%. Moving SL to Break-Even: {new_sl}")
             if update_sl_order(symbol, state.get('sl_order_id'), new_sl):
                 state['be_sl_active'] = True
                 state['sl_price'] = new_sl
                 save_order_state(symbol, state)
-                send_telegram_msg(f"🛡️ [Iteration 68.9 | Flash Sniper] {symbol} 已啟動保本止損 (Trailing to BE)。")
+                send_telegram_msg(f"🛡️ [Iteration 85.2 | Elite Silent] {symbol} 已啟動保本止損 (Trailing to BE)。")
 
-        # Iteration 85.0: Professional Trailing Stop Logic
+        # Iteration 85.2: Professional Trailing Stop Logic
         state['highest_price'] = max(state.get('highest_price', entry_price), current_price)
         profit_from_entry = (state['highest_price'] - entry_price) / entry_price
         
         if profit_from_entry >= 0.01:
-            # Iteration 85.0: Move SL to Entry + 0.5% after 1% profit
+            # Iteration 85.2: Move SL to Entry + 0.5% after 1% profit
             new_sl = entry_price * 1.005
             if new_sl > state.get('sl_price', 0):
-                print(f"🛡️ [Iteration 85.0] {symbol} Profit > 1%. Moving SL to Entry + 0.5%: {new_sl}")
+                print(f"🛡️ [Iteration 85.2] {symbol} Profit > 1%. Moving SL to Entry + 0.5%: {new_sl}")
                 if update_sl_order(symbol, state.get('sl_order_id'), new_sl):
                     state['sl_price'] = new_sl
                     state['trailing_active'] = True
@@ -1638,7 +1639,7 @@ def manage_positions(prices_rsi):
         
         if not state.get('partial_tp_done', False):
             if (side == 'LONG' and current_price >= rr_1_2_price) or (side == 'SHORT' and current_price <= rr_1_2_price):
-                msg = f"💰 [Iteration 68.9 | Flash Sniper] {symbol} 達到 1.2 RR！執行 50% 減倉止盈。\n剩餘 50% 開啟 EMA 10 移動止損。"
+                msg = f"💰 [Iteration 85.2 | Elite Silent] {symbol} 達到 1.2 RR！執行 50% 減倉止盈。\n剩餘 50% 開啟 EMA 10 移動止損。"
                 send_telegram_msg(msg)
                 
                 # Execute 50% reduction
@@ -1656,7 +1657,7 @@ def manage_positions(prices_rsi):
                 df_exit['ema10'] = calculate_ema(df_exit, 10)
                 ema10 = safe_get_float(df_exit['ema10'])
                 if (side == 'LONG' and current_price < ema10) or (side == 'SHORT' and current_price > ema10):
-                    msg = f"📈 [Iteration 68.9 | Flash Sniper] {symbol} 跌破 EMA 10！全數平倉獲利了結。"
+                    msg = f"📈 [Iteration 85.2 | Elite Silent] {symbol} 跌破 EMA 10！全數平倉獲利了結。"
                     send_telegram_msg(msg)
                     cancel_sl_order(symbol, state.get('sl_order_id'))
                     state['status'] = 'Closed'
@@ -1676,7 +1677,7 @@ def manage_positions(prices_rsi):
             if side == 'LONG':
                 # Iteration 26: Exit Logic (BB Mid/Upper)
                 if current_price >= bb_upper:
-                    msg = f"🚀 [Iteration 68.9 | Flash Sniper] {symbol} 觸及布林上軌！全數平倉獲利了結。"
+                    msg = f"🚀 [Iteration 85.2 | Elite Silent] {symbol} 觸及布林上軌！全數平倉獲利了結。"
                     send_telegram_msg(msg)
                     cancel_sl_order(symbol, state.get('sl_order_id'))
                     state['status'] = 'Closed'
@@ -1689,7 +1690,7 @@ def manage_positions(prices_rsi):
         # 3. SL (Iteration 53: ATR-based SL)
         sl_price = state.get('sl_price')
         if (side == 'LONG' and current_price <= sl_price) or (side == 'SHORT' and current_price >= sl_price):
-            msg = f"❌ [Iteration 68.9 | Flash Sniper] {symbol} 觸發止損！\n現價：{current_price:.2f} | 止損價：{sl_price:.2f}"
+            msg = f"❌ [Iteration 85.2 | Elite Silent] {symbol} 觸發止損！\n現價：{current_price:.2f} | 止損價：{sl_price:.2f}"
             send_telegram_msg(msg)
             cancel_sl_order(symbol, state.get('sl_order_id'))
             state['status'] = 'Closed'
@@ -1712,7 +1713,7 @@ def manage_positions(prices_rsi):
         entry_time = datetime.fromisoformat(state['entry_time'])
         if (datetime.utcnow() - entry_time).total_seconds() >= 172800: # 48 hours
             if current_price > entry_price:
-                msg = f"⏳ [Iteration 68.9 | Flash Sniper] {symbol} 持倉超過 48 小時且獲利為正，強行平倉釋放資金！"
+                msg = f"⏳ [Iteration 85.2 | Elite Silent] {symbol} 持倉超過 48 小時且獲利為正，強行平倉釋放資金！"
                 send_telegram_msg(msg)
                 cancel_sl_order(symbol, state.get('sl_order_id'))
                 state['status'] = 'Closed'
@@ -1747,8 +1748,8 @@ def close_partial_position(symbol, qty):
 
 if __name__ == "__main__":
     try:
-        # Iteration 85.0: Startup Message
-        send_telegram_msg("🚀 【Iteration 85.0】 寧靜與純淨化完成，系統正式上線")
+        # Iteration 85.2: Startup Message
+        send_telegram_msg("🚀 【Iteration 85.2】 寧靜與純淨化完成，系統正式上線")
         import sys
         if "--check-accounting" in sys.argv:
             print("📊 [ACCOUNTING CHECK]")
@@ -1772,17 +1773,17 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 85.1 | Elite Silent】"
+        STRATEGY_VERSION = "🚀 【Iteration 85.2 | Elite Silent】"
         last_heartbeat_time = 0
         last_summary_date = None
         
-        # Iteration 85.0: Load Active Trades from Persistence
+        # Iteration 85.2: Load Active Trades from Persistence
         ACTIVE_TRADES_PATH = os.path.join(DATA_DIR, 'active_trades.json')
         if os.path.exists(ACTIVE_TRADES_PATH):
             try:
                 with open(ACTIVE_TRADES_PATH, 'r') as f:
                     persisted_trades = json.load(f)
-                    print(f"📦 [Iteration 85.0] Loaded {len(persisted_trades)} persisted trades.")
+                    print(f"📦 [Iteration 85.2] Loaded {len(persisted_trades)} persisted trades.")
             except Exception as e:
                 print(f"⚠️ Error loading persisted trades: {e}")
 
@@ -1792,18 +1793,18 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Failed to send startup notification: {e}")
 
-        # Iteration 68.9: Initialize ML Model at startup
+        # Iteration 85.2: Initialize ML Model at startup
         print(f"🤖 [System] Loading ML Model for {STRATEGY_VERSION}...")
         ml_model = CryptoMLModel()
         ml_model.load()
         
-        # Iteration 85.0: Data Pre-warmup (500 K-lines)
+        # Iteration 85.2: Data Pre-warmup (500 K-lines)
         print(f"⏳ [System] Pre-warming data (500 K-lines)...")
         warmup_symbols = get_top_relative_strength_symbols()
         for i, s in enumerate(warmup_symbols):
             progress = int((i / len(warmup_symbols)) * 100)
             print(f"⏳ [{progress}%] Warming up {s} ({i}/{len(warmup_symbols)})...")
-            # Iteration 85.1: Elite Silent - TG Spam Removed
+            # Iteration 85.2: Elite Silent - TG Spam Removed
             # Fetch 500 1h candles to ensure EMA200 is ready
             fetch_1h_data(s, limit=500)
             time.sleep(0.5) # Rate limit protection
@@ -1829,7 +1830,7 @@ if __name__ == "__main__":
                 stability_monitor()
                 scan_results = run_strategy(ml_model)
                 
-                # Iteration 85.1: Elite Silent - Scan Alarm Silenced
+                # Iteration 85.2: Elite Silent - Scan Alarm Silenced
                 print(f"🔍 [System] Scan complete. Found {len(scan_results)} results.")
                 if len(scan_results) == 0:
                     print("⚠️ [ALARM] scan_results is EMPTY!")
@@ -1837,7 +1838,7 @@ if __name__ == "__main__":
                 manage_positions(scan_results)
                 current_time = time.time()
 
-                # Iteration 68.9: 15-minute Heartbeat
+                # Iteration 85.2: 15-minute Heartbeat
                 if current_time - last_heartbeat_time >= 900:
                     # Collect active position data
                     active_positions = []
@@ -1876,7 +1877,7 @@ if __name__ == "__main__":
                                 'entry_price': entry_price
                             })
                     
-                    # Iteration 85.1: Elite Silent - Hourly Audit Silenced
+                    # Iteration 85.2: Elite Silent - Hourly Audit Silenced
                     # send_hourly_audit(equity, daily_pnl, active_positions)
                     
                     # Iteration 35: Rich Heartbeat with Data Visualization
