@@ -3,6 +3,12 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+## [Iteration 79.0] - 2026-03-18
+### [Feat]
+- **On-Premise Validation**: Migrated backtest validation from GitHub Actions to GCE `~/staging_area`.
+- **Production Gate**: Implemented strict gate check on GCE before production sync and PM2 restart.
+- **451 Fix**: Resolved Binance API 451 errors by executing all market-related tests on GCE.
+
 ## [Iteration 77.0] - 2026-03-18
 ### [Added]
 - **Documentation Check**: GitHub Actions now enforces `CHANGELOG.md` and `README.md` updates on every push.

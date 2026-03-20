@@ -1,16 +1,18 @@
-# AI Crypto Strategy - 🚀 【Iteration 77.0 | Sovereignty & Documentation】
+# AI Crypto Strategy - 🚀 【Iteration 79.0 | On-Premise Validation】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 77.0 | Sovereignty & Documentation)
+## 🌟 當前策略狀態 (Iteration 79.0 | On-Premise Validation)
 
-### 1. 核心架構：三重防禦與進攻
+### 1. 核心架構：實地驗證制 (On-Premise Validation)
+- **GCE 實地回測**：
+    - 廢除 GitHub 虛擬環境回測，所有驗證均在 GCE 生產環境的 `~/staging_area` 執行，徹底解決 451 地理屏蔽問題。
 - **信心階梯 (Confidence Ladder)**：
     - 根據 AI 分數動態調整倉位大小，實現「強勢重倉，弱勢輕倉」。
 - **追蹤止損 (Trailing Stop Loss, TSL)**：
     - 具備持久化數據機制 (`data/active_trades.json`)，確保 PM2 重啟後止損邏輯不中斷。
-- **GitHub Actions 門禁 (Strategy Gate)**：
-    - 強制執行回測驗證，**Win Rate > 60%** 且 **Profit Factor > 1.8** 始可部署。
+- **生產門禁 (Production Gate)**：
+    - 只有當 GCE 實地回測達標 (**Win Rate > 60%** 且 **Profit Factor > 1.8**)，代碼才會同步至正式目錄並重啟。
 
 ### 2. 品質保證 (Quality Assurance)
 - **環境自癒 (Self-Healing)**：透過 `setup_env.sh` 自動修復目錄結構與依賴版本 (`scikit-learn==1.7.2`)。

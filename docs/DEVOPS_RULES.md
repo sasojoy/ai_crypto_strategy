@@ -3,9 +3,9 @@
 
 為了確保 AI 策略系統在無人值守環境下的極致穩定性，任何接手本專案的 AI 必須嚴格遵守以下六大軍規：
 
-### 【軍規一：部署與觀察徹底分離】
-*   **核心要求**：CI/CD (GitHub Actions) 嚴禁執行任何阻塞性指令（如 `pm2 log`、`tail -f`、`ps aux`）。
-*   **執行標準**：部署腳本末尾必須以 `exit 0` 結束。觀察日誌應透過獨立的監控工具或 Telegram 報表進行，嚴禁在部署流程中掛起 Session。
+### 【軍規一：實地驗證制 (On-Premise Validation)】
+*   **核心要求**：禁止在 GitHub Actions 虛擬環境執行回測。所有驗證必須在生產環境 (GCE) 的 `~/staging_area` 進行。
+*   **執行標準**：GitHub Actions 僅作為觸發器。部署流程必須包含：`SSH -> Staging -> Backtest -> Gate Check -> Production Sync`。只有當 GCE 實地回測達標 (WR>60%)，才允許覆蓋正式目錄。
 
 ### 【軍規二：環境凍結】
 *   **核心要求**：禁止在常規部署流程中頻繁執行 `pip install`。
