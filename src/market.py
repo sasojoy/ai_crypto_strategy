@@ -72,10 +72,17 @@ def fetch_btc_vol_with_retry(symbol='BTC/USDT', limit=48, retries=3):
 # Load environment variables
 load_dotenv()
 
-# Iteration 58: Relative Path Definition for GCE Compatibility
+# Iteration 75.0: Robust Absolute Path Definition for GCE/PM2
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.getenv('TRADING_DATA_DIR', os.path.join(BASE_DIR, 'trading_data'))
+DATA_DIR = os.path.join(BASE_DIR, 'trading_data')
+LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+CONFIG_DIR = os.path.join(BASE_DIR, 'config')
+MODELS_DIR = os.path.join(BASE_DIR, 'models')
+
 os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(LOGS_DIR, exist_ok=True)
+os.makedirs(CONFIG_DIR, exist_ok=True)
+os.makedirs(MODELS_DIR, exist_ok=True)
 
 
 # Iteration 51: Physical Isolation Security
@@ -94,7 +101,14 @@ regime_mode = "NEUTRAL"
 
 
 def load_params():
-    with open('config/params.json', 'r') as f:
+    params_path = os.path.join(CONFIG_DIR, 'params.json')
+    if not os.path.exists(params_path):
+        # Create default params if not exists
+        default_params = {"ema_f": 12, "ema_s": 26, "bb_std": 2}
+        with open(params_path, 'w') as f:
+            json.dump(default_params, f)
+        return default_params
+    with open(params_path, 'r') as f:
         return json.load(f)
 
 def get_recent_performance():
@@ -435,12 +449,12 @@ def get_active_positions_count():
     Iteration 52: Real-time scan of active positions from data files
     """
     count = 0
-    if not os.path.exists('data'):
+    if not os.path.exists(DATA_DIR):
         return 0
-    for filename in os.listdir('data'):
+    for filename in os.listdir(DATA_DIR):
         if filename.startswith('order_state_') and filename.endswith('.json'):
             try:
-                with open(os.path.join('data', filename), 'r') as f:
+                with open(os.path.join(DATA_DIR, filename), 'r') as f:
                     state = json.load(f)
                     if state.get('status') == 'Open':
                         count += 1
@@ -659,8 +673,8 @@ def check_and_retrain_model():
 
 def log_slippage(symbol, expected_price, actual_price):
     slippage = abs(actual_price - expected_price) / expected_price
-    os.makedirs('logs', exist_ok=True)
-    with open('logs/slippage.log', 'a') as f:
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    with open(os.path.join(LOGS_DIR, 'slippage.log'), 'a') as f:
         f.write(f"[{datetime.now().isoformat()}] {symbol}: Expected {expected_price}, Actual {actual_price}, Slippage {slippage*100:.4f}%\n")
     if slippage > 0.001:
         print(f"⚠️ [WARNING] High Slippage detected on {symbol}: {slippage*100:.4f}%")

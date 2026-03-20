@@ -6,15 +6,19 @@ validate_strategy:
   stage: validate
   image: python:3.10
   before_script:
+    - python --version
     - pip install pandas numpy joblib ccxt scikit-learn==1.7.2
+    - pip list
   script:
     - python scripts/backtest.py
+    - echo "📊 Backtest Results JSON Output:"
+    - cat results.json
     - |
       python -c "
       import json, sys
       with open('results.json') as f:
           res = json.load(f)
-      print(f'Win Rate: {res.get(\"win_rate\", 0)}%, Profit Factor: {res.get(\"profit_factor\", 0)}')
+      print(f'\nWin Rate: {res.get(\"win_rate\", 0)}%, Profit Factor: {res.get(\"profit_factor\", 0)}')
       if res.get('win_rate', 0) < 60 or res.get('profit_factor', 0) < 1.8:
           print('❌ Strategy Gate Failed: Win Rate < 60% or Profit Factor < 1.8')
           sys.exit(1)
