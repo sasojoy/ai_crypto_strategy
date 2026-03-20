@@ -3,12 +3,14 @@
 
 # CHANGELOG - AI Crypto Strategy
 
-## [Iteration 85.0] - 2026-03-18
+## [Iteration 85.0] - 2026-03-21
 ### [Feat]
 - **Silent Trapper**: Silenced data warmup Telegram notifications; now only logs to PM2.
 - **Simplified Reports**: Simplified the Telegram heartbeat report and added GCE system time (UTC).
 - **Warming Up Fix**: Corrected logic to mark symbols as "Ready" once 200 candles are synced.
 - **Version Consolidation**: Unified all version strings to `Iteration 85.0 | Silent Trapper`.
+- **Diagnostic Logging**: Added detailed AI prediction diagnostics (Feature Shape & Raw Data).
+- **Git Guard**: Established `stable` branch for emergency rollbacks.
 
 ## [Iteration 84.0] - 2026-03-18
 ### [Feat]
