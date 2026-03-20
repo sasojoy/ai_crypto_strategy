@@ -147,12 +147,14 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     # Iteration 68.4: Regime Mode Display
     regime_mode = btc_status.get('regime_mode', '未知') if btc_status else '未知'
     
-    msg = f"🚀 【{version} | 系統健康監控】\n"
+    # Iteration 85.0: Silent Trapper - Simplified Layout & System Time
+    now_gce = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    msg = f"🚀 【{version}】\n"
+    msg += f"🕒 [System Time] {now_gce} UTC\n"
     msg += f"📊 戰績：[勝率 {win_rate*100:.0f}%] | [Risk: {risk_level}]\n"
-    msg += f"🏥 系統狀態：\n{health_report}\n"
+    msg += f"🏥 系統狀態：{health_report.splitlines()[0] if health_report else 'OK'}\n"
     msg += f"🤖 AI Confidence: {avg_ai_score*100:.1f}% ({ai_status})\n"
     msg += f"🛡️ AI Filtered Out: {ai_filtered} trades today\n"
-    msg += f"📈 期望值 (EV): {ev:+.2f} ({ev_status})\n"
     msg += f"🌐 當前策略模式: {regime_mode}\n"
     msg += f"----------------------------\n"
     
@@ -213,67 +215,23 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     )[:3]
 
     for symbol, data in sorted_results:
-        score = 0
-        details = []
-        
-        # AI Score
+        # Iteration 85.0: Simplified Symbol Report
         ml_score = data.get('ml_score', 0)
-        details.append(f"AI: {ml_score:.2f}")
-        price = data.get('price', 0)
-        ema200 = data.get('ema200', 0)
-        dist_ema200 = data.get('dist_ema200_pct', 0)
-        if price > ema200:
-            score += 34
-            details.append("EMA200 ✅")
-        else:
-            details.append("EMA200 ❌")
-            
-        # Condition 2: RSI < 42
         rsi = data.get('rsi', 50)
-        if rsi < 42:
-            score += 33
-            details.append("RSI ✅")
-        else:
-            details.append("RSI ❌")
-            
-        # Condition 3: Touch BB Lower
-        bb_lower = data.get('bb_lower', 0)
-        dist_bb = ((price - bb_lower) / bb_lower * 100) if bb_lower > 0 else 0
-        if price <= bb_lower * 1.001:
-            score += 33
-            details.append("布林 ✅")
-        else:
-            details.append("布林 ❌")
-            
-        # Iteration 37: Sizing Info
-        risk_pct = data.get('expected_risk_pct', 2.5)
-        weight_str = data.get('weight_str', '正常')
-        vol_risk = "⚠️ 高" if data.get('atr_spike') else "正常"
-        
-        # Iteration 41: Potential Divergence Warning
-        potential_div = "⚠️底背離" if data.get('potential_div') else ""
-        if potential_div: details.append(potential_div)
-
-        # Iteration 46: Squeeze Index & Missed Reason
-        sq_idx = data.get('squeeze_index', 1.0)
-        sq_icon = "💎" if sq_idx < 0.8 else ("🌀" if sq_idx < 1.0 else "⚖️")
         missed = data.get('missed_reason', 'None')
-        # Iteration 47: Signal Preview
-        preview = "👀 待確認" if data.get('signal_preview') else "⚪ 無預警"
-
-        msg += f"   • {symbol} 評分: {score}%\n"
-        msg += f"     RSI ({rsi:.1f}/42): {get_progress_bar(rsi, 42)}\n"
-        msg += f"     EMA200 距離: {dist_ema200:+.2f}%\n"
-        msg += f"     預計下單: {risk_pct:.1f}% (加權: {weight_str})\n"
-        msg += f"     擠壓指數: {sq_idx:.2f} {sq_icon} | 錯過原因: {missed}\n"
-        msg += f"     預警狀態: {preview} | 支撐強度: {data.get('support_strength', 'N/A')}\n"
-        msg += f"     ({ ' | '.join(details) })\n"
+        
+        # Only show detailed info if it's a high-potential trade or has a specific reason
+        msg += f"   • {symbol} | AI: {ml_score:.2f} | RSI: {rsi:.1f}\n"
+        if missed != 'None' and missed != 'Ready':
+            msg += f"     [Status] {missed}\n"
+        elif ml_score > 0.6:
+            msg += f"     🔥 [High Potential] AI Score: {ml_score:.2f}\n"
 
     # 3. Risk Check
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: 🚀 【Iteration 71.2 | Hybrid Sniper | 核心修復】"
+    msg += f"版本: 🚀 【Iteration 85.0 | Silent Trapper】"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")

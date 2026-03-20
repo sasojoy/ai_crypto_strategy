@@ -815,7 +815,7 @@ def run_strategy(ml_model):
     symbols = get_top_relative_strength_symbols()
     prices_rsi = {}
     
-    # Iteration 83.0: Data Pre-warmup & Progress Tracking (Reduced Spam)
+    # Iteration 85.0: Data Pre-warmup & Progress Tracking (Silent)
     warmup_count = 0
     total_symbols = len(symbols)
     for i, s in enumerate(symbols):
@@ -823,10 +823,10 @@ def run_strategy(ml_model):
         df_warmup = fetch_15m_data(s)
         if not df_warmup.empty and len(df_warmup) >= 200:
             warmup_count += 1
-            prices_rsi[s] = {'price': df_warmup.iloc[-1]['close'], 'rsi': 50, 'ml_score': 0.5, 'missed_reason': 'Warming Up'}
+            prices_rsi[s] = {'price': df_warmup.iloc[-1]['close'], 'rsi': 50, 'ml_score': 0.5, 'missed_reason': 'Ready'}
         else:
-            # Only notify if data is missing
-            send_telegram_msg(f"⚠️ [Data Missing] {s} 數據不足，正在同步...")
+            # Silent log to PM2, no Telegram spam
+            print(f"⚠️ [Data Sync] {s} 數據不足，正在背景同步...")
             prices_rsi[s] = {'price': 0, 'rsi': 50, 'ml_score': 0.5, 'missed_reason': 'Initializing'}
     
     if warmup_count < total_symbols:
@@ -1744,8 +1744,8 @@ def close_partial_position(symbol, qty):
 
 if __name__ == "__main__":
     try:
-        # Iteration 84.0: Startup Message
-        send_telegram_msg("🚀 【Iteration 84.0】 全功能封裝完成，系統正式上線")
+        # Iteration 85.0: Startup Message
+        send_telegram_msg("🚀 【Iteration 85.0】 寧靜與純淨化完成，系統正式上線")
         import sys
         if "--check-accounting" in sys.argv:
             print("📊 [ACCOUNTING CHECK]")
@@ -1769,7 +1769,7 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 84.0 | Fully Operational Sniper】"
+        STRATEGY_VERSION = "🚀 【Iteration 85.0 | Silent Trapper】"
         last_heartbeat_time = 0
         last_summary_date = None
         
