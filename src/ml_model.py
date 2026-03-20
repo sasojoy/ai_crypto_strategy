@@ -40,15 +40,18 @@ class CryptoMLModel:
 
     def predict_proba(self, X):
         """
-        Returns the probability of the positive class (PnL > 0).
+        Returns the probabilities for all classes.
+        Iteration 83.0: Ensure it returns a 2D array even if not trained.
         """
         if not self.is_trained:
             self.load()
         
         if not self.is_trained:
-            return 0.5 # Default neutral probability
+            # Return a 2D array with 0.5 for both classes (neutral)
+            import numpy as np
+            return np.array([[0.5, 0.5]])
             
-        return self.model.predict_proba(X)[:, 1]
+        return self.model.predict_proba(X)
 
     def save(self):
         joblib.dump(self.model, MODEL_PATH)

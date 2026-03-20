@@ -87,7 +87,8 @@ jobs:
             
             # Iteration 82.1: Robust PM2 Restart Logic
             pm2 delete "Iteration82_Live" || true
-            pm2 start src/market.py --name "Iteration82_Live" --update-env
+            pm2 delete "Iteration83_Live" || true
+            pm2 start src/market.py --name "Iteration83_Live" --update-env
             pm2 save
             
             echo "✅ Deployment Successful!"

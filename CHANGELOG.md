@@ -3,6 +3,13 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+## [Iteration 83.0] - 2026-03-18
+### [Fix]
+- **AI Prediction Flow**: Fixed `invalid index to scalar variable` by ensuring `predict_proba` returns a 2D array and adding robust extraction logic.
+- **Feature Snapshot**: Added `FAILED FEATURES` logging to debug AI input issues.
+- **Spam Reduction**: Reduced data warmup Telegram notifications; only missing data triggers an alert.
+- **Robustness**: Added mandatory 60s sleep on main loop errors to prevent log flooding.
+
 ## [Iteration 82.1] - 2026-03-18
 ### [Feat]
 - **Official Launch**: Updated PM2 deployment logic to use a dedicated process name `Iteration82_Live` with a robust "delete-then-start" sequence.

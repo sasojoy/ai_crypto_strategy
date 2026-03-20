@@ -815,20 +815,18 @@ def run_strategy(ml_model):
     symbols = get_top_relative_strength_symbols()
     prices_rsi = {}
     
-    # Iteration 71.3: Data Pre-warmup & Progress Tracking
+    # Iteration 83.0: Data Pre-warmup & Progress Tracking (Reduced Spam)
     warmup_count = 0
     total_symbols = len(symbols)
     for i, s in enumerate(symbols):
-        # Send progress update every 2 symbols to avoid spamming
-        if i % 2 == 0:
-            send_telegram_msg(f"⏳ 正在同步數據 ({i}/{total_symbols} 根)...")
-        
         # Pre-fetch data to ensure indicators are ready
         df_warmup = fetch_15m_data(s)
         if not df_warmup.empty and len(df_warmup) >= 200:
             warmup_count += 1
             prices_rsi[s] = {'price': df_warmup.iloc[-1]['close'], 'rsi': 50, 'ml_score': 0.5, 'missed_reason': 'Warming Up'}
         else:
+            # Only notify if data is missing
+            send_telegram_msg(f"⚠️ [Data Missing] {s} 數據不足，正在同步...")
             prices_rsi[s] = {'price': 0, 'rsi': 50, 'ml_score': 0.5, 'missed_reason': 'Initializing'}
     
     if warmup_count < total_symbols:
@@ -1187,10 +1185,22 @@ def run_strategy(ml_model):
             cond_trend = latest['close'] > latest['ema200'] * 0.98
             
             # AI Score from ML Model
-            # Iteration 82.0: Dimension Fix - Ensure 2D input for predict_proba
+            # Iteration 83.0: AI Prediction Flow Fix
             features = extract_features(df.reset_index(), df_btc_ml.reset_index())
-            # Use tail(1) to get the latest features as a 2D DataFrame
-            ai_score = float(ml_model.predict_proba(features.tail(1))[0][1])
+            try:
+                # Use tail(1) to get the latest features as a 2D DataFrame
+                probs = ml_model.predict_proba(features.tail(1))
+                # Ensure we have a 2D array and extract class 1 probability
+                if hasattr(probs, "ndim") and probs.ndim == 2:
+                    ai_score = float(probs[0][1])
+                else:
+                    # Fallback if it's a scalar or 1D
+                    ai_score = float(probs[1]) if len(probs) > 1 else 0.5
+            except Exception as e:
+                print(f"⚠️ [AI Error] {symbol} Prediction failed: {e}")
+                print(f"FAILED FEATURES: {features.tail(1)}")
+                ai_score = 0.5
+            
             cond_ai = ai_score >= 0.55
             
             long_signal = cond_rsi and cond_ema_cross and cond_trend and cond_ai and time_filter_ok
@@ -1292,15 +1302,24 @@ def run_strategy(ml_model):
                 elif not stoch_rsi_ok: missed_reason = "StochRSI No Cross"
                 elif not (squeeze_tier1 or squeeze_tier2 or trend_decay_active): missed_reason = "No Squeeze/Trend Decay"
 
-            # Iteration 82.0: AI Score Calculation (Dimension Fix)
+            # Iteration 83.0: AI Score Calculation (AI Prediction Flow Fix)
             ml_score = 0.5 # Default
             df_ml = fetch_1h_data(symbol, limit=250)
             if not df_ml.empty and not df_btc_ml.empty:
                 features = extract_features(df_ml, df_btc_ml)
                 if not features.empty:
-                    # Ensure 2D input and extract probability of class 1
-                    ml_score = float(ml_model.predict_proba(features.tail(1))[0][1])
-                    print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
+                    try:
+                        # Ensure 2D input and extract probability of class 1
+                        probs = ml_model.predict_proba(features.tail(1))
+                        if hasattr(probs, "ndim") and probs.ndim == 2:
+                            ml_score = float(probs[0][1])
+                        else:
+                            ml_score = float(probs[1]) if len(probs) > 1 else 0.5
+                        print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
+                    except Exception as e:
+                        print(f"⚠️ [AI Heartbeat Error] {symbol}: {e}")
+                        print(f"FAILED FEATURES: {features.tail(1)}")
+                        ml_score = 0.5
 
             # Store scan results for heartbeat
             prices_rsi[symbol] = {
@@ -1721,8 +1740,8 @@ def close_partial_position(symbol, qty):
 
 if __name__ == "__main__":
     try:
-        # Iteration 82.1: Startup Message
-        send_telegram_msg("🚀 【Iteration 82.1】 實地驗證通過，系統正式上線")
+        # Iteration 83.0: Startup Message
+        send_telegram_msg("🚀 【Iteration 83.0】 AI 邏輯修復完成，系統正式上線")
         import sys
         if "--check-accounting" in sys.argv:
             print("📊 [ACCOUNTING CHECK]")
@@ -1746,7 +1765,7 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 74.0 | Professional Trapper & CI/CD】"
+        STRATEGY_VERSION = "🚀 【Iteration 83.0 | AI Logic Final Fix】"
         last_heartbeat_time = 0
         last_summary_date = None
         
@@ -1895,7 +1914,9 @@ if __name__ == "__main__":
                     
                     last_heartbeat_time = current_time
             except Exception as e:
-                print(f"Loop error: {e}")
+                # Iteration 83.0: Robust Error Handling
+                print(f"❌ [Main Loop Error] {e}")
+                time.sleep(60)
             time.sleep(60)
     except Exception as fatal_e:
         error_msg = f"❌ 核心啟動崩潰: {str(fatal_e)}"
