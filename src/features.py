@@ -63,7 +63,9 @@ def extract_features(df, btc_df=None):
     
     features = features.reindex(columns=expected_features)
 
-    # 4. Robust NaN Handling
+    # 4. Robust NaN Handling (Iteration 71.3: Enhanced Alignment)
+    # Use bfill first to propagate future values back to early NaN rows (warmup period)
+    # Then ffill for any remaining gaps, and finally fill with 0.5 for neutral features
     features = features.bfill().ffill().fillna(0.5)
 
     # Debugging (Iteration 71.14: NoneType Protection)

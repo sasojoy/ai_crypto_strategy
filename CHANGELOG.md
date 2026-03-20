@@ -3,6 +3,13 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+## [Iteration 81.1] - 2026-03-18
+### [Feat]
+- **Data Pre-warmup**: Increased OHLCV fetch limit to 500 and implemented a warmup check in `run_strategy` to ensure indicators like EMA200 are ready.
+- **AI Feature Alignment**: Refined NaN handling in `src/features.py` using `bfill` and `ffill` for better feature alignment.
+- **Startup Progress**: Added Telegram notifications for data synchronization progress.
+- **Data Persistence**: Implemented local CSV caching for 15m K-line data to prevent gaps after restarts.
+
 ## [Iteration 81.0] - 2026-03-18
 ### [Fix]
 - **Indicator Alignment**: Fixed `ema200` KeyError by explicitly calculating and adding it to the main DataFrame.

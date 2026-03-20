@@ -52,7 +52,7 @@ def safe_get_bool(obj, index=-1):
         return bool(obj[index])
     return bool(obj)
 
-def fetch_btc_vol_with_retry(symbol='BTC/USDT', limit=48, retries=3):
+def fetch_btc_vol_with_retry(symbol='BTC/USDT', limit=500, retries=3):
     """
     Iteration 67.4: Fetch BTC volume with retry logic for UTC 00:00 stability.
     """
@@ -151,7 +151,7 @@ def get_top_relative_strength_symbols():
     Focus on high-conviction assets (BTC, ETH, SOL) and reduce exposure to experimental ones.
     """
     selected_symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
-    print(f"🎯 [Iteration 81.0 | Professional Trapper] Monitoring Selected Symbols: {selected_symbols}")
+    print(f"🎯 [Iteration 81.1 | Professional Trapper] Monitoring Selected Symbols: {selected_symbols}")
     return selected_symbols
 
 # Global exchange instance (Iteration 69.2: Prevent rate limiting)
@@ -163,24 +163,39 @@ exchange = ccxt.binance({
 })
 
 def fetch_15m_data(symbol='BTC/USDT'):
+    """
+    Iteration 71.3: Fetch 15m data with local caching to prevent data gaps.
+    """
+    cache_file = os.path.join(DATA_DIR, f"{symbol.replace('/', '_')}_15m.csv")
     try:
         timeframe = '15m'
-        limit = 300
+        limit = 500
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
         if ohlcv is None or len(ohlcv) == 0:
             print(f"⚠️ Warning: fetch_ohlcv returned None or empty for {symbol} ({timeframe})")
+            # Try to load from cache if API fails
+            if os.path.exists(cache_file):
+                print(f"📂 Loading {symbol} 15m data from cache...")
+                return pd.read_csv(cache_file, parse_dates=['timestamp'])
             return pd.DataFrame()
+        
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        
+        # Save to cache
+        df.to_csv(cache_file, index=False)
         return df
     except Exception as e:
         print(f"Error fetching 15m data for {symbol}: {e}")
+        if os.path.exists(cache_file):
+            print(f"📂 Loading {symbol} 15m data from cache after error...")
+            return pd.read_csv(cache_file, parse_dates=['timestamp'])
         return pd.DataFrame()
 
 def fetch_5m_data(symbol='BTC/USDT'):
     try:
         timeframe = '5m'
-        limit = 300
+        limit = 500
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
         if ohlcv is None or len(ohlcv) == 0:
             print(f"⚠️ Warning: fetch_ohlcv returned None or empty for {symbol} ({timeframe})")
@@ -800,9 +815,27 @@ def run_strategy(ml_model):
     symbols = get_top_relative_strength_symbols()
     prices_rsi = {}
     
-    # Iteration 71.2: Pre-populate prices_rsi with basic data for heartbeat
-    for s in symbols:
-        prices_rsi[s] = {'price': 0, 'rsi': 50, 'ml_score': 0.5, 'missed_reason': 'Initializing'}
+    # Iteration 71.3: Data Pre-warmup & Progress Tracking
+    warmup_count = 0
+    total_symbols = len(symbols)
+    for i, s in enumerate(symbols):
+        # Send progress update every 2 symbols to avoid spamming
+        if i % 2 == 0:
+            send_telegram_msg(f"⏳ 正在同步數據 ({i}/{total_symbols} 根)...")
+        
+        # Pre-fetch data to ensure indicators are ready
+        df_warmup = fetch_15m_data(s)
+        if not df_warmup.empty and len(df_warmup) >= 200:
+            warmup_count += 1
+            prices_rsi[s] = {'price': df_warmup.iloc[-1]['close'], 'rsi': 50, 'ml_score': 0.5, 'missed_reason': 'Warming Up'}
+        else:
+            prices_rsi[s] = {'price': 0, 'rsi': 50, 'ml_score': 0.5, 'missed_reason': 'Initializing'}
+    
+    if warmup_count < total_symbols:
+        print(f"⚠️ [Warmup] Only {warmup_count}/{total_symbols} symbols ready. Continuing with partial data.")
+    else:
+        send_telegram_msg(f"✅ 數據預熱完成 ({total_symbols}/{total_symbols})，開始執行策略。")
+
     current_pos_count = get_active_positions_count()
     
     # Iteration 19: Dynamic Equity-Based Risking
