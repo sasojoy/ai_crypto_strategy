@@ -3,6 +3,13 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+## [Iteration 85.1] - 2026-03-21
+### [Feat]
+- **Elite Silent**: Removed duplicate summaries and integrated periodic reports.
+- **Anti-Spam**: Silenced "Data Warmup Complete" and "Hourly Audit" Telegram messages.
+- **Report Integration**: Unified heartbeat report with equity, AI score, BTC trend, and position status.
+- **Version Consolidation**: Unified all version strings to `Iteration 85.1 | Elite Silent`.
+
 ## [Iteration 85.0] - 2026-03-21
 ### [Feat]
 - **Silent Trapper**: Silenced data warmup Telegram notifications; now only logs to PM2.

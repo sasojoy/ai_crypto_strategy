@@ -832,7 +832,8 @@ def run_strategy(ml_model):
     if warmup_count < total_symbols:
         print(f"⚠️ [Warmup] Only {warmup_count}/{total_symbols} symbols ready. Continuing with partial data.")
     else:
-        send_telegram_msg(f"✅ 數據預熱完成 ({total_symbols}/{total_symbols})，開始執行策略。")
+        # Iteration 85.1: Elite Silent - Console Only
+        print(f"✅ 數據預熱完成 ({total_symbols}/{total_symbols})，開始執行策略。")
 
     current_pos_count = get_active_positions_count()
     
@@ -1771,7 +1772,7 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 85.0 | Silent Trapper】"
+        STRATEGY_VERSION = "🚀 【Iteration 85.1 | Elite Silent】"
         last_heartbeat_time = 0
         last_summary_date = None
         
@@ -1802,14 +1803,12 @@ if __name__ == "__main__":
         for i, s in enumerate(warmup_symbols):
             progress = int((i / len(warmup_symbols)) * 100)
             print(f"⏳ [{progress}%] Warming up {s} ({i}/{len(warmup_symbols)})...")
-            if i % 2 == 0: # Reduce TG spam
-                send_telegram_msg(f"⏳ 正在同步數據 ({i}/{len(warmup_symbols)} 根)...")
+            # Iteration 85.1: Elite Silent - TG Spam Removed
             # Fetch 500 1h candles to ensure EMA200 is ready
             fetch_1h_data(s, limit=500)
             time.sleep(0.5) # Rate limit protection
         
         print(f"✅ {STRATEGY_VERSION} Initialization Complete.")
-        send_telegram_msg(f"✅ 數據預熱完成，系統核心已上線 | {STRATEGY_VERSION}")
 
         while True:
             try:
@@ -1830,14 +1829,10 @@ if __name__ == "__main__":
                 stability_monitor()
                 scan_results = run_strategy(ml_model)
                 
-                # Iteration 85.0: Diagnose empty scan_results
+                # Iteration 85.1: Elite Silent - Scan Alarm Silenced
                 print(f"🔍 [System] Scan complete. Found {len(scan_results)} results.")
                 if len(scan_results) == 0:
                     print("⚠️ [ALARM] scan_results is EMPTY!")
-                    try:
-                        send_telegram_msg("⚠️ 【Iteration 85.0 報警】掃描結果為空，請檢查 API 連線或市場過濾邏輯。")
-                    except:
-                        pass
 
                 manage_positions(scan_results)
                 current_time = time.time()
@@ -1881,7 +1876,8 @@ if __name__ == "__main__":
                                 'entry_price': entry_price
                             })
                     
-                    send_hourly_audit(equity, daily_pnl, active_positions)
+                    # Iteration 85.1: Elite Silent - Hourly Audit Silenced
+                    # send_hourly_audit(equity, daily_pnl, active_positions)
                     
                     # Iteration 35: Rich Heartbeat with Data Visualization
                     df_btc = fetch_1h_data('BTC/USDT')
