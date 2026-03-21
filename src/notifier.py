@@ -5,8 +5,8 @@ import datetime
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-# Iteration 91.0: Version Alignment
-STRATEGY_VERSION = "🚀 【Iteration 91.0 | DevOps Compliance】"
+# Iteration 91.1: Version Alignment
+STRATEGY_VERSION = "🚀 【Iteration 91.1 | DevOps Compliance】"
 
 load_dotenv()
 
@@ -79,15 +79,15 @@ def send_entry_notification(symbol, side, pos_value, capital_pct, tp, sl, rr, ml
 
 def send_daily_performance(date, equity, daily_pnl, best_symbol, max_dd):
     """
-    Daily Performance Message - Iteration 91.0
+    Daily Performance Message - Iteration 91.1
     """
-    # Iteration 91.0: DevOps Compliance
+    # Iteration 91.1: DevOps Compliance
     # In a real scenario, we would fetch actual fees and API limits from the exchange
     estimated_fees = abs(daily_pnl) * 0.001 # 0.1% estimated fee
     api_limit = "999/1200" # Placeholder
     
     msg = (
-        f"📅 【每日對帳戰報 - Iteration 91.0】: {date}\n"
+        f"📅 【每日對帳戰報 - Iteration 91.1】: {date}\n"
         f"----------------------------\n"
         f"💰 淨值: ${equity:,.2f} | 當日損益: ${daily_pnl:,.2f}\n"
         f"🏆 表現最佳幣種: {best_symbol}\n"
