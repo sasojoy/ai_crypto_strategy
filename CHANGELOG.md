@@ -3,18 +3,18 @@
 
 # CHANGELOG - AI Crypto Strategy
 
-## [Iteration 85.3] - 2026-03-21
+## [Iteration 86.0] - 2026-03-21
 ### [Fix]
-- **Final Syntax Patch**: Fixed `datetime` reference error and unified heartbeat logic.
-- **Global Cleanup**: Removed all legacy strings ("Iteration 82.1", "Iteration 68.9").
-- **Version Consolidation**: Unified all version strings to `Iteration 85.3 | Elite Silent`.
+- **Cross-File Syntax Fix**: Added missing `datetime` imports in `src/notifier.py` to resolve `NameError`.
+- **Global Cleanup**: Removed all legacy strings ("Iteration 82.1", "Iteration 68.9", "Iteration 85.3").
+- **Version Consolidation**: Unified all version strings to `Iteration 86.0 | Final Stability Fix`.
 
 ## [Iteration 85.1] - 2026-03-21
 ### [Feat]
-- **Elite Silent**: Removed duplicate summaries and integrated periodic reports.
+- **Final Stability Fix**: Removed duplicate summaries and integrated periodic reports.
 - **Anti-Spam**: Silenced "Data Warmup Complete" and "Hourly Audit" Telegram messages.
 - **Report Integration**: Unified heartbeat report with equity, AI score, BTC trend, and position status.
-- **Version Consolidation**: Unified all version strings to `Iteration 85.1 | Elite Silent`.
+- **Version Consolidation**: Unified all version strings to `Iteration 85.1 | Final Stability Fix`.
 
 ## [Iteration 85.0] - 2026-03-21
 ### [Feat]
@@ -38,11 +38,11 @@
 - **Spam Reduction**: Reduced data warmup Telegram notifications; only missing data triggers an alert.
 - **Robustness**: Added mandatory 60s sleep on main loop errors to prevent log flooding.
 
-## [Iteration 82.1] - 2026-03-18
+## [Iteration 86.0] - 2026-03-18
 ### [Feat]
 - **Official Launch**: Updated PM2 deployment logic to use a dedicated process name `Iteration82_Live` with a robust "delete-then-start" sequence.
 - **Startup Notification**: Added an immediate Telegram message upon system startup to confirm successful deployment.
-- **Version Update**: Synchronized versioning to `Iteration 82.1 | Dimension Fix`.
+- **Version Update**: Synchronized versioning to `Iteration 86.0 | Dimension Fix`.
 
 ## [Iteration 82.0] - 2026-03-18
 ### [Fix]
