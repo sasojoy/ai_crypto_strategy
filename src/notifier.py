@@ -5,6 +5,9 @@ import datetime
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
+# Iteration 91.0: Version Alignment
+STRATEGY_VERSION = "🚀 【Iteration 91.0 | DevOps Compliance】"
+
 load_dotenv()
 
 # Iteration 58: Relative Path Definition for GCE Compatibility
@@ -53,7 +56,7 @@ def send_hourly_audit(equity, realized_pnl, active_positions):
     msg += (
         f"📈 帳戶總淨值: ${equity:,.2f}\n"
         f"----------------------------\n"
-        f"狀態：🔍 【Iteration 89.0 | Rigid Data Alignment】"
+        f"狀態：{STRATEGY_VERSION}"
     )
     send_telegram_msg(msg)
 
@@ -76,15 +79,15 @@ def send_entry_notification(symbol, side, pos_value, capital_pct, tp, sl, rr, ml
 
 def send_daily_performance(date, equity, daily_pnl, best_symbol, max_dd):
     """
-    Daily Performance Message - Iteration 89.0
+    Daily Performance Message - Iteration 91.0
     """
-    # Iteration 89.0: Rigid Data Alignment
+    # Iteration 91.0: DevOps Compliance
     # In a real scenario, we would fetch actual fees and API limits from the exchange
     estimated_fees = abs(daily_pnl) * 0.001 # 0.1% estimated fee
     api_limit = "999/1200" # Placeholder
     
     msg = (
-        f"📅 【每日對帳戰報 - Iteration 89.0】: {date}\n"
+        f"📅 【每日對帳戰報 - Iteration 91.0】: {date}\n"
         f"----------------------------\n"
         f"💰 淨值: ${equity:,.2f} | 當日損益: ${daily_pnl:,.2f}\n"
         f"🏆 表現最佳幣種: {best_symbol}\n"
@@ -95,7 +98,7 @@ def send_daily_performance(date, equity, daily_pnl, best_symbol, max_dd):
         f"   • 實際 vs 預期: 一致 ✅\n"
         f"   • 剩餘 API 額度: {api_limit}\n"
         f"----------------------------\n"
-        f"狀態：🔍 【Iteration 89.0 | Rigid Data Alignment】"
+        f"狀態：{STRATEGY_VERSION}"
     )
     send_telegram_msg(msg)
 
@@ -158,6 +161,12 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"🤖 AI Confidence: {avg_ai_score*100:.1f}% ({ai_status})\n"
     msg += f"🛡️ AI Filtered Out: {ai_filtered} trades today\n"
     msg += f"🌐 當前策略模式: {regime_mode}\n"
+    
+    # Iteration 71.3: EMA200 Distance Display
+    if btc_status and 'dist_ema200' in btc_status:
+        dist_ema200 = btc_status['dist_ema200']
+        msg += f"📏 BTC 離 EMA200 距離: {dist_ema200*100:.2f}%\n"
+    
     msg += f"----------------------------\n"
     
     # Iteration 57: [實戰演習數據] Block
@@ -235,7 +244,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: 🔍 【Iteration 89.0 | Rigid Data Alignment】"
+    msg += f"版本: {STRATEGY_VERSION}"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")

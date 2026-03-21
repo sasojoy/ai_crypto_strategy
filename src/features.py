@@ -66,10 +66,15 @@ def extract_features(df, btc_df=None):
     
     features = features.reindex(columns=expected_features)
 
-    # 4. Robust NaN Handling (Iteration 89.0: Rigid Data Alignment)
+    # 4. Robust NaN Handling (Iteration 71.3: AI Feature Alignment)
     # Use bfill first to propagate future values back to early NaN rows (warmup period)
     # Then ffill for any remaining gaps.
-    features = features.bfill().ffill()
+    # Iteration 71.3: Explicitly use bfill/ffill to ensure no NaN reaches the model
+    features = features.fillna(method='bfill').fillna(method='ffill')
+    
+    # If still NaN (e.g. all values are NaN), fill with reasonable defaults
+    if features.isnull().any().any():
+        features = features.fillna(0.5) # Neutral fallback for indicators
     
     # Iteration 89.0: Print final features before returning
     print(f"🔍 [Iteration 89.0 | Rigid Data] Final features to model (Tail 1):\n{features.tail(1)}")
