@@ -12,6 +12,7 @@
 
 ### [Workflow]
 - **Ghost Process Cleanup**: Ensured `pm2 delete all` is executed in the deployment workflow to clear legacy 86.0 processes.
+- **DevOps Rules**: Created `DEVOPS_RULES.md` to enforce documentation synchronization and deployment safety standards.
 
 ## [Iteration 87.0] - 2026-03-21
 ### [Fix]
