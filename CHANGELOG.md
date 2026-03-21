@@ -9,6 +9,12 @@
 - **Global Cleanup**: Removed all legacy strings ("Iteration 82.1", "Iteration 68.9", "Iteration 85.3").
 - **Version Consolidation**: Unified all version strings to `Iteration 86.0 | Final Stability Fix`.
 
+### [Workflow & Deploy]
+- **PM2 Sync**: Updated deployment name to `Iteration86_Final`.
+- **Rsync Optimization**: Added `--delete` flag and preserved `.git` in staging for faster deployments.
+- **Robustness**: Added `FileNotFoundError` handling in Gate Check for `results.json`.
+- **Environment Cleanup**: Refined cleanup to only target `__pycache__` directories.
+
 ## [Iteration 85.1] - 2026-03-21
 ### [Feat]
 - **Final Stability Fix**: Removed duplicate summaries and integrated periodic reports.
