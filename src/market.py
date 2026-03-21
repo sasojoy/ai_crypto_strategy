@@ -1310,7 +1310,7 @@ def run_strategy(ml_model):
                 elif not stoch_rsi_ok: missed_reason = "StochRSI No Cross"
                 elif not (squeeze_tier1 or squeeze_tier2 or trend_decay_active): missed_reason = "No Squeeze/Trend Decay"
 
-            # Iteration 87.0: AI Score Calculation (AI Prediction Flow Fix & Debug)
+            # Iteration 87.1: AI Score Calculation (Vision Restored & Strict Error)
             ml_score = 0.5 # Default
             df_ml = fetch_1h_data(symbol, limit=250)
             if not df_ml.empty and not df_btc_ml.empty:
@@ -1328,12 +1328,15 @@ def run_strategy(ml_model):
                             ml_score = float(probs[1]) if len(probs) > 1 else 0.5
                         print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
                     except Exception as e:
-                        print(f"⚠️ [AI Heartbeat Error] {symbol}: {e}")
-                        print(f"ERROR REASON: {e}") # Iteration 87.0 Requirement
+                        print(f"❌ [AI CRITICAL ERROR] {symbol}: {e}")
+                        print(f"ERROR REASON: {e}")
                         print(f"FAILED FEATURES: {features.tail(1)}")
-                        ml_score = 0.5
+                        # Iteration 87.1: Raise error to see real cause in PM2 logs
+                        raise e
                 else:
                     print(f"⚠️ [AI Score] {symbol}: Features empty, defaulting to 0.5")
+                    # Iteration 87.1: Debug missing features
+                    print(f"DEBUG: Missing features for {symbol}: {features.columns.tolist() if hasattr(features, 'columns') else 'No Columns'}")
             else:
                 print(f"⚠️ [AI Score] {symbol}: Data empty (df_ml: {df_ml.empty}, df_btc_ml: {df_btc_ml.empty}), defaulting to 0.5")
 
@@ -1781,7 +1784,7 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 87.0 | AI Diagnostic & Reconstruction】"
+        STRATEGY_VERSION = "🚀 【Iteration 87.1 | Vision Restored】"
         last_report_time = datetime.now()
         last_summary_date = None
         

@@ -3,6 +3,15 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+## [Iteration 87.1] - 2026-03-21
+### [Fix]
+- **AI Vision Restored**: Removed default 0.5 return in AI prediction block; now raises errors to expose root causes in PM2 logs.
+- **Diagnostic Logging**: Added detailed feature column debugging and missing indicator tracking.
+- **Version Sync**: Unified all version strings to `Iteration 87.1 | Vision Restored`.
+
+### [Workflow]
+- **Ghost Process Cleanup**: Ensured `pm2 delete all` is executed in the deployment workflow to clear legacy 86.0 processes.
+
 ## [Iteration 87.0] - 2026-03-21
 ### [Fix]
 - **Physical Cleanup**: Forced `pm2 delete all` and `kill -9` on all Python processes to resolve process conflicts.
