@@ -7,7 +7,13 @@ def calculate_rsi(df, period=14):
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
     rs = gain / loss
-    return 100 - (100 / (1 + rs))
+    rsi = 100 - (100 / (1 + rs))
+    
+    # Iteration 89.0: Rigid Data Alignment
+    if rsi.iloc[-1] is np.nan or np.isnan(rsi.iloc[-1]):
+        print(f"🔍 [Iteration 89.0 | Rigid Data] RSI calculation failed (NaN) for data ending at {df.index[-1] if hasattr(df, 'index') else 'unknown'}")
+        
+    return rsi
 
 def calculate_ema(df, period):
     if df is None or (isinstance(df, pd.DataFrame) and df.empty): return None

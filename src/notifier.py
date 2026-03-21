@@ -53,7 +53,7 @@ def send_hourly_audit(equity, realized_pnl, active_positions):
     msg += (
         f"📈 帳戶總淨值: ${equity:,.2f}\n"
         f"----------------------------\n"
-        f"狀態：🚀 【Iteration 88.0 | Brute Force Diagnostic】"
+        f"狀態：🔍 【Iteration 89.0 | Rigid Data Alignment】"
     )
     send_telegram_msg(msg)
 
@@ -76,15 +76,15 @@ def send_entry_notification(symbol, side, pos_value, capital_pct, tp, sl, rr, ml
 
 def send_daily_performance(date, equity, daily_pnl, best_symbol, max_dd):
     """
-    Daily Performance Message - Iteration 50 (Auto-Recon)
+    Daily Performance Message - Iteration 89.0
     """
-    # Iteration 50: Auto-Recon Logic
+    # Iteration 89.0: Rigid Data Alignment
     # In a real scenario, we would fetch actual fees and API limits from the exchange
     estimated_fees = abs(daily_pnl) * 0.001 # 0.1% estimated fee
     api_limit = "999/1200" # Placeholder
     
     msg = (
-        f"📅 【每日對帳戰報 - Iteration 88.0】: {date}\n"
+        f"📅 【每日對帳戰報 - Iteration 89.0】: {date}\n"
         f"----------------------------\n"
         f"💰 淨值: ${equity:,.2f} | 當日損益: ${daily_pnl:,.2f}\n"
         f"🏆 表現最佳幣種: {best_symbol}\n"
@@ -95,7 +95,7 @@ def send_daily_performance(date, equity, daily_pnl, best_symbol, max_dd):
         f"   • 實際 vs 預期: 一致 ✅\n"
         f"   • 剩餘 API 額度: {api_limit}\n"
         f"----------------------------\n"
-        f"狀態：🚀 【Iteration 88.0 | Brute Force Diagnostic】"
+        f"狀態：🔍 【Iteration 89.0 | Rigid Data Alignment】"
     )
     send_telegram_msg(msg)
 
@@ -235,7 +235,7 @@ def send_rich_heartbeat(positions, scan_results, active_count, version, btc_stat
     msg += f"\n🛡️ 風控檢查：\n"
     msg += f"   • 總活躍倉位: {active_count}/3\n"
     msg += f"----------------------------\n"
-    msg += f"版本: 🚀 【Iteration 88.0 | Brute Force Diagnostic】"
+    msg += f"版本: 🔍 【Iteration 89.0 | Rigid Data Alignment】"
 
     send_telegram_msg(msg)
     print("Telegram report updated with active position details.")

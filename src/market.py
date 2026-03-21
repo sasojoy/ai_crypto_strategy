@@ -152,15 +152,17 @@ def get_top_relative_strength_symbols():
     Focus on high-conviction assets (BTC, ETH, SOL) and reduce exposure to experimental ones.
     """
     selected_symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT', 'FET/USDT', 'ARB/USDT']
-    print(f"🎯 [Iteration 86.0 | Final Stability Fix] Monitoring Selected Symbols: {selected_symbols}")
+    print(f"🔍 [Iteration 89.0 | Rigid Data] Monitoring Selected Symbols: {selected_symbols}")
     return selected_symbols
 
-# Global exchange instance (Iteration 69.2: Prevent rate limiting)
+# Global exchange instances (Iteration 88.0: Singleton Pattern)
 exchange = ccxt.binance({
     'enableRateLimit': True,
-    'options': {
-        'defaultType': 'spot'
-    }
+    'options': {'defaultType': 'spot'}
+})
+exchange_futures = ccxt.binance({
+    'enableRateLimit': True,
+    'options': {'defaultType': 'future'}
 })
 
 def fetch_15m_data(symbol='BTC/USDT'):
@@ -168,45 +170,59 @@ def fetch_15m_data(symbol='BTC/USDT'):
     Iteration 71.3: Fetch 15m data with local caching to prevent data gaps.
     """
     cache_file = os.path.join(DATA_DIR, f"{symbol.replace('/', '_')}_15m.csv")
-    try:
-        timeframe = '15m'
-        limit = 500
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
-        if ohlcv is None or len(ohlcv) == 0:
-            print(f"⚠️ Warning: fetch_ohlcv returned None or empty for {symbol} ({timeframe})")
-            # Try to load from cache if API fails
-            if os.path.exists(cache_file):
-                print(f"📂 Loading {symbol} 15m data from cache...")
-                return pd.read_csv(cache_file, parse_dates=['timestamp'])
-            return pd.DataFrame()
-        
-        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        
-        # Save to cache
-        df.to_csv(cache_file, index=False)
-        return df
-    except Exception as e:
-        print(f"Error fetching 15m data for {symbol}: {e}")
-        if os.path.exists(cache_file):
-            print(f"📂 Loading {symbol} 15m data from cache after error...")
-            return pd.read_csv(cache_file, parse_dates=['timestamp'])
-        return pd.DataFrame()
+    # Iteration 89.0: Rigid Data Alignment (Force 500)
+    limit = 500
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            timeframe = '15m'
+            ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            if ohlcv is None or len(ohlcv) < limit:
+                print(f"⚠️ [Iteration 89.0 | Rigid Data] {symbol} Data insufficient (count: {len(ohlcv) if ohlcv else 0}/{limit})")
+                # Try to load from cache if API fails
+                if os.path.exists(cache_file):
+                    print(f"📂 Loading {symbol} 15m data from cache...")
+                    return pd.read_csv(cache_file, parse_dates=['timestamp'])
+                return pd.DataFrame()
+            
+            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            
+            # Save to cache
+            df.to_csv(cache_file, index=False)
+            return df
+        except Exception as e:
+            print(f"❌ Attempt {attempt+1}/{max_retries} failed for {symbol} (15m): {type(e).__name__} - {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+            else:
+                print(f"🚨 CRITICAL: All retries failed for {symbol} (15m)")
+                if os.path.exists(cache_file):
+                    print(f"📂 Loading {symbol} 15m data from cache after all retries failed...")
+                    return pd.read_csv(cache_file, parse_dates=['timestamp'])
+                return pd.DataFrame()
 
 def fetch_5m_data(symbol='BTC/USDT'):
-    try:
-        timeframe = '5m'
-        limit = 500
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
-        if ohlcv is None or len(ohlcv) == 0:
-            print(f"⚠️ Warning: fetch_ohlcv returned None or empty for {symbol} ({timeframe})")
-            return pd.DataFrame()
-        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        return df
-    except Exception as e:
-        print(f"Error fetching 5m data for {symbol}: {e}")
-        return pd.DataFrame()
+    # Iteration 89.0: Rigid Data Alignment (Force 500)
+    limit = 500
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            timeframe = '5m'
+            ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            if ohlcv is None or len(ohlcv) < limit:
+                print(f"⚠️ [Iteration 89.0 | Rigid Data] {symbol} Data insufficient (count: {len(ohlcv) if ohlcv else 0}/{limit})")
+                return pd.DataFrame()
+            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            return df
+        except Exception as e:
+            print(f"❌ Attempt {attempt+1}/{max_retries} failed for {symbol} (5m): {type(e).__name__} - {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+            else:
+                print(f"🚨 CRITICAL: All retries failed for {symbol} (5m)")
+                return pd.DataFrame()
 
 
 
@@ -217,48 +233,71 @@ def fetch_4h_data(symbol='BTC/USDT'):
     Iteration 16: Multi-Timeframe Filter
     Fetch 4-hour data to determine the major trend.
     """
-    try:
-        timeframe = '4h'
-        limit = 200
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
-        if ohlcv is None or len(ohlcv) == 0:
-            print(f"⚠️ Warning: fetch_ohlcv returned None or empty for {symbol} ({timeframe})")
-            return pd.DataFrame()
-        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        return df
-    except Exception as e:
-        print(f"Error fetching 4h data for {symbol}: {e}")
-        return pd.DataFrame()
+    # Iteration 89.0: Rigid Data Alignment (Force 500)
+    limit = 500
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            timeframe = '4h'
+            ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            if ohlcv is None or len(ohlcv) < limit:
+                print(f"⚠️ [Iteration 89.0 | Rigid Data] {symbol} Data insufficient (count: {len(ohlcv) if ohlcv else 0}/{limit})")
+                return pd.DataFrame()
+            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            return df
+        except Exception as e:
+            print(f"❌ Attempt {attempt+1}/{max_retries} failed for {symbol} (4h): {type(e).__name__} - {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+            else:
+                print(f"🚨 CRITICAL: All retries failed for {symbol} (4h)")
+                return pd.DataFrame()
 
 
-def fetch_ohlcv(symbol, timeframe="1h", limit=100):
-    try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
-        if ohlcv is None or len(ohlcv) == 0:
-            print(f"⚠️ Warning: fetch_ohlcv returned None or empty for {symbol} ({timeframe})")
-            return pd.DataFrame()
-        df = pd.DataFrame(ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
-        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-        return df
-    except Exception as e:
-        print(f"Error fetching {timeframe} data for {symbol}: {e}")
-        return pd.DataFrame()
+def fetch_ohlcv(symbol, timeframe="1h", limit=500):
+    # Iteration 89.0: Rigid Data Alignment (Force 500)
+    limit = 500
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            if ohlcv is None or len(ohlcv) < limit:
+                print(f"⚠️ [Iteration 89.0 | Rigid Data] {symbol} Data insufficient (count: {len(ohlcv) if ohlcv else 0}/{limit})")
+                return pd.DataFrame()
+            df = pd.DataFrame(ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
+            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+            return df
+        except Exception as e:
+            print(f"❌ Attempt {attempt+1}/{max_retries} failed for {symbol} ({timeframe}): {type(e).__name__} - {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+            else:
+                print(f"🚨 CRITICAL: All retries failed for {symbol} ({timeframe})")
+                return pd.DataFrame()
 
 
 def fetch_1h_data(symbol='BTC/USDT', limit=500):
-    try:
-        timeframe = '1h'
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
-        if ohlcv is None or len(ohlcv) == 0:
-            print(f"⚠️ Warning: fetch_ohlcv returned None or empty for {symbol} ({timeframe})")
-            return pd.DataFrame()
-        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        return df
-    except Exception as e:
-        print(f"Error fetching 1h data for {symbol}: {e}")
-        return pd.DataFrame()
+    # Iteration 89.0: Rigid Data Alignment (Force 500)
+    limit = 500
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            timeframe = '1h'
+            ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            if ohlcv is None or len(ohlcv) < limit:
+                print(f"⚠️ [Iteration 89.0 | Rigid Data] {symbol} Data insufficient (count: {len(ohlcv) if ohlcv else 0}/{limit})")
+                return pd.DataFrame()
+            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            return df
+        except Exception as e:
+            print(f"❌ Attempt {attempt+1}/{max_retries} failed for {symbol}: {type(e).__name__} - {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt) # Exponential backoff
+            else:
+                print(f"🚨 CRITICAL: All retries failed for {symbol}")
+                return pd.DataFrame()
 
 
 def fetch_funding_rate(symbol):
@@ -267,9 +306,8 @@ def fetch_funding_rate(symbol):
     Fetch current funding rate for the symbol using Public API.
     """
     try:
-        # Public API - No Key Required
-        exchange = ccxt.binance({'options': {'defaultType': 'future'}})
-        funding = exchange.fetch_funding_rate(symbol)
+        # Iteration 88.0: Use Singleton
+        funding = exchange_futures.fetch_funding_rate(symbol)
         return funding['fundingRate']
     except Exception as e:
         print(f"Error fetching funding rate for {symbol}: {e}")
@@ -281,7 +319,7 @@ def check_order_book_depth(symbol, amount_usd):
     Checks if the order book can handle the order with < 0.5% slippage.
     """
     try:
-        exchange = ccxt.binance()
+        # Iteration 88.0: Use Singleton
         order_book = exchange.fetch_order_book(symbol, limit=20)
         bids = order_book['bids'] # [price, amount]
         
@@ -302,8 +340,8 @@ def fetch_open_interest(symbol):
     Fetch current open interest for the symbol.
     """
     try:
-        exchange = ccxt.binance({'options': {'defaultType': 'future'}})
-        oi_data = exchange.fetch_open_interest(symbol)
+        # Iteration 88.0: Use Singleton
+        oi_data = exchange_futures.fetch_open_interest(symbol)
         return oi_data['openInterestAmount']
     except Exception as e:
         print(f"Error fetching OI for {symbol}: {e}")
@@ -447,7 +485,7 @@ def check_upside_potential(symbol, entry_price, df_1h):
         upside_pct = (recent_high - entry_price) / entry_price
         
         if upside_pct < 0.012:
-            print(f"🛡️ [Iteration 86.0 | Final Stability Fix] [Space Check] {symbol} upside {upside_pct:.2%} < 1.2% to resistance ({recent_high:.2f}). Skipping.")
+            print(f"🛡️ [Iteration 89.0 | Rigid Data] [Space Check] {symbol} upside {upside_pct:.2%} < 1.2% to resistance ({recent_high:.2f}). Skipping.")
             return False
     except Exception as e:
         print(f"Error in check_upside_potential for {symbol}: {e}")
@@ -1200,7 +1238,10 @@ def run_strategy(ml_model):
                 ai_score = float(probs[0][1])
             else:
                 # Fallback if it's a scalar or 1D
-                ai_score = float(probs[1]) if len(probs) > 1 else 0.5
+                if len(probs) > 1:
+                    ai_score = float(probs[1])
+                else:
+                    raise ValueError(f"❌ AI Prediction Failed: Unexpected probs shape {probs}")
             
             cond_ai = ai_score >= 0.55
             
@@ -1303,13 +1344,14 @@ def run_strategy(ml_model):
                 elif not stoch_rsi_ok: missed_reason = "StochRSI No Cross"
                 elif not (squeeze_tier1 or squeeze_tier2 or trend_decay_active): missed_reason = "No Squeeze/Trend Decay"
 
-            # Iteration 88.0: AI Score Calculation (Brute Force Diagnostic)
-            ml_score = 0.5 # Default
-            df_ml = fetch_1h_data(symbol, limit=250)
+            # Iteration 89.0: AI Score Calculation (Rigid Data Alignment)
+            # Force 500 candles for consistent feature calculation
+            df_ml = fetch_1h_data(symbol, limit=500)
             if not df_ml.empty and not df_btc_ml.empty:
-                # Iteration 87.1: Debug missing features before extraction
-                if len(df_ml) < 200:
-                    print(f"DEBUG: Missing features for {symbol}: df_ml length {len(df_ml)} < 200 (EMA200 warmup)")
+                # Iteration 89.0: Rigid length check
+                if len(df_ml) < 500:
+                    print(f"⚠️ [Iteration 89.0 | Rigid Data] {symbol} Data insufficient (count: {len(df_ml)}/500). Skipping AI prediction.")
+                    continue
                 
                 features = extract_features(df_ml, df_btc_ml)
                 # Iteration 88.0: No Try-Except, let it crash
@@ -1324,7 +1366,10 @@ def run_strategy(ml_model):
                     ml_score = float(probs[1]) if len(probs) > 1 else 0.5
                 print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
             else:
-                print(f"⚠️ [AI Score] {symbol}: Data empty (df_ml: {df_ml.empty}, df_btc_ml: {df_btc_ml.empty}), defaulting to 0.5")
+                # Iteration 88.0: No default 0.5, raise error to trigger PM2 restart
+                msg = f"❌ [AI Score CRITICAL] {symbol}: Data empty (df_ml: {df_ml.empty}, df_btc_ml: {df_btc_ml.empty})"
+                print(msg)
+                raise ValueError(msg)
 
             # Store scan results for heartbeat
             prices_rsi[symbol] = {
@@ -1770,7 +1815,7 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 88.0 | Brute Force Diagnostic】"
+        STRATEGY_VERSION = "🔍 【Iteration 89.0 | Rigid Data Alignment】"
         last_report_time = datetime.now()
         last_summary_date = None
         
@@ -1797,16 +1842,16 @@ if __name__ == "__main__":
         ml_model = CryptoMLModel()
         ml_model.load()
         
-        # Iteration 86.0: Data Pre-warmup (500 K-lines)
-        print(f"⏳ [System] Pre-warming data (500 K-lines)...")
+        # Iteration 89.0: Data Pre-warmup (500 K-lines)
+        print(f"🔍 [Iteration 89.0 | Rigid Data] Pre-warming data (500 K-lines)...")
         warmup_symbols = get_top_relative_strength_symbols()
         for i, s in enumerate(warmup_symbols):
             progress = int((i / len(warmup_symbols)) * 100)
             print(f"⏳ [{progress}%] Warming up {s} ({i}/{len(warmup_symbols)})...")
-            # Iteration 86.0: Final Stability Fix - TG Spam Removed
+            # Iteration 89.0: Rigid Data Alignment - Rate Limit Protection
             # Fetch 500 1h candles to ensure EMA200 is ready
             fetch_1h_data(s, limit=500)
-            time.sleep(0.5) # Rate limit protection
+            time.sleep(1.0) # Increased delay to prevent IP ban
         
         print(f"✅ {STRATEGY_VERSION} Initialization Complete.")
 

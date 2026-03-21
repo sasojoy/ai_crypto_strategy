@@ -4,7 +4,7 @@ from src.indicators import calculate_rsi, calculate_macd, calculate_adx, calcula
 
 def extract_features(df, btc_df=None):
     """
-    Iteration 71.15: Guardrail Engineering
+    Iteration 89.0: Rigid Data Alignment
     """
     expected_features = [
         'rsi', 'macd_hist', 'adx', 'atr_pct', 'vol_change_24h', 
@@ -31,7 +31,7 @@ def extract_features(df, btc_df=None):
     features = pd.DataFrame(index=df.index)
 
     # 2. Calculate Indicators
-    # Iteration 88.0: Brute Force Diagnostic - Print indicator keys
+    # Iteration 89.0: Rigid Data Alignment
     features['rsi'] = calculate_rsi(df)
     _, _, macd_hist = calculate_macd(df)
     features['macd_hist'] = macd_hist
@@ -40,7 +40,7 @@ def extract_features(df, btc_df=None):
     features['vol_change_24h'] = df['volume'].pct_change(24)
     features['volatility_24h'] = df['close'].pct_change().rolling(window=24).std()
 
-    print(f"DEBUG: Input indicators keys: {features.columns.tolist()}")
+    print(f"🔍 [Iteration 89.0 | Rigid Data] Input indicators keys: {features.columns.tolist()}")
 
     if btc_df is not None:
         btc_close = btc_df['close'].reindex(df.index, method='ffill')
@@ -66,23 +66,22 @@ def extract_features(df, btc_df=None):
     
     features = features.reindex(columns=expected_features)
 
-    # 4. Robust NaN Handling (Iteration 71.3: Enhanced Alignment)
-    # Iteration 88.0: Brute Force Diagnostic - No silent fillna(0.5) for indicators
+    # 4. Robust NaN Handling (Iteration 89.0: Rigid Data Alignment)
     # Use bfill first to propagate future values back to early NaN rows (warmup period)
     # Then ffill for any remaining gaps.
     features = features.bfill().ffill()
     
-    # Iteration 88.0: Print final features before returning
-    print(f"DEBUG: Final features to model (Tail 1):\n{features.tail(1)}")
+    # Iteration 89.0: Print final features before returning
+    print(f"🔍 [Iteration 89.0 | Rigid Data] Final features to model (Tail 1):\n{features.tail(1)}")
 
-    # Debugging (Iteration 71.14: NoneType Protection)
+    # Debugging (Iteration 89.0: Rigid Data Alignment)
     if not features.empty:
-        last_row = features.iloc[-1]
-        print(f"🔍 [Feature Debug] RSI: {last_row['rsi']:.2f}, DistEMA200: {last_row['dist_ema200']:.4f}")
+        last_row = features.iloc[-1:] # Use iloc[-1:] to keep it as a DataFrame/Series
+        print(f"🔍 [Iteration 89.0 | Rigid Data] Feature Debug - RSI: {last_row['rsi'].values[0]:.2f}, DistEMA200: {last_row['dist_ema200'].values[0]:.4f}")
         
         # Check for NaN in the last row which causes 50% lock if filled with 0.5
-        if last_row.isnull().any():
-            print(f"⚠️ CRITICAL: NaN detected in final features for {df.index[-1] if hasattr(df, 'index') else 'unknown'}")
+        if last_row.isnull().any().any():
+            print(f"⚠️ [Iteration 89.0 | Rigid Data] CRITICAL: NaN detected in final features for {df.index[-1] if hasattr(df, 'index') else 'unknown'}")
             print(f"{last_row[last_row.isnull()]}")
     else:
         print("⚠️ Warning: Features DataFrame is empty!")

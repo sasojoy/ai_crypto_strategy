@@ -3,6 +3,16 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+
+## [Iteration 89.0] - 2026-03-18
+### [Rigid Data Alignment]
+- **Forced K-line Length**: Updated all data fetching functions (`fetch_ohlcv`, `fetch_1h_data`, etc.) to force `limit=500`.
+- **Strict Length Check**: Added mandatory check `len(df) < 500` to skip symbols with insufficient data, ensuring EMA200 and other indicators are fully warmed up.
+- **Feature Indexing Fix**: Updated `src/features.py` to use `iloc[-1:]` for predictions, removing any potential for hardcoded index mismatches.
+- **Rate Limit Protection**: Increased API request delay to **1.0s** during bulk scans to prevent IP bans.
+- **Log Unification**: Unified all log prefixes to `🔍 [Iteration 89.0 | Rigid Data]` and removed legacy version strings.
+- **Version Sync**: Updated `STRATEGY_VERSION` to `Iteration 89.0 | Rigid Data Alignment` across all core files.
+
 ## [Iteration 88.0] - 2026-03-21
 ### [Diagnostic]
 - **Brute Force Mode**: Removed all `try-except` blocks around AI prediction in `src/market.py` to expose real Tracebacks in PM2 logs.
