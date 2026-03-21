@@ -3,6 +3,13 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+## [Iteration 88.0] - 2026-03-21
+### [Diagnostic]
+- **Brute Force Mode**: Removed all `try-except` blocks around AI prediction in `src/market.py` to expose real Tracebacks in PM2 logs.
+- **No More Silent 0.5**: Removed `fillna(0.5)` in `src/features.py` to prevent indicators from being locked at neutral values when data is missing.
+- **Feature Debugging**: Added explicit printing of indicator keys and final feature vectors in `src/features.py`.
+- **Physical Path Verification**: Added `os.path.exists` check for the model file during startup.
+
 ## [Iteration 87.1] - 2026-03-21
 ### [Fix]
 - **AI Vision Restored**: Removed default 0.5 return in AI prediction block; now raises errors to expose root causes in PM2 logs.

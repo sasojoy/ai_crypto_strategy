@@ -1191,23 +1191,16 @@ def run_strategy(ml_model):
             cond_trend = latest['close'] > latest['ema200'] * 0.98
             
             # AI Score from ML Model
-            # Iteration 86.0: Diagnostic Logging & AI Prediction Flow Fix
+            # Iteration 88.0: Diagnostic Logging & AI Prediction Flow Fix (No Try-Except)
             features = extract_features(df.reset_index(), df_btc_ml.reset_index())
-            try:
-                # Use tail(1) to get the latest features as a 2D DataFrame
-                probs = ml_model.predict_proba(features.tail(1))
-                # Ensure we have a 2D array and extract class 1 probability
-                if hasattr(probs, "ndim") and probs.ndim == 2:
-                    ai_score = float(probs[0][1])
-                else:
-                    # Fallback if it's a scalar or 1D
-                    ai_score = float(probs[1]) if len(probs) > 1 else 0.5
-            except Exception as e:
-                # Iteration 86.0: Detailed Diagnostic Logging
-                print(f"❌ AI Prediction Failed | Symbol: {symbol} | Error: {str(e)}")
-                print(f"📊 Feature Shape: {features.shape if hasattr(features, 'shape') else 'N/A'}")
-                print(f"🔢 Raw Features (Tail 1): \n{features.tail(1)}")
-                ai_score = 0.5
+            # Use tail(1) to get the latest features as a 2D DataFrame
+            probs = ml_model.predict_proba(features.tail(1))
+            # Ensure we have a 2D array and extract class 1 probability
+            if hasattr(probs, "ndim") and probs.ndim == 2:
+                ai_score = float(probs[0][1])
+            else:
+                # Fallback if it's a scalar or 1D
+                ai_score = float(probs[1]) if len(probs) > 1 else 0.5
             
             cond_ai = ai_score >= 0.55
             
@@ -1310,39 +1303,26 @@ def run_strategy(ml_model):
                 elif not stoch_rsi_ok: missed_reason = "StochRSI No Cross"
                 elif not (squeeze_tier1 or squeeze_tier2 or trend_decay_active): missed_reason = "No Squeeze/Trend Decay"
 
-            # Iteration 87.1: AI Score Calculation (Vision Restored & Strict Error)
+            # Iteration 88.0: AI Score Calculation (Brute Force Diagnostic)
             ml_score = 0.5 # Default
             df_ml = fetch_1h_data(symbol, limit=250)
             if not df_ml.empty and not df_btc_ml.empty:
                 # Iteration 87.1: Debug missing features before extraction
-                # Note: indicators are calculated inside extract_features, 
-                # but we can check if the input dataframes have enough rows.
                 if len(df_ml) < 200:
                     print(f"DEBUG: Missing features for {symbol}: df_ml length {len(df_ml)} < 200 (EMA200 warmup)")
                 
                 features = extract_features(df_ml, df_btc_ml)
-                if not features.empty:
-                    try:
-                        # DEBUG: Model Type & Feature Check
-                        print(f"DEBUG: Model Type: {type(ml_model)}")
-                        
-                        # Ensure 2D input and extract probability of class 1
-                        probs = ml_model.predict_proba(features.tail(1))
-                        if hasattr(probs, "ndim") and probs.ndim == 2:
-                            ml_score = float(probs[0][1])
-                        else:
-                            ml_score = float(probs[1]) if len(probs) > 1 else 0.5
-                        print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
-                    except Exception as e:
-                        print(f"❌ [AI CRITICAL ERROR] {symbol}: {e}")
-                        print(f"ERROR REASON: {e}")
-                        print(f"FAILED FEATURES: {features.tail(1)}")
-                        # Iteration 87.1: Raise error to see real cause in PM2 logs
-                        raise e
+                # Iteration 88.0: No Try-Except, let it crash
+                # DEBUG: Model Type & Feature Check
+                print(f"DEBUG: Model Type: {type(ml_model)}")
+                
+                # Ensure 2D input and extract probability of class 1
+                probs = ml_model.predict_proba(features.tail(1))
+                if hasattr(probs, "ndim") and probs.ndim == 2:
+                    ml_score = float(probs[0][1])
                 else:
-                    print(f"⚠️ [AI Score] {symbol}: Features empty, defaulting to 0.5")
-                    # Iteration 87.1: Debug missing features
-                    print(f"DEBUG: Missing features for {symbol}: {features.columns.tolist() if hasattr(features, 'columns') else 'No Columns'}")
+                    ml_score = float(probs[1]) if len(probs) > 1 else 0.5
+                print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
             else:
                 print(f"⚠️ [AI Score] {symbol}: Data empty (df_ml: {df_ml.empty}, df_btc_ml: {df_btc_ml.empty}), defaulting to 0.5")
 
@@ -1790,7 +1770,7 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 87.1 | Vision Restored】"
+        STRATEGY_VERSION = "🚀 【Iteration 88.0 | Brute Force Diagnostic】"
         last_report_time = datetime.now()
         last_summary_date = None
         
@@ -1811,6 +1791,8 @@ if __name__ == "__main__":
             print(f"Failed to send startup notification: {e}")
 
         # Iteration 86.0: Initialize ML Model at startup
+        # Iteration 88.0: Physical path verification
+        print(f"DEBUG: Model file exists: {os.path.exists('models/rf_model.joblib')}")
         print(f"🤖 [System] Loading ML Model for {STRATEGY_VERSION}...")
         ml_model = CryptoMLModel()
         ml_model.load()

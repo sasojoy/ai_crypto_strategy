@@ -31,6 +31,7 @@ def extract_features(df, btc_df=None):
     features = pd.DataFrame(index=df.index)
 
     # 2. Calculate Indicators
+    # Iteration 88.0: Brute Force Diagnostic - Print indicator keys
     features['rsi'] = calculate_rsi(df)
     _, _, macd_hist = calculate_macd(df)
     features['macd_hist'] = macd_hist
@@ -38,6 +39,8 @@ def extract_features(df, btc_df=None):
     features['atr_pct'] = calculate_atr(df) / df['close']
     features['vol_change_24h'] = df['volume'].pct_change(24)
     features['volatility_24h'] = df['close'].pct_change().rolling(window=24).std()
+
+    print(f"DEBUG: Input indicators keys: {features.columns.tolist()}")
 
     if btc_df is not None:
         btc_close = btc_df['close'].reindex(df.index, method='ffill')
@@ -64,19 +67,25 @@ def extract_features(df, btc_df=None):
     features = features.reindex(columns=expected_features)
 
     # 4. Robust NaN Handling (Iteration 71.3: Enhanced Alignment)
+    # Iteration 88.0: Brute Force Diagnostic - No silent fillna(0.5) for indicators
     # Use bfill first to propagate future values back to early NaN rows (warmup period)
-    # Then ffill for any remaining gaps, and finally fill with 0.5 for neutral features
-    features = features.bfill().ffill().fillna(0.5)
+    # Then ffill for any remaining gaps.
+    features = features.bfill().ffill()
+    
+    # Iteration 88.0: Print final features before returning
+    print(f"DEBUG: Final features to model (Tail 1):\n{features.tail(1)}")
 
     # Debugging (Iteration 71.14: NoneType Protection)
     if not features.empty:
         last_row = features.iloc[-1]
         print(f"🔍 [Feature Debug] RSI: {last_row['rsi']:.2f}, DistEMA200: {last_row['dist_ema200']:.4f}")
+        
+        # Check for NaN in the last row which causes 50% lock if filled with 0.5
+        if last_row.isnull().any():
+            print(f"⚠️ CRITICAL: NaN detected in final features for {df.index[-1] if hasattr(df, 'index') else 'unknown'}")
+            print(f"{last_row[last_row.isnull()]}")
     else:
-        print("⚠️ Warning: Features DataFrame is empty! Returning default 0.5 values.")
-        # Create a single-row DataFrame with default 0.5 values
-        features = pd.DataFrame([0.5] * len(expected_features), index=expected_features).T
-        features.columns = expected_features
+        print("⚠️ Warning: Features DataFrame is empty!")
 
     return features
 
