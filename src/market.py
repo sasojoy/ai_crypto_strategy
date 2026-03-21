@@ -1314,6 +1314,12 @@ def run_strategy(ml_model):
             ml_score = 0.5 # Default
             df_ml = fetch_1h_data(symbol, limit=250)
             if not df_ml.empty and not df_btc_ml.empty:
+                # Iteration 87.1: Debug missing features before extraction
+                # Note: indicators are calculated inside extract_features, 
+                # but we can check if the input dataframes have enough rows.
+                if len(df_ml) < 200:
+                    print(f"DEBUG: Missing features for {symbol}: df_ml length {len(df_ml)} < 200 (EMA200 warmup)")
+                
                 features = extract_features(df_ml, df_btc_ml)
                 if not features.empty:
                     try:
