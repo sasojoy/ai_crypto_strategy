@@ -6,8 +6,9 @@
 ## [Iteration 87.1] - 2026-03-21
 ### [Fix]
 - **AI Vision Restored**: Removed default 0.5 return in AI prediction block; now raises errors to expose root causes in PM2 logs.
-- **Diagnostic Logging**: Added detailed feature column debugging and missing indicator tracking.
-- **Version Sync**: Unified all version strings to `Iteration 87.1 | Vision Restored`.
+- **Diagnostic Logging**: Added detailed feature column debugging and missing indicator tracking in `src/market.py`.
+- **Version Sync**: Unified all version strings to `Iteration 87.1 | Vision Restored` across `src/market.py`, `src/notifier.py`, `README.md`, and `CHANGELOG.md`.
+- **Feature Alignment**: Verified `extract_features` in `src/features.py` uses strict reindexing to ensure feature order matches model training.
 
 ### [Workflow]
 - **Ghost Process Cleanup**: Ensured `pm2 delete all` is executed in the deployment workflow to clear legacy 86.0 processes.
