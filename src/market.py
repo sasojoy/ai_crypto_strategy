@@ -75,7 +75,8 @@ load_dotenv()
 
 # Iteration 75.0: Robust Absolute Path Definition for GCE/PM2
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, 'trading_data')
+# Iteration 71.3: Use data/ folder for persistence
+DATA_DIR = os.path.join(BASE_DIR, 'data')
 LOGS_DIR = os.path.join(BASE_DIR, 'logs')
 CONFIG_DIR = os.path.join(BASE_DIR, 'config')
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
@@ -170,7 +171,7 @@ def fetch_15m_data(symbol='BTC/USDT'):
     Iteration 71.3: Fetch 15m data with local caching to prevent data gaps.
     """
     cache_file = os.path.join(DATA_DIR, f"{symbol.replace('/', '_')}_15m.csv")
-    # Iteration 89.0: Rigid Data Alignment (Force 500)
+    # Iteration 71.3: Rigid Data Alignment (Force 500)
     limit = 500
     max_retries = 3
     for attempt in range(max_retries):
@@ -178,7 +179,7 @@ def fetch_15m_data(symbol='BTC/USDT'):
             timeframe = '15m'
             ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             if ohlcv is None or len(ohlcv) < limit:
-                print(f"⚠️ [Iteration 89.0 | Rigid Data] {symbol} Data insufficient (count: {len(ohlcv) if ohlcv else 0}/{limit})")
+                print(f"⚠️ [Iteration 71.3 | Pre-warmup] {symbol} Data insufficient (count: {len(ohlcv) if ohlcv else 0}/{limit})")
                 # Try to load from cache if API fails
                 if os.path.exists(cache_file):
                     print(f"📂 Loading {symbol} 15m data from cache...")
@@ -278,7 +279,8 @@ def fetch_ohlcv(symbol, timeframe="1h", limit=500):
 
 
 def fetch_1h_data(symbol='BTC/USDT', limit=500):
-    # Iteration 89.0: Rigid Data Alignment (Force 500)
+    # Iteration 71.3: Fetch 1h data with local caching
+    cache_file = os.path.join(DATA_DIR, f"{symbol.replace('/', '_')}_1h.csv")
     limit = 500
     max_retries = 3
     for attempt in range(max_retries):
@@ -286,10 +288,16 @@ def fetch_1h_data(symbol='BTC/USDT', limit=500):
             timeframe = '1h'
             ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             if ohlcv is None or len(ohlcv) < limit:
-                print(f"⚠️ [Iteration 89.0 | Rigid Data] {symbol} Data insufficient (count: {len(ohlcv) if ohlcv else 0}/{limit})")
+                print(f"⚠️ [Iteration 71.3 | Pre-warmup] {symbol} Data insufficient (count: {len(ohlcv) if ohlcv else 0}/{limit})")
+                if os.path.exists(cache_file):
+                    print(f"📂 Loading {symbol} 1h data from cache...")
+                    return pd.read_csv(cache_file, parse_dates=['timestamp'])
                 return pd.DataFrame()
             df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            
+            # Save to cache
+            df.to_csv(cache_file, index=False)
             return df
         except Exception as e:
             print(f"❌ Attempt {attempt+1}/{max_retries} failed for {symbol}: {type(e).__name__} - {e}")
@@ -854,24 +862,27 @@ def run_strategy(ml_model):
     symbols = get_top_relative_strength_symbols()
     prices_rsi = {}
     
-    # Iteration 86.0: Data Pre-warmup & Progress Tracking (Silent)
+    # Iteration 71.3: Data Pre-warmup & Progress Tracking (Forced)
     warmup_count = 0
     total_symbols = len(symbols)
     for i, s in enumerate(symbols):
         # Pre-fetch data to ensure indicators are ready
         df_warmup = fetch_15m_data(s)
-        if not df_warmup.empty and len(df_warmup) >= 200:
+        # Iteration 71.3: Require 500 candles for full indicator readiness
+        if not df_warmup.empty and len(df_warmup) >= 500:
             warmup_count += 1
-            prices_rsi[s] = {'price': df_warmup.iloc[-1]['close'], 'rsi': 50, 'ml_score': 0.5, 'missed_reason': 'Ready'}
+            prices_rsi[s] = {'price': df_warmup.iloc[-1]['close'], 'rsi': 50, 'ml_score': None, 'missed_reason': 'Ready'}
         else:
             # Silent log to PM2, no Telegram spam
-            print(f"⚠️ [Data Sync] {s} 數據不足，正在背景同步...")
-            prices_rsi[s] = {'price': 0, 'rsi': 50, 'ml_score': 0.5, 'missed_reason': 'Initializing'}
+            print(f"⚠️ [Data Sync] {s} 數據不足 ({len(df_warmup) if not df_warmup.empty else 0}/500)，正在背景同步...")
+            prices_rsi[s] = {'price': 0, 'rsi': 50, 'ml_score': None, 'missed_reason': 'Initializing'}
     
     if warmup_count < total_symbols:
-        print(f"⚠️ [Warmup] Only {warmup_count}/{total_symbols} symbols ready. Continuing with partial data.")
+        print(f"⚠️ [Warmup] Only {warmup_count}/{total_symbols} symbols ready. Waiting for full data sync.")
+        # Iteration 71.3: If data not ready, skip this iteration to prevent AI failure
+        return prices_rsi
     else:
-        # Iteration 86.0: Final Stability Fix - Console Only
+        # Iteration 71.3: Final Stability Fix - Console Only
         print(f"✅ 數據預熱完成 ({total_symbols}/{total_symbols})，開始執行策略。")
 
     current_pos_count = get_active_positions_count()
@@ -1344,17 +1355,17 @@ def run_strategy(ml_model):
                 elif not stoch_rsi_ok: missed_reason = "StochRSI No Cross"
                 elif not (squeeze_tier1 or squeeze_tier2 or trend_decay_active): missed_reason = "No Squeeze/Trend Decay"
 
-            # Iteration 89.0: AI Score Calculation (Rigid Data Alignment)
-            # Force 500 candles for consistent feature calculation
+            # Iteration 91.0: AI Score Calculation (DevOps Compliance)
+            # Relaxed to 450 candles for feature calculation
             df_ml = fetch_1h_data(symbol, limit=500)
             if not df_ml.empty and not df_btc_ml.empty:
-                # Iteration 89.0: Rigid length check
-                if len(df_ml) < 500:
-                    print(f"⚠️ [Iteration 89.0 | Rigid Data] {symbol} Data insufficient (count: {len(df_ml)}/500). Skipping AI prediction.")
+                # Iteration 90.0: Relaxed length check
+                if len(df_ml) < 450:
+                    print(f"⚠️ [Iteration 91.0 | DevOps Compliance] {symbol} Data insufficient (count: {len(df_ml)}/450). Skipping AI prediction.")
                     continue
                 
+                # Iteration 91.0: No more error masking with 0.5
                 features = extract_features(df_ml, df_btc_ml)
-                # Iteration 88.0: No Try-Except, let it crash
                 # DEBUG: Model Type & Feature Check
                 print(f"DEBUG: Model Type: {type(ml_model)}")
                 
@@ -1362,11 +1373,13 @@ def run_strategy(ml_model):
                 probs = ml_model.predict_proba(features.tail(1))
                 if hasattr(probs, "ndim") and probs.ndim == 2:
                     ml_score = float(probs[0][1])
+                elif len(probs) > 1:
+                    ml_score = float(probs[1])
                 else:
-                    ml_score = float(probs[1]) if len(probs) > 1 else 0.5
+                    raise ValueError(f"❌ AI Prediction Failed: Unexpected probs shape {probs}")
                 print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
             else:
-                # Iteration 88.0: No default 0.5, raise error to trigger PM2 restart
+                # Iteration 91.0: Raise error if data is missing
                 msg = f"❌ [AI Score CRITICAL] {symbol}: Data empty (df_ml: {df_ml.empty}, df_btc_ml: {df_btc_ml.empty})"
                 print(msg)
                 raise ValueError(msg)
@@ -1510,7 +1523,9 @@ def run_strategy(ml_model):
                         print(f"🛡️ [AI Filter] {symbol} score {ml_score:.4f} < {ai_threshold}. Signal rejected.")
                     increment_ai_filtered_count()
         except Exception as e:
-            print(f"Error in strategy execution for {symbol}: {e}")
+            print(f"❌ [Iteration 91.0 | DevOps Compliance] Error in strategy execution for {symbol}: {e}")
+            import traceback
+            traceback.print_exc()
 
     # Iteration 24: Prioritize DOGE/XRP if they have strong trends
     def signal_priority(x):
@@ -1782,7 +1797,9 @@ def close_partial_position(symbol, qty):
         print(f"💰 [EXCHANGE] Partial close executed for {symbol}: {qty} units.")
         return True
     except Exception as e:
-        print(f"❌ Error in partial close for {symbol}: {e}")
+        print(f"❌ [Iteration 91.0 | DevOps Compliance] Error in partial close for {symbol}: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -1815,7 +1832,13 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🔍 【Iteration 89.0 | Rigid Data Alignment】"
+        STRATEGY_VERSION = "🚀 【Iteration 91.0 | DevOps Compliance】"
+        
+        # Iteration 71.3: Ensure data directory exists
+        if not os.path.exists(DATA_DIR):
+            os.makedirs(DATA_DIR)
+            print(f"📁 Created data directory at {DATA_DIR}")
+
         last_report_time = datetime.now()
         last_summary_date = None
         
@@ -1842,16 +1865,26 @@ if __name__ == "__main__":
         ml_model = CryptoMLModel()
         ml_model.load()
         
-        # Iteration 89.0: Data Pre-warmup (500 K-lines)
-        print(f"🔍 [Iteration 89.0 | Rigid Data] Pre-warming data (500 K-lines)...")
+        # Iteration 71.3: Data Pre-warmup (Forced 500 K-lines)
+        print(f"🔍 [Iteration 71.3 | Pre-warmup] Pre-warming data (500 K-lines)...")
         warmup_symbols = get_top_relative_strength_symbols()
+        total_warmup = len(warmup_symbols)
         for i, s in enumerate(warmup_symbols):
-            progress = int((i / len(warmup_symbols)) * 100)
-            print(f"⏳ [{progress}%] Warming up {s} ({i}/{len(warmup_symbols)})...")
-            # Iteration 89.0: Rigid Data Alignment - Rate Limit Protection
-            # Fetch 500 1h candles to ensure EMA200 is ready
+            progress_pct = int((i / total_warmup) * 100)
+            progress_msg = f"⏳ 正在同步數據 ({i}/{total_warmup} 根)... [{s}]"
+            print(f"[{progress_pct}%] {progress_msg}")
+            
+            # Send progress to Telegram every 2 symbols to avoid spam
+            if i % 2 == 0:
+                try:
+                    send_telegram_msg(progress_msg)
+                except:
+                    pass
+
+            # Iteration 71.3: Force sync 500 1h and 15m candles
             fetch_1h_data(s, limit=500)
-            time.sleep(1.0) # Increased delay to prevent IP ban
+            fetch_15m_data(s) # fetch_15m_data already has limit=500 hardcoded
+            time.sleep(1.2) # Rate limit protection
         
         print(f"✅ {STRATEGY_VERSION} Initialization Complete.")
 
@@ -1930,6 +1963,10 @@ if __name__ == "__main__":
                         btc_price = df_btc.iloc[-1]['close']
                         btc_ema50 = calculate_ema(df_btc, 50).iloc[-1]
                         
+                        # Iteration 71.3: Calculate EMA200 for distance display
+                        btc_ema200 = calculate_ema(df_btc, 200).iloc[-1]
+                        dist_ema200 = (btc_price - btc_ema200) / btc_ema200 if btc_ema200 > 0 else 0
+                        
                         # Fetch 24h volume change (Iteration 52: Fix volume data)
                         vol_change_24h = 0
                         try:
@@ -1954,20 +1991,25 @@ if __name__ == "__main__":
                             'ema50': btc_ema50,
                             'is_bullish': btc_price > btc_ema50,
                             'vol_change_24h': vol_change_24h,
-                            'regime_mode': regime_mode
+                            'regime_mode': regime_mode,
+                            'dist_ema200': dist_ema200
                         }
                         # Iteration 68.5: Use dynamic version string
                         send_rich_heartbeat(active_positions, scan_results, len(active_positions), STRATEGY_VERSION, btc_status)
                     
                     last_report_time = datetime.now()
             except Exception as e:
-                # Iteration 83.0: Robust Error Handling
-                print(f"❌ [Main Loop Error] {e}")
+                # Iteration 91.0: DevOps Compliance
+                print(f"❌ [Iteration 91.0 | DevOps Compliance] Main Loop Error: {e}")
+                import traceback
+                traceback.print_exc()
                 time.sleep(60)
             time.sleep(60)
     except Exception as fatal_e:
-        error_msg = f"❌ 核心啟動崩潰: {str(fatal_e)}"
+        error_msg = f"❌ [Iteration 91.0 | DevOps Compliance] 核心啟動崩潰: {str(fatal_e)}"
         print(error_msg)
+        import traceback
+        traceback.print_exc()
         try:
             from src.notifier import send_telegram_msg
             send_telegram_msg(error_msg)
