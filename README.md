@@ -1,8 +1,8 @@
-# AI Crypto Strategy - 🚀 【Iteration 86.0 | Final Stability Fix】
+# AI Crypto Strategy - 🚀 【Iteration 87.0 | AI Diagnostic & Reconstruction】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 86.0 | Final Stability Fix)
+## 🌟 當前策略狀態 (Iteration 87.0 | AI Diagnostic & Reconstruction)
 
 ### 1. 核心架構：實地驗證制 (On-Premise Validation)
 - **GCE 實地回測**：

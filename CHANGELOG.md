@@ -3,6 +3,16 @@
 
 # CHANGELOG - AI Crypto Strategy
 
+## [Iteration 87.0] - 2026-03-21
+### [Fix]
+- **Physical Cleanup**: Forced `pm2 delete all` and `kill -9` on all Python processes to resolve process conflicts.
+- **AI Diagnostic**: Added `DEBUG: Model Type` and `ERROR REASON` logging to AI prediction block to diagnose 50% score lock.
+- **Staging Purge**: Forced `rm -rf ~/staging_area/*` before deployment to ensure a clean build.
+
+### [Workflow]
+- **PM2 Sync**: Updated deployment name to `Iteration87_Production`.
+- **Deployment Robustness**: Integrated physical cleanup steps directly into the GitHub Actions workflow.
+
 ## [Iteration 86.0] - 2026-03-21
 ### [Fix]
 - **Cross-File Syntax Fix**: Added missing `datetime` imports in `src/notifier.py` to resolve `NameError`.

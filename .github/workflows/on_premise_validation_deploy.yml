@@ -38,12 +38,19 @@ jobs:
             # 1. Prepare Paths
             STAGING_DIR="/home/${{ secrets.SSH_USER }}/staging_area"
             PROD_DIR="/home/${{ secrets.SSH_USER }}/ai_crypto_strategy"
-            DEPLOY_NAME="Iteration86_Final"
+            DEPLOY_NAME="Iteration87_Production"
+
+            # 2. Physical Cleanup (Iteration 87.0 Requirement)
+            echo "🧹 Performing Physical Cleanup..."
+            pm2 stop all || true
+            pm2 delete all || true
+            ps aux | grep python | grep -v grep | awk '{print $2}' | xargs kill -9 || true
+            rm -rf $STAGING_DIR/*
 
             mkdir -p $STAGING_DIR
             cd $STAGING_DIR
 
-            # 2. Fetch latest code to Staging (Optimized)
+            # 3. Fetch latest code to Staging (Optimized)
             if [ ! -d ".git" ]; then
               git clone https://github.com/sasojoy/ai_crypto_strategy.git .
             else
@@ -51,15 +58,15 @@ jobs:
               git reset --hard origin/main
             fi
 
-            # 3. Setup Environment in Staging
+            # 4. Setup Environment in Staging
             chmod +x setup_env.sh
             bash setup_env.sh
 
-            # 4. Run Backtest on GCE (On-Premise Validation)
+            # 5. Run Backtest on GCE (On-Premise Validation)
             export PYTHONPATH=$PYTHONPATH:.
             python3 scripts/backtest.py
 
-            # 5. Gate Check (WR > 60%, PF > 1.8)
+            # 6. Gate Check (WR > 60%, PF > 1.8)
             python3 -c "
             import json, sys
             try:
@@ -81,7 +88,7 @@ jobs:
                 sys.exit(1)
             "
 
-            # 6. Production Sync & Restart (Only if Gate Passed)
+            # 7. Production Sync & Restart (Only if Gate Passed)
             echo "🚀 Gate Passed. Syncing to Production..."
 
             # 使用 --delete 確保生產環境不留舊垃圾，並同步更新
@@ -89,15 +96,12 @@ jobs:
 
             cd $PROD_DIR
 
-            # 7. Final Deployment with PM2
+            # 8. Final Deployment with PM2
             echo "🔄 Restarting System: $DEPLOY_NAME"
-            pm2 stop "$DEPLOY_NAME" || true
-            pm2 delete "$DEPLOY_NAME" || true
-
             # 清理 staging 的 pycache，但不刪除 .git 以便下次加速
             find "$STAGING_DIR" -name "__pycache__" -type d -exec rm -rf {} +
 
             pm2 start src/market.py --name "$DEPLOY_NAME" --update-env
             pm2 save
 
-            echo "✅ Iteration 86.0 Deployment Successful!"
+            echo "✅ Iteration 87.0 Deployment Successful!"

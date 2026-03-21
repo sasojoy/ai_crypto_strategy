@@ -1310,13 +1310,16 @@ def run_strategy(ml_model):
                 elif not stoch_rsi_ok: missed_reason = "StochRSI No Cross"
                 elif not (squeeze_tier1 or squeeze_tier2 or trend_decay_active): missed_reason = "No Squeeze/Trend Decay"
 
-            # Iteration 83.0: AI Score Calculation (AI Prediction Flow Fix)
+            # Iteration 87.0: AI Score Calculation (AI Prediction Flow Fix & Debug)
             ml_score = 0.5 # Default
             df_ml = fetch_1h_data(symbol, limit=250)
             if not df_ml.empty and not df_btc_ml.empty:
                 features = extract_features(df_ml, df_btc_ml)
                 if not features.empty:
                     try:
+                        # DEBUG: Model Type & Feature Check
+                        print(f"DEBUG: Model Type: {type(ml_model)}")
+                        
                         # Ensure 2D input and extract probability of class 1
                         probs = ml_model.predict_proba(features.tail(1))
                         if hasattr(probs, "ndim") and probs.ndim == 2:
@@ -1326,8 +1329,13 @@ def run_strategy(ml_model):
                         print(f"🤖 [AI Score] {symbol}: {ml_score:.4f}")
                     except Exception as e:
                         print(f"⚠️ [AI Heartbeat Error] {symbol}: {e}")
+                        print(f"ERROR REASON: {e}") # Iteration 87.0 Requirement
                         print(f"FAILED FEATURES: {features.tail(1)}")
                         ml_score = 0.5
+                else:
+                    print(f"⚠️ [AI Score] {symbol}: Features empty, defaulting to 0.5")
+            else:
+                print(f"⚠️ [AI Score] {symbol}: Data empty (df_ml: {df_ml.empty}, df_btc_ml: {df_btc_ml.empty}), defaulting to 0.5")
 
             # Store scan results for heartbeat
             prices_rsi[symbol] = {
@@ -1773,7 +1781,7 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 86.0 | Final Stability Fix】"
+        STRATEGY_VERSION = "🚀 【Iteration 87.0 | AI Diagnostic & Reconstruction】"
         last_report_time = datetime.now()
         last_summary_date = None
         
