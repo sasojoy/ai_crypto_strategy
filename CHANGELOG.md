@@ -4,6 +4,15 @@
 # CHANGELOG - AI Crypto Strategy
 
 
+
+## [Iteration 91.1] - 2026-03-18
+### [DevOps Compliance]
+- **AI Vision Restoration**: Enforced AI scoring even when filters (Volume/Sentiment) are active, ensuring full visibility in heartbeats.
+- **Global Version Alignment**: Synchronized all version strings to `Iteration 91.1 | DevOps Compliance`.
+- **Enhanced AI Diagnosis**: Added real-time RSI and EMA distance logging before AI predictions.
+- **Data Persistence**: Implemented 500-candle pre-warmup and local CSV caching in the `data/` folder.
+- **Rule 8 Compliance**: Removed all `0.5` error masking; the system now raises transparent `ValueError` tracebacks if data is insufficient.
+
 ## [Iteration 89.0] - 2026-03-18
 ### [Rigid Data Alignment]
 - **Forced K-line Length**: Updated all data fetching functions (`fetch_ohlcv`, `fetch_1h_data`, etc.) to force `limit=500`.
