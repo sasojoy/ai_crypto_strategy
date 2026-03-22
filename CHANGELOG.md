@@ -2,6 +2,21 @@
 
 
 
+
+
+## [Iteration 93.1] - 2026-03-18
+### [Emergency Fix & Cold Start]
+- **Refined Cleanup**: Updated `pkill` logic to target only `src/market.py`, preventing SSH session termination.
+- **Cold Start Deployment**: Renamed PM2 process to `Iteration93_Production` and enabled non-fatal gate checks for this iteration.
+- **Stability Verification**: Maintained Iteration 93.0's lightweight start and heartbeat logic.
+
+
+
+
+
+
+
+
 ## [Iteration 93.0] - 2026-03-18
 ### [Optimization & Hardening]
 - **Lightweight Initialization**: Refactored startup sequence to reduce Telegram spam and API pressure.

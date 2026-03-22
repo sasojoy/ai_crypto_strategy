@@ -1866,7 +1866,7 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 93.0 | Lightweight Start】"
+        STRATEGY_VERSION = "🚀 【Iteration 93.1 | Cold Start & Refined Cleanup】"
         
         # Iteration 91.1.3: Ensure data directory exists
         if not os.path.exists(DATA_DIR):
