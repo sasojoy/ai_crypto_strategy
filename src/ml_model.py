@@ -59,9 +59,14 @@ class CryptoMLModel:
 
     def load(self):
         if os.path.exists(MODEL_PATH):
-            self.model = joblib.load(MODEL_PATH)
-            self.is_trained = True
-            # Model loaded message removed for performance
+            try:
+                self.model = joblib.load(MODEL_PATH)
+                self.is_trained = True
+                return True
+            except Exception as e:
+                print(f"Error loading model: {e}")
+                return False
         else:
             print("No saved model found.")
+            return False
 

@@ -1866,7 +1866,7 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 92.0 | Cooldown & Logic Lock】"
+        STRATEGY_VERSION = "🚀 【Iteration 93.0 | Lightweight Start】"
         
         # Iteration 91.1.3: Ensure data directory exists
         if not os.path.exists(DATA_DIR):
@@ -1875,6 +1875,8 @@ if __name__ == "__main__":
 
         last_report_time = datetime.now()
         last_summary_date = None
+        # Iteration 93.0: Delay retrain check by 1 hour after startup
+        startup_time = datetime.utcnow()
         
         # Iteration 91.1: Load Active Trades from Persistence
         ACTIVE_TRADES_PATH = os.path.join(DATA_DIR, 'active_trades.json')
@@ -1886,48 +1888,52 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"⚠️ Error loading persisted trades: {e}")
 
-        # Iteration 69.2: Startup Notification (Immediate)
+        # Iteration 93.0: Lightweight Startup Notification
         try:
-            send_telegram_msg(f"🚀 【{STRATEGY_VERSION}】已在生產環境正式啟動，正在載入模型與初始化數據...")
+            send_telegram_msg(f"🚀 【{STRATEGY_VERSION}】已啟動。正在執行背景數據同步與模型載入...")
         except Exception as e:
             print(f"Failed to send startup notification: {e}")
 
-        # Iteration 91.1: Initialize ML Model at startup
-        # Iteration 88.0: Physical path verification
-        print(f"DEBUG: Model file exists: {os.path.exists('models/rf_model.joblib')}")
+        # Iteration 93.0: Rule 3 - Single Load Verification
         print(f"🤖 [System] Loading ML Model for {STRATEGY_VERSION}...")
         ml_model = CryptoMLModel()
-        ml_model.load()
+        if ml_model.load():
+            print("✅ Model Loaded Successfully.")
+        else:
+            print("⚠️ Model Load Failed or Not Found. Using default/untrained state.")
         
-        # Iteration 91.1.3: Data Pre-warmup (Forced 500 K-lines)
-        print(f"🔍 [Iteration 91.1.3 | Pre-warmup] Pre-warming data (500 K-lines)...")
+        # Iteration 93.0: Optimized Data Pre-warmup (Single Telegram Update)
+        print(f"🔍 [Iteration 93.0 | Lightweight Start] Pre-warming data (500 K-lines)...")
         warmup_symbols = get_top_relative_strength_symbols()
         total_warmup = len(warmup_symbols)
-        for i, s in enumerate(warmup_symbols):
-            progress_pct = int((i / total_warmup) * 100)
-            progress_msg = f"⏳ 正在同步數據 ({i}/{total_warmup} 根)... [{s}]"
-            print(f"[{progress_pct}%] {progress_msg}")
-            
-            # Send progress to Telegram every 2 symbols to avoid spam
-            if i % 2 == 0:
-                try:
-                    send_telegram_msg(progress_msg)
-                except:
-                    pass
-
-            # Iteration 91.1.3: Force sync 500 1h and 15m candles
-            fetch_1h_data(s, limit=500)
-            fetch_15m_data(s) # fetch_15m_data already has limit=500 hardcoded
-            time.sleep(1.2) # Rate limit protection
         
+        for i, s in enumerate(warmup_symbols):
+            print(f"⏳ [{i+1}/{total_warmup}] Syncing {s}...")
+            # Iteration 93.0: Force sync with 1s sleep between symbols to avoid rate limit
+            fetch_1h_data(s, limit=500)
+            fetch_15m_data(s)
+            time.sleep(1.0)
+        
+        try:
+            send_telegram_msg(f"✅ {STRATEGY_VERSION} 數據同步完成 ({total_warmup}/{total_warmup} 幣種)，進入主循環。")
+        except:
+            pass
+            
         print(f"✅ {STRATEGY_VERSION} Initialization Complete.")
 
         while True:
             try:
+                # Iteration 93.0: Heartbeat for PM2 Log diagnosis
+                print(f"💓 [Heartbeat] System Alive | {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+                
                 if check_kill_switch():
                     trigger_panic_sell_all()
 
                 now = datetime.utcnow()
+                
+                # Iteration 93.0: Delay retrain check by 1 hour after startup to prevent loop
+                if (now - startup_time).total_seconds() > 3600:
+                    check_and_retrain_model()
                 if now.hour == 0 and now.minute == 0 and last_summary_date != now.date():
                     # Iteration 31: Daily Performance Message
                     # Simulated values for this iteration

@@ -40,10 +40,12 @@ jobs:
             PROD_DIR="/home/${{ secrets.SSH_USER }}/ai_crypto_strategy"
             DEPLOY_NAME="Iteration87_Production"
 
-            # 2. Physical Cleanup (Iteration 87.0 Requirement)
-            echo "🧹 Performing Physical Cleanup..."
+            # 2. Physical Cleanup (Iteration 93.0 Requirement)
+            echo "🧹 Performing Physical Cleanup (Iteration 93.0)..."
             pm2 stop all || true
             pm2 delete all || true
+            # Force kill all python3 processes to ensure no hidden retrain processes
+            pkill -9 -f python3 || true
             ps aux | grep python | grep -v grep | awk '{print $2}' | xargs kill -9 || true
             rm -rf $STAGING_DIR/*
 
