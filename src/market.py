@@ -720,17 +720,38 @@ def record_ai_prediction(symbol, side, ml_score, signal_data):
 
 def check_and_retrain_model():
     """
-    Iteration 55: Weekly Auto-Retrain Logic.
-    Retrains the model every Sunday at 00:00 UTC.
+    Iteration 92.0: Weekly Auto-Retrain Logic with Task Locking.
+    Retrains the model every Sunday at 00:00 UTC, limited to once per day.
     """
     now = datetime.utcnow()
+    today_str = now.strftime('%Y-%m-%d')
+    retrain_lock_path = os.path.join(DATA_DIR, 'last_retrain.json')
+    
+    # Load last retrain date
+    last_retrain_date = ""
+    if os.path.exists(retrain_lock_path):
+        try:
+            with open(retrain_lock_path, 'r') as f:
+                last_retrain_date = json.load(f).get('last_retrain_date', "")
+        except:
+            pass
+
     # Sunday is 6 in weekday()
     if now.weekday() == 6 and now.hour == 0 and now.minute < 15:
-        print("🔄 [AI Auto-Retrain] It's Sunday 00:00 UTC. Starting weekly model re-training...")
+        if last_retrain_date == today_str:
+            # Already retrained today, skip to avoid infinite loop
+            return
+
+        print(f"🔄 [AI Auto-Retrain] {today_str} 00:00 UTC. Starting weekly model re-training...")
         try:
             from src.train_model import train
             train()
-            send_telegram_msg("🔄 [AI Auto-Retrain] 每週模型再訓練完成，AI 已更新至最新市場狀態。")
+            
+            # Update lock file immediately after success
+            with open(retrain_lock_path, 'w') as f:
+                json.dump({'last_retrain_date': today_str}, f)
+                
+            send_telegram_msg(f"🔄 [AI Auto-Retrain] {today_str} 每週模型再訓練完成，AI 已更新至最新市場狀態。")
         except Exception as e:
             print(f"Error during auto-retrain: {e}")
             send_telegram_msg(f"⚠️ [AI Auto-Retrain] 模型再訓練失敗: {e}")
@@ -1845,7 +1866,7 @@ if __name__ == "__main__":
                 print("No active positions.")
             sys.exit(0)
 
-        STRATEGY_VERSION = "🚀 【Iteration 91.1 | DevOps Compliance】"
+        STRATEGY_VERSION = "🚀 【Iteration 92.0 | Cooldown & Logic Lock】"
         
         # Iteration 91.1.3: Ensure data directory exists
         if not os.path.exists(DATA_DIR):
@@ -2012,14 +2033,15 @@ if __name__ == "__main__":
                     
                     last_report_time = datetime.now()
             except Exception as e:
-                # Iteration 91.1: DevOps Compliance
-                print(f"❌ [Iteration 91.1 | DevOps Compliance] Main Loop Error: {e}")
+                # Iteration 92.0: Cooldown & Logic Lock
+                print(f"❌ [Iteration 92.0 | Cooldown & Logic Lock] Main Loop Error: {e}")
                 import traceback
                 traceback.print_exc()
                 time.sleep(60)
+            # Iteration 92.0: Mandatory 60s sleep to prevent infinite loop
             time.sleep(60)
     except Exception as fatal_e:
-        error_msg = f"❌ [Iteration 91.1 | DevOps Compliance] 核心啟動崩潰: {str(fatal_e)}"
+        error_msg = f"❌ [Iteration 92.0 | Cooldown & Logic Lock] 核心啟動崩潰: {str(fatal_e)}"
         print(error_msg)
         import traceback
         traceback.print_exc()

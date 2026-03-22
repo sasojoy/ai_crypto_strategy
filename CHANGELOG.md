@@ -1,6 +1,16 @@
 
 
 
+## [Iteration 92.0] - 2026-03-18
+### [Emergency Fix]
+- **Retrain Task Locking**: Added `last_retrain.json` to ensure model re-training only happens once per day, preventing infinite loops.
+- **Mandatory Cooldown**: Enforced `time.sleep(60)` at the end of the main loop to prevent CPU spiking and rapid-fire API calls.
+- **Telegram Rate Limit Protection**: Added 429 error handling in `send_telegram_msg` with a 10-minute silent cooldown.
+- **Process Hardening**: Updated versioning to Iteration 92.0 across all core components.
+
+
+
+
 # CHANGELOG - AI Crypto Strategy
 
 

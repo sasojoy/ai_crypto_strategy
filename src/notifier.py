@@ -5,8 +5,8 @@ import datetime
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-# Iteration 91.1: Version Alignment
-STRATEGY_VERSION = "🚀 【Iteration 91.1 | DevOps Compliance】"
+# Iteration 92.0: Version Alignment
+STRATEGY_VERSION = "🚀 【Iteration 92.0 | Cooldown & Logic Lock】"
 
 load_dotenv()
 
@@ -14,6 +14,7 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.getenv('TRADING_DATA_DIR', os.path.join(BASE_DIR, 'trading_data'))
 
+import time
 
 def send_telegram_msg(message):
     token = os.getenv('TELEGRAM_BOT_TOKEN')
@@ -30,7 +31,11 @@ def send_telegram_msg(message):
     }
     
     try:
-        response = requests.post(url, data=payload)
+        response = requests.post(url, data=payload, timeout=10)
+        if response.status_code == 429:
+            print("⚠️ [Telegram] Rate limited (429). Cooling down for 10 minutes...")
+            time.sleep(600) # 10 minutes cooldown
+            return
         response.raise_for_status()
         print("Telegram message sent successfully.")
     except Exception as e:

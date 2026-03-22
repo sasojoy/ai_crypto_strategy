@@ -1,5 +1,15 @@
 
 
+# AI Strategy Changelog - 🚀 【Iteration 92.0 | Cooldown & Logic Lock】
+
+## [Iteration 92.0] - 2026-03-18
+### [Emergency Fix]
+- **Retrain Task Locking**: Added `last_retrain.json` to ensure model re-training only happens once per day, preventing infinite loops.
+- **Mandatory Cooldown**: Enforced `time.sleep(60)` at the end of the main loop to prevent CPU spiking and rapid-fire API calls.
+- **Telegram Rate Limit Protection**: Added 429 error handling in `send_telegram_msg` with a 10-minute silent cooldown.
+- **Process Hardening**: Updated versioning to Iteration 92.0 across all core components.
+
+
 # 📜 AI 策略變更日誌 (CHANGELOG_AI)
 
 本文件紀錄 AI 策略系統的每一次迭代與優化，確保策略演進路徑可追溯。
