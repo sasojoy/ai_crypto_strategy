@@ -79,7 +79,7 @@ def run_backtest_v97(symbol, df, btc_df, ml_model, initial_balance=2000):
     # Strategy parameters
     tp_pct = 0.05 if is_1h_track else 0.03
     sl_pct = 0.02 if is_1h_track else 0.015
-    threshold = 0.85 if is_1h_track else 0.75
+    threshold = 0.70 if is_1h_track else 0.65
 
     for i in range(50, len(df)):
         current_time = df.index[i]
@@ -130,8 +130,17 @@ if __name__ == "__main__":
     all_trades = []
 
     ml_model = CryptoMLModel()
-    if not ml_model.load():
-        print("❌ Model not found.")
+    # Force load the new XGBoost model
+    import joblib
+    MODEL_PATH = 'models/model_v118_xgb.joblib'
+    if os.path.exists(MODEL_PATH):
+        data = joblib.load(MODEL_PATH)
+        ml_model.model = data['model']
+        ml_model.feature_names = data['feature_names']
+        ml_model.is_trained = True
+        print(f"✅ Loaded XGBoost model from {MODEL_PATH}")
+    else:
+        print(f"❌ XGBoost model not found at {MODEL_PATH}")
         exit(1)
 
     print("Fetching BTC data for reference...")
