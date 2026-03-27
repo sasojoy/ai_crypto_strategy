@@ -926,8 +926,8 @@ def check_ema_alignment(df_4h):
 
 def run_strategy(ml_model):
     """
-    Iteration 94.2: H16_DUAL_TRACK_94.2_PROD
-    BTC/ETH (1H) | ALTS (15m) Dual-Track Diversion
+    Iteration 101.0: 1H Core Unified Strategy
+    All symbols (BTC/ETH/SOL/FET/AVAX) unified to 1H timeframe.
     """
     global regime_mode
     params = load_params()
@@ -939,95 +939,115 @@ def run_strategy(ml_model):
     prices_rsi = {}
     
     # Fetch BTC data for ML features (Global Context)
-    df_btc_ml = fetch_btc_vol_with_retry('BTC/USDT', limit=500)
+    df_btc_ml = fetch_1h_data('BTC/USDT', limit=500)
     if df_btc_ml.empty:
         print("⚠️ [Critical] BTC data empty. Skipping cycle.")
         return {}
 
-    # 2. Dual-Track Pre-warmup
+    # 2. 1H Core Pre-warmup
     warmup_count = 0
     for s in symbols:
-        tf = strategy_logic.get_timeframe(s)
-        df_main = fetch_1h_data(s, limit=500) if tf == '1h' else fetch_15m_data(s, limit=500)
-        df_1h = df_main if tf == '1h' else fetch_1h_data(s, limit=500)
+        df_1h = fetch_1h_data(s, limit=500)
         
-        if not df_main.empty and len(df_main) >= 500:
+        if not df_1h.empty and len(df_1h) >= 500:
             warmup_count += 1
-            prices_rsi[s] = {'price': df_main.iloc[-1]['close'], 'missed_reason': 'Ready'}
+            prices_rsi[s] = {'price': df_1h.iloc[-1]['close'], 'missed_reason': 'Ready'}
         else:
             prices_rsi[s] = {'price': 0, 'missed_reason': 'Initializing'}
     
     if warmup_count < len(symbols):
-        print(f"⏳ [Initializing] Data Syncing ({warmup_count}/{len(symbols)})...")
+        print(f"⏳ [Initializing] 1H Data Syncing ({warmup_count}/{len(symbols)})...")
         return prices_rsi
 
     # 3. Execution Loop
     current_pos_count = get_active_positions_count()
     balance = get_account_balance()
     
-    print(f"🚀 {STRATEGY_VERSION} Initialized. BTC(1H) | ALTS(15m) Active.")
+    print(f"🚀 {STRATEGY_VERSION} Initialized. 1H Core Unified Mode Active.")
 
     for symbol in symbols:
         try:
-            timeframe = strategy_logic.get_timeframe(symbol)
-            df = fetch_1h_data(symbol, limit=500) if timeframe == '1h' else fetch_15m_data(symbol, limit=500)
-            df_1h = df if timeframe == '1h' else fetch_1h_data(symbol, limit=500)
-            
+            df = fetch_1h_data(symbol, limit=500)
             if df.empty: continue
 
-            # AI Scoring with Feature Consistency Check
+            # AI Scoring
             X = extract_features(df, df_btc_ml)
-            # Force DataFrame with explicit feature names to eliminate UserWarning
             X_input = X.tail(1)
             probs = ml_model.predict_proba(X_input)
-            ml_score = float(probs[0][1])
+            base_ml_score = float(probs[0][1])
+            
+            # Iteration 108.0: Volume Divergence Check
+            # If price increases but volume decreases (last 3 bars), subtract 0.2
+            price_trend = df['close'].iloc[-1] > df['close'].iloc[-3]
+            vol_trend = df['volume'].iloc[-1] < df['volume'].iloc[-3]
+            ml_score = base_ml_score - 0.2 if (price_trend and vol_trend) else base_ml_score
+            
+            # Iteration 108.0: Market Weather System (BTC 1H EMA200)
+            btc_ema200 = calculate_ema(df_btc_ml, 200).iloc[-1]
+            btc_price = df_btc_ml['close'].iloc[-1]
+            btc_bullish = btc_price > btc_ema200
+            
+            # Iteration 102.0: RSI Overrule Logic
+            rsi = float(calculate_rsi(df).iloc[-1])
+            dist_ema200 = (df['close'].iloc[-1] - calculate_ema(df, 200).iloc[-1]) / calculate_ema(df, 200).iloc[-1]
+            
+            # Iteration 108.0: Enhanced Entry Threshold
+            threshold = 0.75
+            effective_threshold = threshold
+            
+            # Market Weather Rules
+            can_trade = True
+            reason = ""
+            
+            if not btc_bullish:
+                if rsi < 15:
+                    reason = "Extreme RSI < 15 (Bear Market Exception)"
+                    effective_threshold = 0.40 # Allow bottom fishing in bear market
+                else:
+                    can_trade = False
+                    reason = "BTC < EMA200 (Bear Market Protection)"
+            else:
+                # Bull Market: Relative Strength Filter
+                # Symbol must be stronger than BTC or have high AI score
+                rel_strength = X_input['relative_strength_btc'].iloc[0]
+                if rel_strength < 0 and ml_score < 0.85:
+                    can_trade = False
+                    reason = "Weak Relative Strength in Bull Market"
+                else:
+                    reason = f"AI Score {ml_score:.2f} >= {effective_threshold}"
+
+            flash_buy = rsi < 15
             
             # Signal Logic
-            is_signal, reason = strategy_logic.get_signal(symbol, ml_score, df_1h)
+            is_signal = can_trade and (ml_score >= effective_threshold or flash_buy)
             
-            # Position Sizing (BTC: 0.5 / Alts: 0.25)
-            weight = strategy_logic.get_weight(symbol)
-            kelly = 1.5 if ml_score >= 0.90 else (1.0 if ml_score >= 0.80 else 0.5)
-            pos_size = balance * weight * kelly
+            # Iteration 103.0: Compounding Engine (Dynamic Kelly)
+            # Formula: [Current Equity] * [AI Score / 2]
+            if balance >= 1000:
+                weight = ml_score / 2.0
+            else:
+                weight = 0.2 # Safe Buffer: Fixed 20% for small accounts
+            
+            pos_size = balance * weight
+            
+            # Iteration 101.0: Unified TP/SL Logic
+            is_major = symbol in ['BTC/USDT', 'ETH/USDT']
+            params['tp_pct'] = 0.035 if is_major else 0.050
+            params['sl_pct'] = 0.03 # Base SL, will be overridden by ATR if logic allows
             
             latest = df.iloc[-1]
-            if is_signal and current_pos_count < 3:
-                # Iteration 96.0: Enhanced Entry Reason
-                entry_reason = f"[{'1H Elders' if timeframe == '1h' else '15m Commandos'}] {reason}"
-                print(f"🎯 [SIGNAL] {symbol} ({timeframe}) AI: {ml_score:.2f} | Reason: {entry_reason}")
+            if is_signal and current_pos_count < 5: # Allow up to 5 positions
+                entry_reason = f"[1H Core] {reason}"
+                print(f"🎯 [SIGNAL] {symbol} (1H) AI: {ml_score:.2f} | Reason: {entry_reason}")
                 
-                execute_trade(symbol, 'Long', pos_size, latest['close'], calculate_atr(df).iloc[-1], params, ml_score, entry_reason)
-                strategy_logic.record_trade(symbol)
+                atr = calculate_atr(df).iloc[-1]
+                execute_trade(symbol, 'Long', pos_size, latest['close'], atr, params, ml_score, entry_reason)
                 
-                # 115.1 Style Notification
-                trade_params = strategy_logic.get_trade_params(symbol)
-                # Recalculate TP with buffer for notification
-                if symbol in ['BTC/USDT', 'ETH/USDT']: fee_buffer = 0.001
-                elif symbol == 'SOL/USDT': fee_buffer = 0.002
-                else: fee_buffer = 0.005
-                
-                tp_price = latest['close'] * (1 + trade_params['tp_pct'] + fee_buffer)
-                sl_price = latest['close'] * (1 - trade_params['sl_pct'])
-                send_entry_notification(symbol, 'Long', pos_size, weight * kelly * 100, tp_price, sl_price, 2.0, ml_score, entry_reason)
-                current_pos_count += 1
-
-            # Heartbeat Data
-            prices_rsi[symbol] = {
-                'price': latest['close'],
-                'rsi': float(calculate_rsi(df).iloc[-1]),
-                'adx': float(calculate_adx(df).iloc[-1]),
-                'atr': float(calculate_atr(df).iloc[-1]),
-                'ml_score': ml_score,
-                'missed_reason': reason if not is_signal else "Ready",
-                'timeframe': timeframe,
-                'weight': weight,
-                'kelly': kelly
-            }
         except Exception as e:
-            print(f"❌ [Execution Error] {symbol}: {e}")
-            
-    return prices_rsi
+            print(f"Error processing {symbol}: {e}")
+            continue
 
+    return prices_rsi
 
 
 def manage_positions(prices_rsi):
