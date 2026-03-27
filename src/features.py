@@ -4,12 +4,14 @@ from src.indicators import calculate_rsi, calculate_macd, calculate_adx, calcula
 
 def extract_features(df, btc_df=None):
     """
-    Iteration 89.0: Rigid Data Alignment
+    Iteration 94.0: Standardized Feature Extraction (19 Features)
     """
     expected_features = [
         'rsi', 'macd_hist', 'adx', 'atr_pct', 'vol_change_24h', 
         'volatility_24h', 'relative_strength_btc', 'btc_volatility_24h', 
-        'dist_ema200', 'dist_ema20'
+        'dist_ema200', 'dist_ema20', 'bb_width', 'bb_percent_b',
+        'stoch_k', 'stoch_d', 'squeeze_index', 'macd_div',
+        'dist_sr_low', 'dist_sr_high', 'price_momentum'
     ]
 
     # 0. Guardrail: Handle None or Empty DataFrame
@@ -31,7 +33,11 @@ def extract_features(df, btc_df=None):
     features = pd.DataFrame(index=df.index)
 
     # 2. Calculate Indicators
-    # Iteration 89.0: Rigid Data Alignment
+    from src.indicators import (
+        calculate_bollinger_bands, calculate_stoch_rsi,
+        calculate_squeeze_index, calculate_macd_divergence, calculate_sr_levels
+    )
+    
     features['rsi'] = calculate_rsi(df)
     _, _, macd_hist = calculate_macd(df)
     features['macd_hist'] = macd_hist
@@ -39,8 +45,6 @@ def extract_features(df, btc_df=None):
     features['atr_pct'] = calculate_atr(df) / df['close']
     features['vol_change_24h'] = df['volume'].pct_change(24)
     features['volatility_24h'] = df['close'].pct_change().rolling(window=24).std()
-
-    print(f"🔍 [Iteration 89.0 | Rigid Data] Input indicators keys: {features.columns.tolist()}")
 
     if btc_df is not None:
         btc_close = btc_df['close'].reindex(df.index, method='ffill')
@@ -57,20 +61,31 @@ def extract_features(df, btc_df=None):
     ema20 = calculate_ema(df, 20)
     features['dist_ema20'] = (df['close'] - ema20) / ema20
 
-    # 3. Feature Alignment (Iteration 71.10: Strict Reindex)
-    expected_features = [
-        'rsi', 'macd_hist', 'adx', 'atr_pct', 'vol_change_24h', 
-        'volatility_24h', 'relative_strength_btc', 'btc_volatility_24h', 
-        'dist_ema200', 'dist_ema20'
-    ]
-    
+    # New Features for Iteration 94.0
+    _, _, bb_width, bb_percent_b = calculate_bollinger_bands(df)
+    features['bb_width'] = bb_width
+    features['bb_percent_b'] = bb_percent_b
+
+    stoch_k, stoch_d = calculate_stoch_rsi(df)
+    features['stoch_k'] = stoch_k / 100.0
+    features['stoch_d'] = stoch_d / 100.0
+
+    features['squeeze_index'] = calculate_squeeze_index(df)
+    features['macd_div'] = calculate_macd_divergence(df)
+
+    sr_low, sr_high = calculate_sr_levels(df)
+    features['dist_sr_low'] = (df['close'] - sr_low) / df['close']
+    features['dist_sr_high'] = (sr_high - df['close']) / df['close']
+    features['price_momentum'] = df['close'].pct_change(4)
+
+    # 3. Feature Alignment
     features = features.reindex(columns=expected_features)
 
     # 4. Robust NaN Handling (Iteration 71.3: AI Feature Alignment)
     # Use bfill first to propagate future values back to early NaN rows (warmup period)
     # Then ffill for any remaining gaps.
-    # Iteration 71.3: Explicitly use bfill/ffill to ensure no NaN reaches the model
-    features = features.fillna(method='bfill').fillna(method='ffill')
+    # Iteration 116.0 Soul: Use modern bfill/ffill methods
+    features = features.bfill().ffill()
     
     # If still NaN (e.g. all values are NaN), fill with reasonable defaults
     if features.isnull().any().any():

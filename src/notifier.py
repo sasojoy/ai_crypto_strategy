@@ -5,8 +5,8 @@ import datetime
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-# Iteration 92.0: Version Alignment
-STRATEGY_VERSION = "🚀 【Iteration 92.0 | Cooldown & Logic Lock】"
+# Iteration 116.0: Version Alignment
+STRATEGY_VERSION = "🚀 【Iteration 116.0 Soul | Dual-Track & AI Alignment】"
 
 load_dotenv()
 
@@ -65,15 +65,17 @@ def send_hourly_audit(equity, realized_pnl, active_positions):
     )
     send_telegram_msg(msg)
 
-def send_entry_notification(symbol, side, pos_value, capital_pct, tp, sl, rr, ml_score=None):
+def send_entry_notification(symbol, side, pos_value, capital_pct, tp, sl, rr, ml_score=None, reason=""):
     """
-    Entry Notification - Iteration 55 AI-Enhanced
+    Entry Notification - Iteration 96.0 AI-Enhanced with Reason
     """
     ai_str = f"🤖 AI 信心分值: {ml_score:.4f}\n" if ml_score else ""
+    reason_str = f"📝 進場理由: {reason}\n" if reason else ""
     msg = (
         f"🚀 【進場通知】: {symbol} | 方向: {side}\n"
         f"----------------------------\n"
         f"{ai_str}"
+        f"{reason_str}"
         f"💰 投入金額: ${pos_value:,.2f} (佔總資金 {capital_pct:.2f}%)\n"
         f"🎯 預期獲利: {tp:.4f}\n"
         f"🛡️ 強制止損: {sl:.4f}\n"

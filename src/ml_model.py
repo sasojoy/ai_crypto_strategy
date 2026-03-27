@@ -19,11 +19,13 @@ class CryptoMLModel:
             n_jobs=-1
         )
         self.is_trained = False
+        self.feature_names = None
 
     def train(self, X, y):
         """
         Train the Random Forest model.
         """
+        self.feature_names = list(X.columns)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
         
         print(f"Training model with {len(X_train)} samples...")
@@ -41,26 +43,41 @@ class CryptoMLModel:
     def predict_proba(self, X):
         """
         Returns the probabilities for all classes.
-        Iteration 83.0: Ensure it returns a 2D array even if not trained.
+        Iteration 116.0 Soul: Feature Consistency Check & UserWarning Elimination
         """
         if not self.is_trained:
             self.load()
         
         if not self.is_trained:
-            # Return a 2D array with 0.5 for both classes (neutral)
             import numpy as np
             return np.array([[0.5, 0.5]])
             
+        # Feature Consistency Check
+        if isinstance(X, pd.DataFrame):
+            if self.feature_names and list(X.columns) != self.feature_names:
+                print(f"⚠️ Feature mismatch! Expected {self.feature_names}, got {list(X.columns)}")
+                # Reorder columns to match training data
+                X = X.reindex(columns=self.feature_names)
+        
         return self.model.predict_proba(X)
 
     def save(self):
-        joblib.dump(self.model, MODEL_PATH)
+        data = {
+            'model': self.model,
+            'feature_names': self.feature_names
+        }
+        joblib.dump(data, MODEL_PATH)
         print(f"Model saved to {MODEL_PATH}")
 
     def load(self):
         if os.path.exists(MODEL_PATH):
             try:
-                self.model = joblib.load(MODEL_PATH)
+                data = joblib.load(MODEL_PATH)
+                if isinstance(data, dict):
+                    self.model = data['model']
+                    self.feature_names = data.get('feature_names')
+                else:
+                    self.model = data
                 self.is_trained = True
                 return True
             except Exception as e:

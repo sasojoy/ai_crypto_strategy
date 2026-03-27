@@ -2,8 +2,12 @@
 import ccxt
 import pandas as pd
 import numpy as np
+import os
 from datetime import datetime, timedelta
 from src.market import calculate_rsi, calculate_ema, calculate_atr
+from src.features import extract_features
+from src.ml_model import CryptoMLModel
+from src.strategy.logic import DualTrackStrategy
 
 def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=30):
     exchange = ccxt.binance()
@@ -19,82 +23,80 @@ def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=30):
         
     df = pd.DataFrame(all_ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+    df.set_index('timestamp', inplace=True)
     return df
 
-def run_backtest(df, initial_balance=2000):
-    df['rsi'] = calculate_rsi(df)
-    df['ema20'] = calculate_ema(df, 20)
-    df['ema50'] = calculate_ema(df, 50)
-    df['ema200'] = calculate_ema(df, 200)
-    df['atr'] = calculate_atr(df, 14)
+def run_backtest(symbol, df, btc_df, ml_model, initial_balance=2000):
+    strategy = DualTrackStrategy()
+    timeframe = strategy.get_timeframe(symbol)
+    trade_params = strategy.get_trade_params(symbol)
+    weight = strategy.get_weight(symbol)
     
-    # 計算 EMA 200 斜率 (過去 5 根 K 線)
-    df['ema200_slope'] = df['ema200'].diff(5) / 5
+    # Feature Extraction
+    features = extract_features(df, btc_df)
     
-    # Drop rows with NaN values from indicators
-    df = df.dropna().reset_index(drop=True)
+    # Indicators for 1H Trend Filter
+    df_1h = df.resample('1h').last().ffill()
+    df_1h['ema50'] = calculate_ema(df_1h, 50)
+    
+    # Align features with original df
+    df = df.loc[features.index]
     
     trades = []
     in_position = False
     entry_price = 0
     balance = initial_balance
-    tp_price = 0
-    sl_price = 0
-    be_triggered = False # Break-even trigger
+    last_trade_time = datetime.min
     
-    for i in range(1, len(df)):
-        # Buy condition
-        if not in_position:
-            # 勾頭確認進場條件：
-            # 1. 價格 > EMA 200 (大趨勢向上)
-            # 2. EMA 200 斜率 > 0 (趨勢昂首)
-            # 3. 前一根 RSI < 35 (曾進入超賣)
-            # 4. 當前 RSI > 40 (動能回升)
-            # 5. 排除凌晨 00:00 - 04:00 (UTC)
-            current_hour = df.loc[i, 'timestamp'].hour
-            if df.loc[i, 'close'] > df.loc[i, 'ema200'] and \
-               df.loc[i, 'ema200_slope'] > 0 and \
-               df.loc[i-1, 'rsi'] < 35 and \
-               df.loc[i, 'rsi'] > 40 and \
-               not (0 <= current_hour < 4):
-                
-                in_position = True
-                entry_price = df.loc[i, 'close']
-                entry_time = df.loc[i, 'timestamp']
-                be_triggered = False
-                
-                # 優化 ATR 空間 (3*ATR 止損, 6*ATR 止盈)
-                current_atr = df.loc[i, 'atr']
-                sl_price = entry_price - (3 * current_atr)
-                tp_price = entry_price + (6 * current_atr)
-                be_price = entry_price + (3 * current_atr) # 達到 3*ATR 時觸發保本
+    for i in range(200, len(df)):
+        current_time = df.index[i]
+        current_price = df['close'].iloc[i]
         
-        # Sell condition
+        if not in_position:
+            # 1. 4H Cooldown
+            if (current_time - last_trade_time).total_seconds() < 14400:
+                continue
+                
+            # 2. 1H Trend Filter
+            current_1h_time = current_time.replace(minute=0, second=0, microsecond=0)
+            if current_1h_time not in df_1h.index or df['close'].iloc[i] <= df_1h.loc[current_1h_time, 'ema50']:
+                continue
+            
+            # 3. AI Score
+            X = features.iloc[i:i+1]
+            probs = ml_model.predict_proba(X)
+            ml_score = float(probs[0][1]) if hasattr(probs, "ndim") and probs.ndim == 2 else float(probs)
+            
+            threshold = strategy.get_threshold(symbol)
+            if ml_score >= threshold:
+                in_position = True
+                entry_price = current_price
+                entry_time = current_time
+                kelly = 1.5 if ml_score >= 0.90 else (1.0 if ml_score >= 0.80 else 0.5)
+                pos_size = balance * weight * kelly
+                
+                sl_price = entry_price * (1 - trade_params['sl_pct'])
+                tp_price = entry_price * (1 + trade_params['tp_pct'])
+        
         elif in_position:
-            current_price = df.loc[i, 'close']
-            
-            # 移動止盈 (Trailing Stop to Break-even)
-            if not be_triggered and current_price >= be_price:
-                sl_price = entry_price
-                be_triggered = True
-            
             # Check TP or SL
             if current_price >= tp_price or current_price <= sl_price:
-                price_change = (current_price - entry_price) / entry_price
-                # Iteration 54: Slippage & Fee Simulation (0.1% deduction)
-                friction_cost = balance * 0.001
-                profit_amount = (balance * price_change) - friction_cost
+                exit_price = current_price
+                price_change = (exit_price - entry_price) / entry_price
+                
+                # Tiered Slippage & Fee (0.1% base fee + tiered slippage)
+                friction = 0.001 + trade_params['slippage_comp']
+                profit_amount = (pos_size * price_change) - (pos_size * friction)
                 balance += profit_amount
+                
                 trades.append({
                     'entry_time': entry_time,
-                    'exit_time': df.loc[i, 'timestamp'],
-                    'entry_price': entry_price,
-                    'exit_price': current_price,
-                    'profit_pct': price_change * 100,
-                    'profit_amount': profit_amount,
+                    'exit_time': current_time,
+                    'profit_pct': (profit_amount / pos_size) * 100,
                     'balance': balance
                 })
                 in_position = False
+                last_trade_time = current_time
                 
     if not trades:
         return 0, 0, 0, 0, pd.DataFrame()
@@ -113,17 +115,25 @@ def run_backtest(df, initial_balance=2000):
     return total_trades, win_rate, net_profit, max_drawdown, trades_df
 
 if __name__ == "__main__":
-    symbols = ['BTC/USDT', 'SOL/USDT']
+    symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'FET/USDT', 'NEAR/USDT']
     initial_balance = 2000
+    
+    ml_model = CryptoMLModel()
+    if not ml_model.load():
+        print("❌ Model not found. Please train the model first.")
+        exit(1)
+        
+    print("Fetching BTC data for relative strength...")
+    btc_df = fetch_backtest_data('BTC/USDT', timeframe='15m', days=30)
     
     for symbol in symbols:
         print(f"\n正在獲取 {symbol} 過去 30 天的數據...")
-        df = fetch_backtest_data(symbol=symbol)
+        df = fetch_backtest_data(symbol=symbol, timeframe='15m', days=30)
         print(f"獲取到 {len(df)} 條數據。")
         
-        total_trades, win_rate, net_profit, max_drawdown, trades_df = run_backtest(df, initial_balance=initial_balance)
+        total_trades, win_rate, net_profit, max_drawdown, trades_df = run_backtest(symbol, df, btc_df, ml_model, initial_balance=initial_balance)
         
-        print(f"\n--- {symbol} 回測報告 ---")
+        print(f"\n--- {symbol} 回測報告 (Iteration 116.0 Soul) ---")
         print(f"起始資金: ${initial_balance}")
         print(f"總交易次數: {total_trades}")
         print(f"勝率: {win_rate:.2f}%")
