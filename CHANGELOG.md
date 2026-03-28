@@ -1,4 +1,14 @@
 
+
+## [1.16.6] - 2026-03-29
+### Fixed
+- 修正 `src/market.py` 與 `src/features.py` 之間的函數命名斷層 (`calculate_features` as `extract_features`)。
+### Note
+- 解決了 GCE 環境下 PM2 啟動後因 ImportError 導致的 Silent Crash 問題。
+
+
+
+
 ## [1.20.0] - 2026-03-28
 ### Fixed
 - [Neural Repair] 修正 `src/features.py` 中 `dropna()` 導致特徵矩陣在數據初始階段被清空的 Bug。

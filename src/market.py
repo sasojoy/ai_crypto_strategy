@@ -11,7 +11,7 @@ from src.notifier import send_telegram_msg, send_kill_switch_alert, send_rich_he
 from src.logger import log_trade
 from src.indicators import *
 
-from src.features import extract_features
+from src.features import calculate_features as extract_features
 from src.ml_model import CryptoMLModel
 
 from src.strategy.logic import DualTrackStrategy
