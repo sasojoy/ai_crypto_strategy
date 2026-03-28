@@ -973,6 +973,11 @@ def run_strategy(ml_model):
             # AI Scoring
             X = extract_features(df, df_btc_ml)
             X_input = X.tail(1)
+            
+            # Iteration 116.7: Feature Alignment Filter
+            REQUIRED_FEATURES = ['rsi', 'macd_hist', 'adx', 'atr_pct', 'vol_change_24h', 'volatility_24h', 'relative_strength_btc', 'btc_volatility_24h', 'dist_ema200', 'dist_ema20', 'bb_width', 'bb_percent_b', 'stoch_k', 'stoch_d', 'squeeze_index', 'macd_div', 'dist_sr_low', 'dist_sr_high', 'price_momentum']
+            X_input = X_input[REQUIRED_FEATURES]
+            
             probs = ml_model.predict_proba(X_input)
             base_ml_score = float(probs[0][1])
             
@@ -1044,7 +1049,10 @@ def run_strategy(ml_model):
                 execute_trade(symbol, 'Long', pos_size, latest['close'], atr, params, ml_score, entry_reason)
                 
         except Exception as e:
-            print(f"Error processing {symbol}: {e}")
+            error_msg = f"❌ [Iteration 116.7] Error processing {symbol}: {str(e)}"
+            print(error_msg)
+            if "feature names" in str(e).lower() or "mismatch" in str(e).lower():
+                send_telegram_msg(error_msg)
             continue
 
     return prices_rsi
@@ -1222,8 +1230,8 @@ def close_partial_position(symbol, qty):
 
 if __name__ == "__main__":
     try:
-        # Iteration 91.1: Startup Message
-        send_telegram_msg("🚀 【Iteration 91.1】 寧靜與純淨化完成，系統正式上線")
+        # Iteration 116.7: Startup Message
+        send_telegram_msg("🚀 H16_PERP_PREDATOR 部署成功，特徵過濾器已掛載")
         import sys
         if "--check-accounting" in sys.argv:
             print("📊 [ACCOUNTING CHECK]")

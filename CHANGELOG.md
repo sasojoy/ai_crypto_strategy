@@ -1,4 +1,14 @@
 
+## [1.16.7] - 2026-03-28
+### Fixed
+- 特徵維度不匹配 (25 vs 19)。
+- [1.16.7] - FIX: Feature alignment mismatch (25 to 19).
+### Added
+- 強制特徵排序過濾器。
+- v1.16.7 - Final Feature Alignment and Emergency Fix
+
+
+
 
 ## [1.16.6] - 2026-03-29
 ### Fixed
