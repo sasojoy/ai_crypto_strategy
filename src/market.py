@@ -973,6 +973,8 @@ def run_strategy(ml_model):
             # AI Scoring
             X = extract_features(df, df_btc_ml)
             X_input = X.tail(1)
+            REQUIRED_FEATURES = ['rsi', 'macd_hist', 'adx', 'atr_pct', 'vol_change_24h', 'volatility_24h', 'relative_strength_btc', 'btc_volatility_24h', 'dist_ema200', 'dist_ema20', 'bb_width', 'bb_percent_b', 'stoch_k', 'stoch_d', 'squeeze_index', 'macd_div', 'dist_sr_low', 'dist_sr_high', 'price_momentum']
+            X_input = X_input[REQUIRED_FEATURES]
             probs = ml_model.predict_proba(X_input)
             base_ml_score = float(probs[0][1])
             
