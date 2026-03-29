@@ -1,6 +1,11 @@
 
 # Changelog
 
+## [Iteration 132.6] - 2026-03-30
+### Fixed
+- **Actions Remote Source Airdrop**: Updated GitHub Actions to manually clone `pandas_ta` source into `src/` directory, bypassing broken `pip` on GCE.
+- **Simplified Path Injection**: Updated `src/market.py` to use `os.path.dirname(os.path.abspath(__file__))` for robust local module loading.
+
 ## [Iteration 132.5] - 2026-03-30
 ### Fixed
 - **Source Clone**: Updated GitHub Actions to manually clone `pandas_ta` source into `src/` directory to bypass `pip` issues on GCE.
