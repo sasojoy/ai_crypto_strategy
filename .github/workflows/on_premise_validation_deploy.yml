@@ -40,14 +40,14 @@ jobs:
             git reset --hard origin/main
             git clean -fd
             
-            # Iteration 133.6: Physical Cleanup
+            # Iteration 133.7: Offline Wheel Deployment
             rm -rf src/pandas_ta
             rm -rf venv
             python3 -m venv venv
             source venv/bin/activate
             pip install --upgrade pip
-            # 強制安裝穩定版本，解決 Python 3.10 語法報錯
-            pip install pandas-ta==0.3.14b
+            # 直接從 wheels 資料夾安裝，完全不連網，解決 GCE 網路問題
+            pip install ./wheels/*.whl
             # 安裝其他基本庫
             pip install ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn
             

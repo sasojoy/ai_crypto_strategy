@@ -1,14 +1,14 @@
-# AI Crypto Strategy - 🚀 【Iteration 133.6 | Physical Cleanup】
+# AI Crypto Strategy - 🚀 【Iteration 133.7 | Offline Wheel Deployment】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 133.6 | Physical Cleanup)
+## 🌟 當前策略狀態 (Iteration 133.7 | Offline Wheel Deployment)
 
-### 1. 核心架構：物理清場 (Physical Cleanup)
-- **物理移除干擾 (Physical Removal of Interference)**：
-    - 徹底刪除 `src/pandas_ta` 資料夾，確保系統僅使用 `venv` 中安裝的穩定版本。
-- **穩定版本強制安裝 (Stable Version Enforcement)**：
-    - 強制安裝 `pandas-ta==0.3.14b`，確保在 GCE 的 Python 3.10 環境中 100% 兼容。
+### 1. 核心架構：離線 Whl 強攻 (Offline Wheel Deployment)
+- **離線依賴注入 (Offline Dependency Injection)**：
+    - 內置 `wheels/` 資料夾並包含 `pandas_ta-0.4.71b0-py3-none-any.whl`，徹底解決 GCE 網路不穩導致的安裝失敗。
+- **本地安裝協議 (Local Installation Protocol)**：
+    - 部署流程改用 `pip install ./wheels/*.whl`，實現 100% 離線安裝核心依賴。
 - **環境徹底清空 (Scorched Earth Venv)**：
     - 每次部署前執行 `rm -rf venv` 與 `rm -rf src/pandas_ta`，確保排除任何舊有依賴殘骸。
 - **PM2 狀態同步**：

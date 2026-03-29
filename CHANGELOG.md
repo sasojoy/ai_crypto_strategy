@@ -4,6 +4,23 @@
 
 
 
+
+# Iteration 133.7: 離線 Whl 強攻 (Offline Wheel Deployment) - 2026-03-30
+### Added
+- **Offline Wheel Deployment**: Added `wheels/` directory containing `pandas_ta-0.4.71b0-py3-none-any.whl` to bypass GCE network issues.
+- **Local Installation**: Updated deployment workflow to install `pandas-ta` directly from the local wheel file.
+
+### Changed
+- **Deployment Workflow**: Modified `.github/workflows/on_premise_validation_deploy.yml` to use `pip install ./wheels/*.whl`.
+
+
+
+
+
+
+
+
+
 # Iteration 133.6: 物理清場 (Physical Cleanup) - 2026-03-30
 ### Added
 - **Physical Cleanup**: Removed `src/pandas_ta` directory from the repository to prevent interference with the `venv` version.
