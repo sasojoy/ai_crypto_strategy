@@ -94,11 +94,14 @@ jobs:
             cd $PROD_DIR
 
             # 8. Final Deployment with PM2
-            echo "🔄 Restarting System: $DEPLOY_NAME"
+            echo "🔄 Restarting System: H16_PREDATOR_V132"
             # 清理 staging 的 pycache，但不刪除 .git 以便下次加速
             find "$STAGING_DIR" -name "__pycache__" -type d -exec rm -rf {} +
 
-            pm2 start src/market.py --name "$DEPLOY_NAME" --update-env
+            pip install --user -r requirements.txt
+            pm2 stop all || true
+            pm2 delete all || true
+            pm2 start src/market.py --name "H16_PREDATOR_V132" --update-env
             pm2 save
 
-            echo "✅ Iteration 87.0 Deployment Successful!"
+            echo "✅ Iteration 132.0 Deployment Successful!"

@@ -1,6 +1,12 @@
 
 # Changelog
 
+## [1.32.0] - 2026-03-30
+### Fixed
+- **Forced Realignment**: Hard-coded `requirements.txt` to ensure `pandas_ta` and `ta` are correctly installed on GCE.
+- **Deployment Workflow**: Updated GitHub Actions to force `pip install` and clean `pm2` restart with new version name `H16_PREDATOR_V132`.
+- **Version Labeling**: Updated `src/market.py` to reflect `H16_PREDATOR_V132` in startup logs.
+
 ## [1.31.0] - 2026-03-30
 ### Added
 - **H16_WATCHER Signal Formatter**: Implemented rich Telegram notifications for `WATCH_ONLY` mode, including Symbol, Action, Price, Reason, AI Score, and Dynamic TP/SL.

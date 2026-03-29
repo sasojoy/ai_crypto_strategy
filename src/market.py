@@ -89,7 +89,7 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 
 
 # Iteration 95.1: Slippage Compensation & PnL Automation
-STRATEGY_VERSION = "[H16_FINAL_SHARP]"
+STRATEGY_VERSION = "[H16_PREDATOR_V132]"
 
 # Iteration 127.0: Live Hunting Mode Enabled
 IS_SIMULATION = False
@@ -992,7 +992,7 @@ def run_strategy(ml_model):
     current_pos_count = get_active_positions_count()
     balance = get_account_balance()
     
-    print(f"🚀 {STRATEGY_VERSION} Initialized. 1H Core Unified Mode Active.")
+    print(f"🚀 {STRATEGY_VERSION} LIVE WATCHER ACTIVE.")
 
     for symbol in symbols:
         try:
