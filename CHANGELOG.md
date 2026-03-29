@@ -1,5 +1,19 @@
 # Changelog
 
+
+
+
+# Iteration 133.4: 穩定安裝協議 (Stable Installation Protocol) - 2026-03-30
+### Added
+- **Stable Installation**: Forced installation of `pandas-ta==0.3.14b` to ensure compatibility with Python 3.10 on GCE.
+- **Venv Cleanup**: Added `rm -rf venv` to the deployment workflow to ensure a clean environment for every deployment.
+
+### Changed
+- **Market Script**: Removed `sys.path` hack in `src/market.py` as we return to standard pip-installed `pandas-ta`.
+- **Deployment Workflow**: Updated `.github/workflows/on_premise_validation_deploy.yml` with the new installation protocol.
+
+
+
 # Iteration 133.2: 物理掃蕩 (Total Numba Removal) - 2026-03-30
 ### Added
 - **Total Numba Removal**: Replaced all `from numba import njit` with a dummy `njit` function in `src/pandas_ta/` to eliminate Numba dependency.

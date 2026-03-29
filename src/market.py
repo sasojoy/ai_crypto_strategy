@@ -1,9 +1,4 @@
-import sys, os
-# 確保 Python 抓的是我們改過的 src/pandas_ta
-current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir not in sys.path: sys.path.insert(0, current_dir)
 import pandas_ta as ta
-print("🚀 [System] Cleaned pandas_ta loaded.")
 
 
 import os

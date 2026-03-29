@@ -40,11 +40,13 @@ jobs:
             git reset --hard origin/main
             git clean -fd
             
-            # Iteration 133.2: Physical Mount Setup
+            # Iteration 133.4: Stable Installation Protocol
+            rm -rf venv
             python3 -m venv venv
             source venv/bin/activate
             pip install --upgrade pip
-            # 移除 pip install pandas_ta，改用 src/market.py 的 sys.path 物理掛載
+            # 強制安裝穩定版本，解決 Python 3.10 語法報錯
+            pip install pandas-ta==0.3.14b
             # 安裝其他基本庫
             pip install ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn
             
