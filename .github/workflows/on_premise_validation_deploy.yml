@@ -41,19 +41,20 @@ jobs:
             git clean -fd
             
             # Iteration 133.7: Offline Wheel Deployment
+            # 強制移除所有髒掉的舊資料夾
             rm -rf src/pandas_ta
             rm -rf venv
             python3 -m venv venv
             source venv/bin/activate
-            pip install --upgrade pip
-            # 直接從 wheels 資料夾安裝，完全不連網，解決 GCE 網路問題
+            # 直接安裝倉庫裡的物理 Whl，不准連 PyPI 網路
             pip install ./wheels/*.whl
             # 安裝其他基本庫
             pip install ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn
             
+            # 物理鎖定：將 venv 的 site-packages 加入路徑，防止 PM2 找不到
+            export PYTHONPATH=$PYTHONPATH:$(pwd)/venv/lib/python3.10/site-packages
+            
             # PM2 Reset with Venv Interpreter
             pm2 delete all || true
             pm2 start src/market.py --name "H16_PREDATOR_V133" --interpreter ./venv/bin/python
-            pm2 save
-            pm2 restart all --update-env
             pm2 save
