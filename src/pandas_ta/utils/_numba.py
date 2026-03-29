@@ -11,7 +11,12 @@ from numpy import (
     roll,
     zeros_like
 )
-from numba import njit
+try:
+    from numba import njit
+except ImportError:
+    def njit(f=None, *args, **kwargs):
+        if f is None: return lambda x: x
+        return f
 from pandas_ta._typing import Array, Int, IntFloat
 
 __all__ = [

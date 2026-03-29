@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-from numba import njit
+try:
+    from numba import njit
+except ImportError:
+    def njit(f=None, *args, **kwargs):
+        if f is None: return lambda x: x
+        return f
 from numpy import floor, nan, zeros, zeros_like, roll
 from pandas import Series, DataFrame
 from pandas_ta._typing import DictLike, Int, IntFloat

@@ -3,6 +3,24 @@
 
 
 
+
+
+# Iteration 132.12: Scorched Earth Fix - Global Numba Shielding
+- **Global Numba Shielding**: Applied a global `sed` replacement to wrap all `from numba import njit` statements in a `try-except` block across the entire `src/pandas_ta` directory.
+- **_numba.py Hardening**: Specifically verified and hardened `src/pandas_ta/utils/_numba.py` to ensure `ModuleNotFoundError` is bypassed.
+- **Workflow Reinforcement**: Maintained "Forced Reset" logic in `.github/workflows/on_premise_validation_deploy.yml` for reliable deployment.
+
+
+
+
+
+
+
+
+
+
+
+
 # Iteration 132.11: Physical Emasculation - Numba Shielding
 - **Numba Shielding**: Modified `src/pandas_ta/utils/_math.py` to include a fallback for `njit` when `numba` is not installed, preventing `ImportError` on GCE.
 - **Workflow Reinforcement**: Maintained "Forced Reset" logic in `.github/workflows/on_premise_validation_deploy.yml` for reliable deployment.
