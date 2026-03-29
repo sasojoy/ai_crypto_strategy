@@ -3,6 +3,21 @@
 
 
 
+
+# Iteration 133.6: 物理清場 (Physical Cleanup) - 2026-03-30
+### Added
+- **Physical Cleanup**: Removed `src/pandas_ta` directory from the repository to prevent interference with the `venv` version.
+- **GCE Cleanup**: Added `rm -rf src/pandas_ta` to the deployment workflow to ensure no residual files remain on the server.
+
+### Changed
+- **Deployment Workflow**: Updated `.github/workflows/on_premise_validation_deploy.yml` to include explicit cleanup and `pm2 restart all --update-env`.
+
+
+
+
+
+
+
 # Iteration 133.4: 穩定安裝協議 (Stable Installation Protocol) - 2026-03-30
 ### Added
 - **Stable Installation**: Forced installation of `pandas-ta==0.3.14b` to ensure compatibility with Python 3.10 on GCE.

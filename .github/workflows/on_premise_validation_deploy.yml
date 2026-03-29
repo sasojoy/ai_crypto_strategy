@@ -40,7 +40,8 @@ jobs:
             git reset --hard origin/main
             git clean -fd
             
-            # Iteration 133.4: Stable Installation Protocol
+            # Iteration 133.6: Physical Cleanup
+            rm -rf src/pandas_ta
             rm -rf venv
             python3 -m venv venv
             source venv/bin/activate
@@ -53,4 +54,6 @@ jobs:
             # PM2 Reset with Venv Interpreter
             pm2 delete all || true
             pm2 start src/market.py --name "H16_PREDATOR_V133" --interpreter ./venv/bin/python
+            pm2 save
+            pm2 restart all --update-env
             pm2 save

@@ -1,18 +1,18 @@
-# AI Crypto Strategy - 🚀 【Iteration 133.4 | Stable Installation Protocol】
+# AI Crypto Strategy - 🚀 【Iteration 133.6 | Physical Cleanup】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 133.4 | Stable Installation Protocol)
+## 🌟 當前策略狀態 (Iteration 133.6 | Physical Cleanup)
 
-### 1. 核心架構：穩定安裝協議 (Stable Installation Protocol)
+### 1. 核心架構：物理清場 (Physical Cleanup)
+- **物理移除干擾 (Physical Removal of Interference)**：
+    - 徹底刪除 `src/pandas_ta` 資料夾，確保系統僅使用 `venv` 中安裝的穩定版本。
 - **穩定版本強制安裝 (Stable Version Enforcement)**：
-    - 強制安裝 `pandas-ta==0.3.14b`，確保在 GCE 的 Python 3.10 環境中 100% 兼容，無語法報錯。
+    - 強制安裝 `pandas-ta==0.3.14b`，確保在 GCE 的 Python 3.10 環境中 100% 兼容。
 - **環境徹底清空 (Scorched Earth Venv)**：
-    - 每次部署前執行 `rm -rf venv`，確保排除任何舊有依賴殘骸。
-- **標準化虛擬環境 (Standard Venv)**：
-    - 回歸標準 `pip` 安裝流程，移除 `src/market.py` 中的 `sys.path` 物理掛載黑進程。
-- **PM2 虛擬環境啟動**：
-    - 使用 `--interpreter ./venv/bin/python` 啟動策略，確保運行環境的一致性。
+    - 每次部署前執行 `rm -rf venv` 與 `rm -rf src/pandas_ta`，確保排除任何舊有依賴殘骸。
+- **PM2 狀態同步**：
+    - 使用 `pm2 restart all --update-env` 確保環境變數與虛擬環境路徑即時生效。
 
 ### 2. 品質保證 (Quality Assurance)
 - **環境自癒 (Self-Healing)**：透過 `setup_env.sh` 自動修復目錄結構與依賴版本 (`scikit-learn==1.7.2`)。
