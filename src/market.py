@@ -1,8 +1,17 @@
 
-import sys, os
-# 強制指向 GCE 的用戶庫路徑
-user_site = os.path.expanduser("~/.local/lib/python3.10/site-packages")
-if user_site not in sys.path: sys.path.insert(0, user_site)
+import sys, os, glob
+# Iteration 132.5: Local Source Injection
+sys.path.append(os.path.join(os.getcwd(), 'src'))
+import pandas_ta as ta
+
+# 尋找所有可能的 site-packages 路徑
+home = os.path.expanduser("~")
+possible_paths = glob.glob(f"{home}/.local/lib/python3*/site-packages")
+for p in possible_paths:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+# 打印目前嘗試的路徑，方便在 pm2 logs 診斷
+print(f"🔍 [Path Debug] Current Sys Path: {sys.path[:3]}")
 
 
 import os

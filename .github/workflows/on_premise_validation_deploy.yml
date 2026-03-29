@@ -99,8 +99,16 @@ jobs:
             find "$STAGING_DIR" -name "__pycache__" -type d -exec rm -rf {} +
 
             export PATH=$PATH:/home/sasojoy/.local/bin
-            python3 -m pip install --user --upgrade pip
-            python3 -m pip install --user pandas_ta ta pandas ccxt xgboost joblib python-dotenv
+            
+            # Iteration 132.5: Source Clone for pandas_ta
+            echo "📦 Cloning pandas_ta source directly..."
+            cd $PROD_DIR/src
+            rm -rf pandas_ta
+            git clone https://github.com/twopirllc/pandas-ta.git temp_ta
+            mv temp_ta/pandas_ta .
+            rm -rf temp_ta
+            cd $PROD_DIR
+
             pm2 stop all || true
             pm2 delete all || true
             pm2 start src/market.py --name "H16_PREDATOR_V132" --update-env

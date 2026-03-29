@@ -1,6 +1,11 @@
 
 # Changelog
 
+## [Iteration 132.5] - 2026-03-30
+### Fixed
+- **Source Clone**: Updated GitHub Actions to manually clone `pandas_ta` source into `src/` directory to bypass `pip` issues on GCE.
+- **Local Source Injection**: Updated `src/market.py` to prioritize local `src/` directory for `pandas_ta` import.
+
 ## [Iteration 132.2] - 2026-03-30
 ### Fixed
 - **YAML Physical Pressure**: Updated GitHub Actions to explicitly install dependencies and export PATH for GCE.
