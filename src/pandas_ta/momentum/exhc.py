@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-from numba import njit
+def njit(f=None, *args, **kwargs):
+    if f is None: return lambda x: x
+    return f
 from numpy import clip, cumsum, int64, nan, where
 from pandas import DataFrame, Series
 from pandas_ta._typing import DictLike, Int

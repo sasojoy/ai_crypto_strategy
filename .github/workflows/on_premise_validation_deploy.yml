@@ -40,12 +40,11 @@ jobs:
             git reset --hard origin/main
             git clean -fd
             
-            # Iteration 133.0: Venv Standard Setup
+            # Iteration 133.2: Physical Mount Setup
             python3 -m venv venv
             source venv/bin/activate
             pip install --upgrade pip
-            # 重要：直接安裝本地的 src/pandas_ta 資料夾 (Hybrid Vendorizing)
-            pip install ./src/pandas_ta
+            # 移除 pip install pandas_ta，改用 src/market.py 的 sys.path 物理掛載
             # 安裝其他基本庫
             pip install ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn
             

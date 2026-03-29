@@ -2,6 +2,17 @@
 
 
 # Iteration 133.1: Hybrid Vendorizing - 2026-03-30
+
+
+# Iteration 133.2: 物理掃蕩 (Total Numba Removal) - 2026-03-30
+### Added
+- **Total Numba Removal**: Replaced all `from numba import njit` with a dummy `njit` function in `src/pandas_ta/` to eliminate Numba dependency.
+- **Physical Mount**: Implemented `sys.path` hack in `src/market.py` to force-load the local `src/pandas_ta`.
+
+### Changed
+- **Deployment Workflow**: Removed `pip install pandas_ta` from `.github/workflows/on_premise_validation_deploy.yml`.
+
+
 ### Added
 - **Hybrid Vendorizing**: Integrated `pandas_ta` source code directly into `src/pandas_ta/`.
 - **Local Installation**: Updated GCE deployment to install `pandas_ta` from the local source directory within the `venv`.

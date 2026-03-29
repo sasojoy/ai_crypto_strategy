@@ -1,17 +1,18 @@
-# AI Crypto Strategy - 🚀 【Iteration 133.1 | Hybrid Vendorizing】
+# AI Crypto Strategy - 🚀 【Iteration 133.2 | Total Numba Removal】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 133.1 | Hybrid Vendorizing)
+## 🌟 當前策略狀態 (Iteration 133.2 | Total Numba Removal)
 
-### 1. 核心架構：終極混合架構 (Hybrid Vendorizing)
+### 1. 核心架構：物理掃蕩架構 (Total Numba Removal)
 - **物理源碼注入 (Physical Source Injection)**：
     - 將 `pandas_ta` 源碼直接內置於 `src/pandas_ta/`，徹底解決 GCE 環境因網路或權限問題導致的依賴缺失。
-- **虛擬環境本地安裝 (Venv Local Install)**：
-    - 在 GCE 部署流程中建立 `venv` 虛擬環境。
-    - 透過 `pip install ./src/pandas_ta` 直接安裝本地源碼，確保 100% 離線可用性。
-- **版本硬化 (Version Hardening)**：
-    - 硬編碼 `src/pandas_ta/__init__.py` 中的版本號為 `"0.3.14b0"`，解決 `importlib.metadata` 異常。
+- **Numba 暴力移除 (Total Numba Removal)**：
+    - 掃描所有 `src/pandas_ta` 檔案，將 `from numba import njit` 替換為本地定義的「假 njit」，徹底斷絕 Numba 依賴。
+- **物理掛載 (Physical Mount)**：
+    - 在 `src/market.py` 中使用 `sys.path.insert(0, current_dir)` 強制優先加載本地 `src/pandas_ta`。
+- **虛擬環境標準化 (Venv Standard)**：
+    - 在 GCE 部署流程中建立 `venv` 虛擬環境，移除所有 `pip install pandas_ta` 指令。
 - **PM2 虛擬環境啟動**：
     - 使用 `--interpreter ./venv/bin/python` 啟動策略，確保運行環境的一致性。
 
