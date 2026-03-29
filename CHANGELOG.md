@@ -1,5 +1,14 @@
 
 
+
+# Iteration 132.10: Physical De-tagging - Hard-coding Version
+- **Hard-coded Version**: Modified `src/pandas_ta/__init__.py` to hard-code `version = "0.3.14b0"` to bypass `importlib.metadata.PackageNotFoundError` in GCE environment.
+- **Workflow Reinforcement**: Maintained "Forced Reset" logic in `.github/workflows/on_premise_validation_deploy.yml` for reliable deployment.
+
+
+
+
+
 # Iteration 132.9: Physical Forced Reset - Git Conflict Resolution
 - **Forced Reset Logic**: Updated `.github/workflows/on_premise_validation_deploy.yml` to use `git fetch --all`, `git reset --hard origin/main`, and `git clean -fd` to resolve GCE Git conflicts.
 - **Verification**: Added `ls -R src/pandas_ta` to the deployment script to confirm source presence.

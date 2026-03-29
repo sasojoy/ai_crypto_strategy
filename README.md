@@ -1,10 +1,13 @@
-# AI Crypto Strategy - 🚀 【Iteration 132.9 | Physical Forced Reset】
+# AI Crypto Strategy - 🚀 【Iteration 132.10 | Physical De-tagging】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 132.9 | Physical Forced Reset)
+## 🌟 當前策略狀態 (Iteration 132.10 | Physical De-tagging)
 
 ### 1. 核心架構：實地驗證制 (On-Premise Validation)
+- **物理去標籤 (Physical De-tagging)**：
+    - 硬編碼 `src/pandas_ta/__init__.py` 中的版本號為 `"0.3.14b0"`。
+    - 徹底解決 GCE 環境因 `importlib.metadata` 找不到 `pandas-ta` 安裝包而導致的 `PackageNotFoundError`。
 - **物理清場 (Physical Forced Reset)**：
     - 部署腳本升級為「暴力三部曲」：`git fetch --all` + `git reset --hard origin/main` + `git clean -fd`。
     - 徹底解決 GCE 上因本地修改或 `pandas_ta` 注入導致的 Git 衝突。
