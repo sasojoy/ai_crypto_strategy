@@ -1,8 +1,4 @@
-
-
-
-# Iteration 133.1: Hybrid Vendorizing - 2026-03-30
-
+# Changelog
 
 # Iteration 133.2: 物理掃蕩 (Total Numba Removal) - 2026-03-30
 ### Added
@@ -12,7 +8,7 @@
 ### Changed
 - **Deployment Workflow**: Removed `pip install pandas_ta` from `.github/workflows/on_premise_validation_deploy.yml`.
 
-
+# Iteration 133.1: Hybrid Vendorizing - 2026-03-30
 ### Added
 - **Hybrid Vendorizing**: Integrated `pandas_ta` source code directly into `src/pandas_ta/`.
 - **Local Installation**: Updated GCE deployment to install `pandas_ta` from the local source directory within the `venv`.
