@@ -93,11 +93,28 @@ STRATEGY_VERSION = "[H16_FINAL_SHARP]"
 
 # Iteration 127.0: Live Hunting Mode Enabled
 IS_SIMULATION = False
+WATCH_ONLY = False
 
-# Security Check
+# Security Check & Watcher Mode Initialization
 if not IS_SIMULATION:
     if not os.getenv('BINANCE_API_KEY') or not os.getenv('BINANCE_SECRET'):
-        raise RuntimeError("❌ [SECURITY FATAL] IS_SIMULATION is False but no API keys found. Terminating for safety.")
+        print("⚠️ [SECURITY WARNING] No API keys found. Entering WATCH_ONLY mode.")
+        WATCH_ONLY = True
+    else:
+        print("🚀 [SECURITY] API keys found. Full Trade Mode Active.")
+
+# Initialize Exchange
+if WATCH_ONLY:
+    exchange = ccxt.binance({
+        'enableRateLimit': True,
+    })
+else:
+    exchange = ccxt.binance({
+        'apiKey': os.getenv('BINANCE_API_KEY'),
+        'secret': os.getenv('BINANCE_SECRET'),
+        'enableRateLimit': True,
+        'options': {'defaultType': 'future'}
+    })
 
 
 
@@ -129,7 +146,19 @@ def execute_trade(symbol, side, qty, price, atr, params, ml_score=0, reason=""):
     print(f"📈 [TP] {tp_price:.2f} (Buffer: {fee_buffer*100:.1f}%) | [SL] {sl_price:.2f}")
 
     # 3. Simulation/Real Order Execution
-    if IS_SIMULATION:
+    if WATCH_ONLY:
+        print(f"🔔 [WATCH_ONLY] Signal Detected: {side.upper()} {symbol} at {price}")
+        msg = (
+            f"📢 [H16_WATCHER] 偵測到進場訊號！\n"
+            f"標的: {symbol}\n"
+            f"動作: {side.upper()} (Long/Short)\n"
+            f"現價: {price:.2f}\n"
+            f"原因: {reason} / AI Score {ml_score:.4f}\n"
+            f"預計 TP: {tp_price:.2f} (4.0x ATR)\n"
+            f"預計 SL: {sl_price:.2f} (1.8x ATR)"
+        )
+        send_telegram_msg(msg)
+    elif IS_SIMULATION:
         print(f"📝 [SIMULATION] Order recorded for {symbol}")
         # In simulation, we just log it
         record_trade_history(symbol, side, price, qty, 0, reason, ml_score, tp_price)

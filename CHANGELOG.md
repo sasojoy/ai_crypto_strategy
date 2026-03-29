@@ -1,6 +1,24 @@
 
 # Changelog
 
+## [1.31.0] - 2026-03-30
+### Added
+- **H16_WATCHER Signal Formatter**: Implemented rich Telegram notifications for `WATCH_ONLY` mode, including Symbol, Action, Price, Reason, AI Score, and Dynamic TP/SL.
+### Stats
+- **Final Backtest Audit**: Verified 180D 1H performance on "Pure Cache" (Net PnL: -$203.15 on $2000 initial, reflecting strict friction and current market regime).
+
+## [1.30.0] - 2026-03-30
+### Added
+- **WATCH_ONLY Mode**: Automatic fallback to read-only market monitoring when API secrets are missing.
+- **Public API Integration**: Enabled `ccxt.binance()` public data fetching for shadow trading.
+### Changed
+- **Backtest Relaxation**: Allowed backtesting without API keys while maintaining simulation warnings.
+
+## [1.29.0] - 2026-03-30
+### Fixed
+- **Authenticity Liquidation**: Removed all mock-logic and enforced strict "no keys, no start" policy for production.
+- **Cache Purge**: Physically deleted all `data/*.csv` to ensure data integrity.
+
 ## [1.28.1] - 2026-03-30
 ### Fixed
 - **CI/CD Pipeline Reinforcement**: Updated `setup_env.sh` to use `requirements.txt` for all dependency installations, ensuring environment parity between local and GCE.

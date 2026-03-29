@@ -8,6 +8,14 @@ from src.features import calculate_features as extract_features
 from src.ml_model import CryptoMLModel
 from src.strategy.logic import DualTrackStrategy
 
+
+# Iteration 130.0: Read-only Watcher Mode for Backtest
+if not os.getenv('BINANCE_API_KEY') or not os.getenv('BINANCE_SECRET'):
+    print("⚠️ [SIMULATION ONLY] No API keys found. Using Public API for data fetching.")
+else:
+    print("🚀 [AUTHENTICATED] API keys found. Backtest running in high-fidelity mode.")
+
+
 def fetch_backtest_data(symbol, timeframe, days=180):
     exchange = ccxt.binance()
     since = exchange.parse8601((datetime.now() - timedelta(days=days)).isoformat())

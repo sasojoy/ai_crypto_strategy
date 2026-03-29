@@ -2,8 +2,5 @@
 __pycache__/
 *.db
 .openhands/
-EOF > .gitignore
-*.env
-__pycache__/
-*.db
+data/
 .openhands/
