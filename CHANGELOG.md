@@ -1,6 +1,11 @@
 
 # Changelog
 
+## [Iteration 132.7] - 2026-03-30
+### Fixed
+- **Final Path Injection**: Implemented robust `BASE_DIR` and `SRC_DIR` injection at the very top of `src/market.py` to ensure local `pandas_ta` is found on GCE.
+- **Import Diagnostics**: Added try-except block with directory listing for real-time `pm2` log debugging.
+
 ## [Iteration 132.6] - 2026-03-30
 ### Fixed
 - **Actions Remote Source Airdrop**: Updated GitHub Actions to manually clone `pandas_ta` source into `src/` directory, bypassing broken `pip` on GCE.
