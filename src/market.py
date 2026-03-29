@@ -993,57 +993,50 @@ def run_strategy(ml_model):
             rsi = float(calculate_rsi(df).iloc[-1])
             dist_ema200 = (df['close'].iloc[-1] - calculate_ema(df, 200).iloc[-1]) / calculate_ema(df, 200).iloc[-1]
             
-            # Iteration 108.0: Enhanced Entry Threshold
-            threshold = 0.75
-            effective_threshold = threshold
+            # Iteration 126.0: Precision Hunter Production Logic
+            import pandas_ta as ta
             
-            # Market Weather Rules
-            can_trade = True
-            reason = ""
+            # 1. Indicators
+            ema20 = calculate_ema(df, 20).iloc[-1]
+            atr = calculate_atr(df, 14).iloc[-1]
+            vol_avg = df['volume'].rolling(24).mean().iloc[-1]
             
-            if not btc_bullish:
-                if rsi < 15:
-                    reason = "Extreme RSI < 15 (Bear Market Exception)"
-                    effective_threshold = 0.40 # Allow bottom fishing in bear market
-                else:
-                    can_trade = False
-                    reason = "BTC < EMA200 (Bear Market Protection)"
-            else:
-                # Bull Market: Relative Strength Filter
-                # Symbol must be stronger than BTC or have high AI score
-                rel_strength = X_input['relative_strength_btc'].iloc[0]
-                if rel_strength < 0 and ml_score < 0.85:
-                    can_trade = False
-                    reason = "Weak Relative Strength in Bull Market"
-                else:
-                    reason = f"AI Score {ml_score:.2f} >= {effective_threshold}"
+            adx_df = ta.adx(df['high'], df['low'], df['close'], length=14)
+            curr_adx = adx_df['ADX_14'].iloc[-1]
+            is_adx_rising = adx_df['ADX_14'].diff().iloc[-1] > 0
+            
+            # 2. Tiered Volume Threshold
+            vol_threshold = 2.0 if symbol in ['BTC/USDT', 'ETH/USDT'] else 3.0
+            is_volume_burst = df['volume'].iloc[-1] > (vol_avg * vol_threshold)
+            is_trend_confirmed = curr_adx > 25 and is_adx_rising
+            
+            # 3. Entry Logic (Bi-Directional)
+            side = None
+            entry_reason = ""
+            
+            # Long Entry
+            if (btc_bullish and df['close'].iloc[-1] > ema20 and 
+                is_volume_burst and is_trend_confirmed and ml_score > 0.55):
+                side = 'Long'
+                entry_reason = f"V126_LONG | AI:{ml_score:.2f} | ADX:{curr_adx:.1f} | Vol:{vol_threshold}x"
+            
+            # Short Entry
+            elif (not btc_bullish and df['close'].iloc[-1] < ema20 and 
+                  is_volume_burst and is_trend_confirmed and ml_score < 0.45):
+                side = 'Short'
+                entry_reason = f"V126_SHORT | AI:{ml_score:.2f} | ADX:{curr_adx:.1f} | Vol:{vol_threshold}x"
 
-            flash_buy = rsi < 15
-            
-            # Signal Logic
-            is_signal = can_trade and (ml_score >= effective_threshold or flash_buy)
-            
-            # Iteration 103.0: Compounding Engine (Dynamic Kelly)
-            # Formula: [Current Equity] * [AI Score / 2]
-            if balance >= 1000:
-                weight = ml_score / 2.0
-            else:
-                weight = 0.2 # Safe Buffer: Fixed 20% for small accounts
-            
-            pos_size = balance * weight
-            
-            # Iteration 101.0: Unified TP/SL Logic
-            is_major = symbol in ['BTC/USDT', 'ETH/USDT']
-            params['tp_pct'] = 0.035 if is_major else 0.050
-            params['sl_pct'] = 0.03 # Base SL, will be overridden by ATR if logic allows
-            
-            latest = df.iloc[-1]
-            if is_signal and current_pos_count < 5: # Allow up to 5 positions
-                entry_reason = f"[1H Core] {reason}"
-                print(f"🎯 [SIGNAL] {symbol} (1H) AI: {ml_score:.2f} | Reason: {entry_reason}")
+            # 4. Execution with ATR Dynamic SL/TP
+            if side and current_pos_count < 5:
+                # Iteration 125.0: Wider ATR Dynamic SL/TP
+                # We pass these to execute_trade via params override
+                params['tp_pct'] = (4.0 * atr) / df['close'].iloc[-1]
+                params['sl_pct'] = (1.8 * atr) / df['close'].iloc[-1]
                 
-                atr = calculate_atr(df).iloc[-1]
-                execute_trade(symbol, 'Long', pos_size, latest['close'], atr, params, ml_score, entry_reason)
+                pos_size = balance * 0.2 # Fixed 20% for stability in V126
+                
+                print(f"🎯 [SIGNAL] {symbol} (1H) {side} | Reason: {entry_reason}")
+                execute_trade(symbol, side, pos_size, df['close'].iloc[-1], atr, params, ml_score, entry_reason)
                 
         except Exception as e:
             print(f"Error processing {symbol}: {e}")

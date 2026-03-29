@@ -7,7 +7,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
 
-MODEL_PATH = 'models/rf_model.joblib'
+MODEL_PATH = 'models/model_v118_xgb.joblib'
 os.makedirs('models', exist_ok=True)
 
 class CryptoMLModel:
@@ -55,7 +55,6 @@ class CryptoMLModel:
         # Feature Consistency Check
         if isinstance(X, pd.DataFrame):
             if self.feature_names and list(X.columns) != self.feature_names:
-                print(f"⚠️ Feature mismatch! Expected {self.feature_names}, got {list(X.columns)}")
                 # Reorder columns to match training data
                 X = X.reindex(columns=self.feature_names)
         

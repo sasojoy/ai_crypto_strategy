@@ -1,4 +1,20 @@
 
+# Changelog
+
+## [1.26.0] - 2026-03-30
+### Added
+- **ATR-Dynamic Risk Engine**: Implemented 1.8x ATR Stop Loss and 4.0x ATR Take Profit for adaptive market volatility.
+- **Tiered Volume Filter**: 2.0x threshold for BTC/ETH and 3.0x for Alts (SOL/FET/AVAX) to filter noise.
+- **ADX Trend Guard**: Entry only allowed when ADX > 25 and rising, ensuring strong momentum.
+- **AI-Guarded Momentum**: Integrated AI Score (0.55/0.45) as a secondary confirmation for momentum entries.
+
+### Fixed
+- Resolved feature alignment issues between backtest and production.
+- Corrected timeframe mismatches (15m vs 1H) across all symbols.
+- Optimized FET/AVAX performance by reducing over-trading in low-volume regimes.
+
+
+
 
 ## [1.16.6] - 2026-03-29
 ### Fixed
