@@ -1,24 +1,7 @@
-
 import sys, os
-# 1. 取得專案絕對路徑
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC_DIR = os.path.join(BASE_DIR, 'src')
-# 2. 強制注入路徑
-if SRC_DIR not in sys.path: sys.path.insert(0, SRC_DIR)
-if BASE_DIR not in sys.path: sys.path.insert(0, BASE_DIR)
-# 3. 嘗試導入
-try:
-    import pandas_ta as ta
-    print("✅ [System] pandas_ta loaded successfully from local src")
-except ImportError:
-    print("❌ [System] Still cannot find pandas_ta. Checking directory...")
-    try:
-        print(f"Directory contents: {os.listdir(SRC_DIR)}")
-    except:
-        print("Cannot list SRC_DIR")
-
-# 打印目前嘗試的路徑，方便在 pm2 logs 診斷
-print(f"🔍 [Path Debug] Current Sys Path: {sys.path[:3]}")
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path: sys.path.insert(0, current_dir)
+import pandas_ta as ta
 
 
 import os

@@ -1,4 +1,12 @@
 
+# Iteration 132.8: Ultimate Fix - Physical Source Injection
+- **Physical Source Injection**: Hard-coded `pandas_ta` source into `src/pandas_ta/` to bypass GCE environment restrictions.
+- **Path Mounting**: Updated `src/market.py` to force-mount the local `src/` directory for reliable imports.
+- **Workflow Optimization**: Simplified `.github/workflows/on_premise_validation_deploy.yml` to a direct `git pull` and `pm2 restart`.
+- **Verification**: Confirmed `src/pandas_ta` content and dual-track backtest results.
+
+
+
 # Changelog
 
 ## [Iteration 132.7] - 2026-03-30

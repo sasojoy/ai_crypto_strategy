@@ -1,12 +1,14 @@
-# AI Crypto Strategy - 🚀 【Iteration 132.7 | Cold Start & Refined Cleanup】
+# AI Crypto Strategy - 🚀 【Iteration 132.8 | Physical Source Injection】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 132.7 | Cold Start & Refined Cleanup)
+## 🌟 當前策略狀態 (Iteration 132.8 | Physical Source Injection)
 
 ### 1. 核心架構：實地驗證制 (On-Premise Validation)
-- **落實軍規八 (No Error Masking)**：
-    - 嚴禁使用 `0.5` 掩蓋 AI 預測錯誤。所有過濾器（如縮量禁止）僅攔截下單動作，不攔截 AI 觀察，確保戰報中 AI 分數 100% 可見。
+- **物理源碼注入 (Physical Source Injection)**：
+    - 將 `pandas_ta` 源碼直接內置於 `src/pandas_ta/`，徹底解決 GCE 環境因網路或權限問題導致的依賴缺失。
+- **強制路徑掛載 (Path Mounting)**：
+    - 在 `src/market.py` 頂部強制掛載 `src/` 目錄，確保 PM2 環境下模組導入 100% 成功。
 - **數據預熱 (Pre-warmup)**：
     - 啟動時強制同步 500 根 K 線，確保 EMA200 等指標在第一時間精準計算。
 - **數據持久化 (Data Persistence)**：
@@ -77,4 +79,4 @@ ai_crypto_strategy/
 ```
 
 ---
-*Last Updated: 2026-03-18*
+*Last Updated: 2026-03-30*
