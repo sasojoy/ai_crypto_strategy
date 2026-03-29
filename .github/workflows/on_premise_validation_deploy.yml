@@ -98,7 +98,9 @@ jobs:
             # 清理 staging 的 pycache，但不刪除 .git 以便下次加速
             find "$STAGING_DIR" -name "__pycache__" -type d -exec rm -rf {} +
 
-            pip install --user -r requirements.txt
+            export PATH=$PATH:/home/sasojoy/.local/bin
+            python3 -m pip install --user --upgrade pip
+            python3 -m pip install --user pandas_ta ta pandas ccxt xgboost joblib python-dotenv
             pm2 stop all || true
             pm2 delete all || true
             pm2 start src/market.py --name "H16_PREDATOR_V132" --update-env

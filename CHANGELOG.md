@@ -1,6 +1,11 @@
 
 # Changelog
 
+## [1.32.2] - 2026-03-30
+### Fixed
+- **YAML Physical Pressure**: Updated GitHub Actions to explicitly install dependencies and export PATH for GCE.
+- **Path-Finding System**: Added forced user-site path injection in `src/market.py` to resolve module import issues on GCE.
+
 ## [1.32.0] - 2026-03-30
 ### Fixed
 - **Forced Realignment**: Hard-coded `requirements.txt` to ensure `pandas_ta` and `ta` are correctly installed on GCE.

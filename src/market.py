@@ -1,3 +1,10 @@
+
+import sys, os
+# 強制指向 GCE 的用戶庫路徑
+user_site = os.path.expanduser("~/.local/lib/python3.10/site-packages")
+if user_site not in sys.path: sys.path.insert(0, user_site)
+
+
 import os
 import time
 import ccxt
