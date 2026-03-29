@@ -84,6 +84,12 @@ def run_backtest_v97(symbol, df, btc_df, ml_model, initial_balance=2000):
                 continue
             
             ml_score = score_series.loc[current_time]
+            
+            # Iteration 126.1: Consistency Logging
+            feature_vals = X_all.loc[current_time].tolist()
+            if i == len(df) - 1: # Only log the latest for comparison
+                print(f"DEBUG [Consistency] symbol: {symbol} | features: {feature_vals}")
+            
             curr_vol = df['volume'].iloc[i]
             avg_vol = vol_24h_avg.iloc[i]
             curr_btc_price = btc_price_series.iloc[i]

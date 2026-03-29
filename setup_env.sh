@@ -17,10 +17,9 @@ find . -type d -name "__pycache__" -exec rm -rf {} +
 # 3. Install core libraries
 echo "📦 Installing core libraries (Python 3.10 compatible)..."
 pip install --upgrade pip
-pip install pandas numpy ccxt joblib python-dotenv
-pip install scikit-learn==1.7.2
+pip install -r requirements.txt
 
 # 4. Verify installation
 echo "✅ Environment Setup Complete!"
 python --version
-pip list | grep -E "pandas|numpy|scikit-learn|ccxt"
+pip list | grep -E "pandas|numpy|scikit-learn|ccxt|pandas-ta"
