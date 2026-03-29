@@ -1,6 +1,31 @@
 
 # Changelog
 
+## [1.28.1] - 2026-03-30
+### Fixed
+- **CI/CD Pipeline Reinforcement**: Updated `setup_env.sh` to use `requirements.txt` for all dependency installations, ensuring environment parity between local and GCE.
+- **Dependency Locking**: Added `pandas_ta>=0.4.0` to `requirements.txt` to prevent `ModuleNotFoundError` in production.
+- **Deployment Workflow**: Confirmed `pm2 restart` with `--update-env` flag in `.github/workflows/on_premise_validation_deploy.yml`.
+
+## [1.27.1] - 2026-03-30
+### Fixed
+- **Environment Completion**: Resolved `pandas_ta` missing issue on GCE.
+- **Interface Alignment**: Fixed `ImportError` by correctly mapping `calculate_features` as `extract_features` in `src/market.py`.
+### Added
+- **Feature Calculation Audit**: Added `🔍 [H16_PREDATOR] Feature Calculation Success` logs for real-time monitoring.
+
+## [1.27.0] - 2026-03-30
+### Changed
+- **Live Hunting Mode**: Switched `IS_SIMULATION` to `False` in `src/market.py`.
+- **Risk Parameters**: Set 20% position weight per trade with 1:2.2 R:R target.
+### Added
+- **Ignition Notification**: Integrated Telegram alert for live trading commencement.
+
+## [1.26.2] - 2026-03-30
+### Added
+- **GPS Audit System**: Implemented `src/verify_env.py` for physical verification of System Time, Data Time, and GCE Public IP.
+- **Consistency Logging**: Added `DEBUG [Consistency]` logs to compare real-time features vs backtest features (Tolerance < 0.01%).
+
 ## [1.26.0] - 2026-03-30
 ### Added
 - **ATR-Dynamic Risk Engine**: Implemented 1.8x ATR Stop Loss and 4.0x ATR Take Profit for adaptive market volatility.
