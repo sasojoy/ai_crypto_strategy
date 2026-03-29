@@ -5,6 +5,28 @@
 
 
 
+
+
+# Iteration 133.0: Architecture Reset - Venv Standard
+- **Physical Restoration**: Deleted internal `src/pandas_ta` and restored `src/market.py` to standard imports.
+- **Venv Isolation**: Updated `.github/workflows/on_premise_validation_deploy.yml` to create and use a Python virtual environment (`venv`) on GCE.
+- **PM2 Integration**: Configured PM2 to use the virtual environment's interpreter (`./venv/bin/python`) for process management.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Iteration 132.12: Scorched Earth Fix - Global Numba Shielding
 - **Global Numba Shielding**: Applied a global `sed` replacement to wrap all `from numba import njit` statements in a `try-except` block across the entire `src/pandas_ta` directory.
 - **_numba.py Hardening**: Specifically verified and hardened `src/pandas_ta/utils/_numba.py` to ensure `ModuleNotFoundError` is bypassed.

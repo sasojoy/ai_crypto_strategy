@@ -1,31 +1,18 @@
-# AI Crypto Strategy - 🚀 【Iteration 132.12 | Scorched Earth Fix】
+# AI Crypto Strategy - 🚀 【Iteration 133.0 | Architecture Reset】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 132.12 | Scorched Earth Fix)
+## 🌟 當前策略狀態 (Iteration 133.0 | Architecture Reset)
 
-### 1. 核心架構：實地驗證制 (On-Premise Validation)
-- **焦土修正 (Scorched Earth Fix)**：
-    - 全域屏蔽 `numba`：使用 `sed` 暴力將 `src/pandas_ta` 下所有 `from numba import njit` 替換為具備 `ImportError` 保護的安全模式。
-    - 徹底解決 GCE 環境因 `pandas_ta` 內部多處隱藏的 `numba` 依賴導致的 `ModuleNotFoundError`。
-- **物理閹割 (Physical Emasculation)**：
-    - 在 `src/pandas_ta/utils/_math.py` 中對 `numba.njit` 進行屏蔽處理。
-- **物理去標籤 (Physical De-tagging)**：
-    - 硬編碼 `src/pandas_ta/__init__.py` 中的版本號為 `"0.3.14b0"`。
-    - 徹底解決 GCE 環境因 `importlib.metadata` 找不到 `pandas-ta` 安裝包而導致的 `PackageNotFoundError`。
-- **物理清場 (Physical Forced Reset)**：
-    - 部署腳本升級為「暴力三部曲」：`git fetch --all` + `git reset --hard origin/main` + `git clean -fd`。
-    - 徹底解決 GCE 上因本地修改或 `pandas_ta` 注入導致的 Git 衝突。
-- **物理源碼注入 (Physical Source Injection)**：
-    - 將 `pandas_ta` 源碼直接內置於 `src/pandas_ta/`，徹底解決 GCE 環境因網路或權限問題導致的依賴缺失。
-- **強制路徑掛載 (Path Mounting)**：
-    - 在 `src/market.py` 頂部強制掛載 `src/` 目錄，確保 PM2 環境下模組導入 100% 成功。
-- **數據預熱 (Pre-warmup)**：
-    - 啟動時強制同步 500 根 K 線，確保 EMA200 等指標在第一時間精準計算。
-- **數據持久化 (Data Persistence)**：
-    - 具備 `data/` 資料夾緩存機制，防止 PM2 重啟導致的數據斷層。
-- **生產門禁 (Production Gate)**：
-    - 只有當 GCE 實地回測達標 (**Win Rate > 60%** 且 **Profit Factor > 1.8**)，代碼才會同步至正式目錄並重啟。
+### 1. 核心架構：虛擬環境標準化 (Venv Standard)
+- **架構重置 (Architecture Reset)**：
+    - 徹底移除專案內部的 `src/pandas_ta` 源碼，恢復乾淨的代碼結構。
+    - 恢復 `src/market.py` 為標準 `import pandas_ta as ta`。
+- **虛擬環境隔離 (Venv Isolation)**：
+    - 在 GCE 部署流程中強制建立 `venv` 虛擬環境。
+    - 透過 `pip install pandas_ta==0.3.14b0` 在隔離環境中安裝依賴，徹底解決全域環境衝突。
+- **PM2 虛擬環境啟動**：
+    - 使用 `--interpreter ./venv/bin/python` 啟動策略，確保運行環境的一致性。
 
 ### 2. 品質保證 (Quality Assurance)
 - **環境自癒 (Self-Healing)**：透過 `setup_env.sh` 自動修復目錄結構與依賴版本 (`scikit-learn==1.7.2`)。

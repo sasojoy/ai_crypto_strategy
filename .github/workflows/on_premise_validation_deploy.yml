@@ -39,5 +39,14 @@ jobs:
             git fetch --all
             git reset --hard origin/main
             git clean -fd
-            ls -R src/pandas_ta | head -n 5
-            pm2 restart all --update-env
+            
+            # Iteration 133.0: Venv Standard Setup
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install --upgrade pip
+            pip install pandas_ta==0.3.14b0 ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn
+            
+            # PM2 Reset with Venv Interpreter
+            pm2 delete all || true
+            pm2 start src/market.py --name "H16_PREDATOR_V133" --interpreter ./venv/bin/python
+            pm2 save
