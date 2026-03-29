@@ -1,6 +1,19 @@
 
 
 
+
+
+# Iteration 132.11: Physical Emasculation - Numba Shielding
+- **Numba Shielding**: Modified `src/pandas_ta/utils/_math.py` to include a fallback for `njit` when `numba` is not installed, preventing `ImportError` on GCE.
+- **Workflow Reinforcement**: Maintained "Forced Reset" logic in `.github/workflows/on_premise_validation_deploy.yml` for reliable deployment.
+
+
+
+
+
+
+
+
 # Iteration 132.10: Physical De-tagging - Hard-coding Version
 - **Hard-coded Version**: Modified `src/pandas_ta/__init__.py` to hard-code `version = "0.3.14b0"` to bypass `importlib.metadata.PackageNotFoundError` in GCE environment.
 - **Workflow Reinforcement**: Maintained "Forced Reset" logic in `.github/workflows/on_premise_validation_deploy.yml` for reliable deployment.

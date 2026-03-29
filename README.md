@@ -1,10 +1,13 @@
-# AI Crypto Strategy - 🚀 【Iteration 132.10 | Physical De-tagging】
+# AI Crypto Strategy - 🚀 【Iteration 132.11 | Physical Emasculation】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 132.10 | Physical De-tagging)
+## 🌟 當前策略狀態 (Iteration 132.11 | Physical Emasculation)
 
 ### 1. 核心架構：實地驗證制 (On-Premise Validation)
+- **物理閹割 (Physical Emasculation)**：
+    - 在 `src/pandas_ta/utils/_math.py` 中對 `numba.njit` 進行屏蔽處理。
+    - 當環境缺少 `numba` 時，自動切換至「假模擬」裝飾器，徹底解決 GCE 環境因缺少編譯依賴導致的 `ImportError`。
 - **物理去標籤 (Physical De-tagging)**：
     - 硬編碼 `src/pandas_ta/__init__.py` 中的版本號為 `"0.3.14b0"`。
     - 徹底解決 GCE 環境因 `importlib.metadata` 找不到 `pandas-ta` 安裝包而導致的 `PackageNotFoundError`。
