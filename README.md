@@ -1,10 +1,13 @@
-# AI Crypto Strategy - 🚀 【Iteration 132.8 | Physical Source Injection】
+# AI Crypto Strategy - 🚀 【Iteration 132.9 | Physical Forced Reset】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 132.8 | Physical Source Injection)
+## 🌟 當前策略狀態 (Iteration 132.9 | Physical Forced Reset)
 
 ### 1. 核心架構：實地驗證制 (On-Premise Validation)
+- **物理清場 (Physical Forced Reset)**：
+    - 部署腳本升級為「暴力三部曲」：`git fetch --all` + `git reset --hard origin/main` + `git clean -fd`。
+    - 徹底解決 GCE 上因本地修改或 `pandas_ta` 注入導致的 Git 衝突。
 - **物理源碼注入 (Physical Source Injection)**：
     - 將 `pandas_ta` 源碼直接內置於 `src/pandas_ta/`，徹底解決 GCE 環境因網路或權限問題導致的依賴缺失。
 - **強制路徑掛載 (Path Mounting)**：

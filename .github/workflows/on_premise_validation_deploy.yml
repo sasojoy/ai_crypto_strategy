@@ -35,4 +35,9 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd ~/ai_crypto_strategy && git pull && pm2 restart all --update-env
+            cd ~/ai_crypto_strategy
+            git fetch --all
+            git reset --hard origin/main
+            git clean -fd
+            ls -R src/pandas_ta | head -n 5
+            pm2 restart all --update-env

@@ -1,4 +1,12 @@
 
+
+# Iteration 132.9: Physical Forced Reset - Git Conflict Resolution
+- **Forced Reset Logic**: Updated `.github/workflows/on_premise_validation_deploy.yml` to use `git fetch --all`, `git reset --hard origin/main`, and `git clean -fd` to resolve GCE Git conflicts.
+- **Verification**: Added `ls -R src/pandas_ta` to the deployment script to confirm source presence.
+
+
+
+
 # Iteration 132.8: Ultimate Fix - Physical Source Injection
 - **Physical Source Injection**: Hard-coded `pandas_ta` source into `src/pandas_ta/` to bypass GCE environment restrictions.
 - **Path Mounting**: Updated `src/market.py` to force-mount the local `src/` directory for reliable imports.
