@@ -8,10 +8,11 @@
 # Iteration 133.7: 離線 Whl 強攻 (Offline Wheel Deployment) - 2026-03-30
 ### Added
 - **Offline Wheel Deployment**: Added `wheels/` directory containing `pandas_ta-0.4.71b0-py3-none-any.whl` to bypass GCE network issues.
-- **Local Installation**: Updated deployment workflow to install `pandas-ta` directly from the local wheel file.
+- **Local Installation Protocol**: Updated deployment workflow to install `pandas-ta` directly from the local wheel file, bypassing PyPI.
+- **Path Hardening**: Added `PYTHONPATH` export in deployment script to ensure PM2 correctly locates the virtual environment's site-packages.
 
 ### Changed
-- **Deployment Workflow**: Modified `.github/workflows/on_premise_validation_deploy.yml` to use `pip install ./wheels/*.whl`.
+- **Deployment Workflow**: Modified `.github/workflows/on_premise_validation_deploy.yml` to use `pip install ./wheels/*.whl` and optimized PM2 startup sequence.
 
 
 
