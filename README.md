@@ -1,16 +1,17 @@
-# AI Crypto Strategy - 🚀 【Iteration 133.0 | Architecture Reset】
+# AI Crypto Strategy - 🚀 【Iteration 133.1 | Hybrid Vendorizing】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 133.0 | Architecture Reset)
+## 🌟 當前策略狀態 (Iteration 133.1 | Hybrid Vendorizing)
 
-### 1. 核心架構：虛擬環境標準化 (Venv Standard)
-- **架構重置 (Architecture Reset)**：
-    - 徹底移除專案內部的 `src/pandas_ta` 源碼，恢復乾淨的代碼結構。
-    - 恢復 `src/market.py` 為標準 `import pandas_ta as ta`。
-- **虛擬環境隔離 (Venv Isolation)**：
-    - 在 GCE 部署流程中強制建立 `venv` 虛擬環境。
-    - 透過 `pip install pandas_ta==0.3.14b0` 在隔離環境中安裝依賴，徹底解決全域環境衝突。
+### 1. 核心架構：終極混合架構 (Hybrid Vendorizing)
+- **物理源碼注入 (Physical Source Injection)**：
+    - 將 `pandas_ta` 源碼直接內置於 `src/pandas_ta/`，徹底解決 GCE 環境因網路或權限問題導致的依賴缺失。
+- **虛擬環境本地安裝 (Venv Local Install)**：
+    - 在 GCE 部署流程中建立 `venv` 虛擬環境。
+    - 透過 `pip install ./src/pandas_ta` 直接安裝本地源碼，確保 100% 離線可用性。
+- **版本硬化 (Version Hardening)**：
+    - 硬編碼 `src/pandas_ta/__init__.py` 中的版本號為 `"0.3.14b0"`，解決 `importlib.metadata` 異常。
 - **PM2 虛擬環境啟動**：
     - 使用 `--interpreter ./venv/bin/python` 啟動策略，確保運行環境的一致性。
 

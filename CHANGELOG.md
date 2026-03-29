@@ -1,6 +1,16 @@
 
 
 
+## [133.1] - 2026-03-30
+### Added
+- **Hybrid Vendorizing**: Integrated `pandas_ta` source code directly into `src/pandas_ta/`.
+- **Local Installation**: Updated GCE deployment to install `pandas_ta` from the local source directory within the `venv`.
+- **Version Hardcoding**: Hardcoded `pandas_ta` version to `"0.3.14b0"` in `src/pandas_ta/__init__.py` to prevent `PackageNotFoundError`.
+
+### Changed
+- **Deployment Workflow**: Modified `.github/workflows/on_premise_validation_deploy.yml` to use `pip install ./src/pandas_ta`.
+
+
 
 
 

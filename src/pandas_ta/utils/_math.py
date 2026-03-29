@@ -15,18 +15,7 @@ from numpy import min as np_min
 from numpy.lib.stride_tricks import sliding_window_view
 
 from pandas import DataFrame, Series
-try:
-    try:
-    from numba import njit
-except ImportError:
-    def njit(f=None, *args, **kwargs):
-        if f is None: return lambda x: x
-        return f
-except ImportError:
-    def njit(f=None, *args, **kwargs):
-        if f is None:
-            return lambda x: x
-        return f
+from numba import njit
 from pandas_ta._typing import (
     Array,
     DictLike,
