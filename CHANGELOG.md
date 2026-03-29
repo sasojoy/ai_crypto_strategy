@@ -1,7 +1,7 @@
 
 
 
-## [133.1] - 2026-03-30
+# Iteration 133.1: Hybrid Vendorizing - 2026-03-30
 ### Added
 - **Hybrid Vendorizing**: Integrated `pandas_ta` source code directly into `src/pandas_ta/`.
 - **Local Installation**: Updated GCE deployment to install `pandas_ta` from the local source directory within the `venv`.
