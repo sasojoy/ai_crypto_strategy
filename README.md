@@ -1,18 +1,15 @@
-# AI Crypto Strategy - 🚀 【Iteration 133.9 | Python 3.12 Upgrade】
+# AI Crypto Strategy - 🚀 【Iteration 133.9 | Profit Recovery Plan】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 133.9 | Python 3.12 Upgrade)
+## 🌟 當前策略狀態 (Iteration 133.9 | Profit Recovery Plan)
 
-### 1. 核心架構：環境物理隔離 (Environment Isolation)
-- **絕對路徑啟動 (Absolute Path Execution)**：
-    - PM2 啟動腳本強制使用 `$(pwd)/venv/bin/python` 絕對路徑，徹底繞過 GCE 環境變數失效問題。
-- **離線依賴注入 (Offline Dependency Injection)**：
-    - 內置 `wheels/` 資料夾並包含 `pandas_ta-0.4.71b0-py3-none-any.whl`，實現 100% 離線安裝。
-- **策略戰術止損 (Tactical Stop Loss)**：
-    - **1H 週期統一**：全幣種回歸 1H 週期，大幅減少高摩擦磨損。
-    - **ATR 盈虧比優化**：止損 2.2x ATR / 止盈 5.5x ATR。
-    - **高勝率門檻**：AI Score >= 0.85 且價格必須在 1H EMA200 之上才准進場。
+### 1. 核心架構：利潤奪還計畫 (Profit Recovery Plan)
+- **1H EMA200 趨勢過濾**：價格在 EMA200 上方僅做多，下方僅做空，確保與大趨勢同步。
+- **動態 AI 門檻**：基礎門檻 0.82，高波動幣種 (FET/AVAX/SOL) 門檻 0.88。
+- **獲利空間過濾**：進場點與止盈點之間必須具備 > 1.5% 的淨獲利空間。
+- **保本移動止損 (Trailing Stop)**：獲利達到 2.0 * ATR 後，止損自動移至保本點。
+- **ATR 參數優化**：止損 2.5 * ATR / 止盈 5.0 * ATR。
 
 ### 2. 品質保證 (Quality Assurance)
 - **環境自癒 (Self-Healing)**：透過 `setup_env.sh` 自動修復目錄結構與依賴版本 (`scikit-learn==1.7.2`)。

@@ -1050,23 +1050,48 @@ def run_strategy(ml_model):
             is_volume_burst = df['volume'].iloc[-1] > (vol_avg * vol_threshold)
             is_trend_confirmed = curr_adx > 25 and is_adx_rising
             
-            # 3. Entry Logic (Iteration 133.8: Tactical Stop Loss & 1H Guard - Long Only)
+            # 3. Entry Logic (Iteration 133.9: Profit Recovery Plan)
             side = None
             entry_reason = ""
             
-            # 進場門檻：AI Score 必須 >= 0.85 且當前價格必須在 1H EMA200 之上
-            if (df['close'].iloc[-1] > ema200 and # 1H EMA200 Guard
-                ml_score >= 0.85 and              # AI Score >= 0.85
+            # Iteration 133.9: AI Score Thresholds
+            ai_threshold = 0.88 if symbol in ['FET/USDT', 'AVAX/USDT', 'SOL/USDT'] else 0.82
+            
+            # Iteration 133.9: Profit Space Filter (Entry to TP > 1.5% net)
+            # 1. Slippage Buffer Logic (Iteration 95.1)
+            if symbol in ['BTC/USDT', 'ETH/USDT']:
+                fee_buffer = 0.0015
+            elif symbol == 'SOL/USDT':
+                fee_buffer = 0.0025
+            else:
+                fee_buffer = 0.0055
+            
+            potential_tp_long = df['close'].iloc[-1] + (5.0 * atr)
+            potential_tp_short = df['close'].iloc[-1] - (5.0 * atr)
+            profit_space_long = (potential_tp_long - df['close'].iloc[-1]) / df['close'].iloc[-1] - fee_buffer
+            profit_space_short = (df['close'].iloc[-1] - potential_tp_short) / df['close'].iloc[-1] - fee_buffer
+
+            # Long Entry: Price > EMA200 + AI Score + Profit Space
+            if (df['close'].iloc[-1] > ema200 and 
+                ml_score >= ai_threshold and 
+                profit_space_long > 0.015 and
                 is_volume_burst and is_trend_confirmed and rsi > 50):
                 side = 'Long'
-                entry_reason = f"V133.8_LONG | AI:{ml_score:.2f} | ADX:{curr_adx:.1f} | Vol:{vol_threshold}x"
+                entry_reason = f"V133.9_LONG | AI:{ml_score:.2f} | Space:{profit_space_long*100:.1f}%"
+            
+            # Short Entry: Price < EMA200 + AI Score + Profit Space
+            elif (df['close'].iloc[-1] < ema200 and 
+                  (1 - ml_score) >= ai_threshold and 
+                  profit_space_short > 0.015 and
+                  is_volume_burst and is_trend_confirmed and rsi < 50):
+                side = 'Short'
+                entry_reason = f"V133.9_SHORT | AI:{ml_score:.2f} | Space:{profit_space_short*100:.1f}%"
 
             # 4. Execution with ATR Dynamic SL/TP
             if side and current_pos_count < 5:
-                # Iteration 133.8: ATR 2.2/5.5
-                # We pass these to execute_trade via params override
-                params['tp_pct'] = (5.5 * atr) / df['close'].iloc[-1]
-                params['sl_pct'] = (2.2 * atr) / df['close'].iloc[-1]
+                # Iteration 133.9: ATR 2.5/5.0
+                params['tp_pct'] = (5.0 * atr) / df['close'].iloc[-1]
+                params['sl_pct'] = (2.5 * atr) / df['close'].iloc[-1]
                 
                 pos_size = balance * 0.2 # Fixed 20% for stability in V126
                 
@@ -1108,26 +1133,26 @@ def manage_positions(prices_rsi):
         
 
         
-        # Iteration 67: Trailing Stop to Break-Even
-        # If profit > 0.8%, move SL to entry price
-        profit_pct = (current_price - entry_price) / entry_price if side == 'LONG' else (entry_price - current_price) / entry_price
-        if not state.get('be_sl_active', False) and profit_pct >= 0.008:
+        # Iteration 133.9: Trailing Stop to Break-Even (2 * ATR)
+        atr = state.get('atr', 0)
+        profit_abs = (current_price - entry_price) if side == 'LONG' else (entry_price - current_price)
+        if not state.get('be_sl_active', False) and atr > 0 and profit_abs >= (2.0 * atr):
             new_sl = entry_price
-            print(f"🛡️ [Iteration 91.1 | Final Stability Fix] {symbol} profit {profit_pct:.2%} >= 0.8%. Moving SL to Break-Even: {new_sl}")
+            print(f"🛡️ [Iteration 133.9] {symbol} profit {profit_abs:.4f} >= 2*ATR ({2.0*atr:.4f}). Moving SL to Break-Even: {new_sl}")
             if update_sl_order(symbol, state.get('sl_order_id'), new_sl):
                 state['be_sl_active'] = True
                 state['sl_price'] = new_sl
                 save_order_state(symbol, state)
-                send_telegram_msg(f"🛡️ [Iteration 91.1 | Final Stability Fix] {symbol} 已啟動保本止損 (Trailing to BE)。")
+                send_telegram_msg(f"🛡️ [Iteration 133.9] {symbol} 已達到 2*ATR 獲利，啟動保本止損 (Trailing to BE)。")
 
-        # Iteration 91.1: Professional Trailing Stop Logic
+        # Iteration 91.1: Professional Trailing Stop Logic (Legacy, kept for safety)
         state['highest_price'] = max(state.get('highest_price', entry_price), current_price)
         profit_from_entry = (state['highest_price'] - entry_price) / entry_price
         
         if profit_from_entry >= 0.01:
             # Iteration 91.1: Move SL to Entry + 0.5% after 1% profit
             new_sl = entry_price * 1.005
-            if new_sl > state.get('sl_price', 0):
+            if (side == 'LONG' and new_sl > state.get('sl_price', 0)) or (side == 'SHORT' and new_sl < state.get('sl_price', 999999)):
                 print(f"🛡️ [Iteration 91.1] {symbol} Profit > 1%. Moving SL to Entry + 0.5%: {new_sl}")
                 if update_sl_order(symbol, state.get('sl_order_id'), new_sl):
                     state['sl_price'] = new_sl

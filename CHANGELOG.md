@@ -7,14 +7,17 @@
 
 
 
-# Iteration 133.9: Python 3.12 升級與時區修復 (Python 3.12 Upgrade & Timezone Fix) - 2026-03-30
+# Iteration 133.9: 利潤奪還計畫 (Profit Recovery Plan) - 2026-03-30
 ### Added
-- **Python 3.12 Support**: Upgraded environment to Python 3.12 for better performance and modern syntax support.
-- **Timezone Compliance**: Replaced deprecated `utcnow()` with `now(UTC)` across the codebase to comply with Python 3.12 standards.
+- **1H EMA200 Trend Filter**: Restricted Long-only above EMA200 and Short-only below EMA200 to align with major trends.
+- **Dynamic AI Score Thresholds**: Implemented 0.82 base threshold and 0.88 for high-volatility assets (FET/AVAX/SOL).
+- **Profit Space Filter**: Mandatory 1.5% net profit space (after friction) required for entry.
+- **Trailing Stop (2*ATR)**: Automatic SL move to breakeven once profit reaches 2.0 * ATR.
 
 ### Changed
-- **Deployment Workflow**: Updated GHA to use `python3.12` and refined PM2 startup with `--update-env`.
-- **PM2 Process Name**: Renamed process to `H16_PREDATOR_V133_PRO` for production clarity.
+- **ATR Multipliers**: Adjusted to SL 2.5 * ATR and TP 5.0 * ATR for better risk-reward balance.
+- **Python 3.12 & Timezone**: Upgraded to Python 3.12 and replaced `utcnow()` with `now(UTC)`.
+- **PM2 Process Name**: Renamed to `H16_PREDATOR_V133_PRO` with `--update-env` support.
 
 
 

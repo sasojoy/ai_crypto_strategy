@@ -83,6 +83,9 @@ def run_backtest_v97(symbol, df, btc_df, ml_model, initial_balance=2000):
     equity_curve = [balance]
     weight = 0.2
     
+    # Iteration 133.9: Trailing Stop State
+    trailing_active = False
+
     for i in range(200, len(df)): # Start from 200 for EMA200
         current_time = df.index[i]
         current_price = df['close'].iloc[i]
@@ -114,29 +117,62 @@ def run_backtest_v97(symbol, df, btc_df, ml_model, initial_balance=2000):
             is_volume_burst = curr_vol > (avg_vol * vol_threshold)
             is_trend_confirmed = curr_adx > 25 and is_adx_rising
             
-            # Iteration 133.8: Tactical Stop Loss & 1H Guard (Long Only per Last Ultimatum)
-            # 進場門檻：AI Score 必須 >= 0.85 且當前價格必須在 1H EMA200 之上
-            if (current_price > curr_coin_ema200 and # 1H EMA200 Guard
-                ml_score >= 0.85 and                  # AI Score >= 0.85
-                is_volume_burst and 
-                is_trend_confirmed and
-                curr_rsi > 50):
+            # Iteration 133.9: AI Score Thresholds (Profit Recovery Plan)
+            ai_threshold = 0.88 if symbol in ['FET/USDT', 'AVAX/USDT', 'SOL/USDT'] else 0.82
+            
+            # Iteration 133.9: Profit Space Filter (Entry to TP > 1.5% net)
+            potential_tp = current_price + (5.0 * curr_atr)
+            potential_tp_short = current_price - (5.0 * curr_atr)
+            profit_space_long = (potential_tp - current_price) / current_price - friction
+            profit_space_short = (current_price - potential_tp_short) / current_price - friction
+
+            # Long Entry: Price > EMA200 + AI Score + Profit Space
+            if (current_price > curr_coin_ema200 and 
+                ml_score >= ai_threshold and 
+                profit_space_long > 0.015 and
+                is_volume_burst and is_trend_confirmed and curr_rsi > 50):
                 
                 position = 'long'
                 entry_price = current_price
                 entry_time = current_time
                 pos_size = balance * weight
-                # Iteration 133.8: ATR 2.2/5.5
-                sl_price = entry_price - (2.2 * curr_atr)
-                tp_price = entry_price + (5.5 * curr_atr)
+                sl_price = entry_price - (2.5 * curr_atr)
+                tp_price = entry_price + (5.0 * curr_atr)
+                trailing_active = False
+            
+            # Short Entry: Price < EMA200 + AI Score + Profit Space
+            elif (current_price < curr_coin_ema200 and 
+                  (1 - ml_score) >= ai_threshold and 
+                  profit_space_short > 0.015 and
+                  is_volume_burst and is_trend_confirmed and curr_rsi < 50):
+                
+                position = 'short'
+                entry_price = current_price
+                entry_time = current_time
+                pos_size = balance * weight
+                sl_price = entry_price + (2.5 * curr_atr)
+                tp_price = entry_price - (5.0 * curr_atr)
+                trailing_active = False
         else:
             # Exit logic
             exit_triggered = False
+            curr_atr = coin_atr.iloc[i]
+            
             if position == 'long':
+                # Trailing Stop: If profit > 2 * ATR, move SL to breakeven
+                if not trailing_active and (current_price - entry_price) > (2.0 * curr_atr):
+                    sl_price = entry_price
+                    trailing_active = True
+                
                 if current_price >= tp_price or current_price <= sl_price:
                     profit_pct = (current_price - entry_price) / entry_price
                     exit_triggered = True
             else:
+                # Trailing Stop: If profit > 2 * ATR, move SL to breakeven
+                if not trailing_active and (entry_price - current_price) > (2.0 * curr_atr):
+                    sl_price = entry_price
+                    trailing_active = True
+                
                 if current_price <= tp_price or current_price >= sl_price:
                     profit_pct = (entry_price - current_price) / entry_price
                     exit_triggered = True
