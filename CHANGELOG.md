@@ -6,6 +6,19 @@
 
 
 
+
+# Iteration 133.9: Python 3.12 升級與時區修復 (Python 3.12 Upgrade & Timezone Fix) - 2026-03-30
+### Added
+- **Python 3.12 Support**: Upgraded environment to Python 3.12 for better performance and modern syntax support.
+- **Timezone Compliance**: Replaced deprecated `utcnow()` with `now(UTC)` across the codebase to comply with Python 3.12 standards.
+
+### Changed
+- **Deployment Workflow**: Updated GHA to use `python3.12` and refined PM2 startup with `--update-env`.
+- **PM2 Process Name**: Renamed process to `H16_PREDATOR_V133_PRO` for production clarity.
+
+
+
+
 # Iteration 133.8: 環境物理隔離 & 策略戰術止損 (Environment Isolation & Tactical Stop Loss) - 2026-03-30
 ### Added
 - **Environment Isolation**: Forced absolute paths for PM2 and venv interpreter to bypass environment variable issues on GCE.

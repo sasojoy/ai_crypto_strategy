@@ -1,8 +1,8 @@
-# AI Crypto Strategy - 🚀 【Iteration 133.8 | Environment Isolation】
+# AI Crypto Strategy - 🚀 【Iteration 133.9 | Python 3.12 Upgrade】
 
 這是一個基於 AI 驅動的加密貨幣量化交易系統，具備 **「自主研究循環 (Autonomous Research Loop)」** 與 **「進化記憶 (Evolutionary Memory)」** 機制。系統利用 Google Gemini API 分析市場數據，自動優化策略參數，並透過 GitHub Actions 與 PM2 實現無縫部署至 Google Compute Engine (GCE)。
 
-## 🌟 當前策略狀態 (Iteration 133.8 | Environment Isolation)
+## 🌟 當前策略狀態 (Iteration 133.9 | Python 3.12 Upgrade)
 
 ### 1. 核心架構：環境物理隔離 (Environment Isolation)
 - **絕對路徑啟動 (Absolute Path Execution)**：

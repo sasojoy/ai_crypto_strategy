@@ -8,7 +8,7 @@ import pandas as pd
 import json
 import shutil
 import datetime
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from dotenv import load_dotenv
 from src.notifier import send_telegram_msg, send_kill_switch_alert, send_rich_heartbeat, send_entry_notification, send_hourly_audit, send_daily_performance
 from src.logger import log_trade
@@ -637,7 +637,7 @@ def stability_monitor():
             return True
 
         # 2. 當日虧損檢查 (Iteration 19)
-        today_str = datetime.utcnow().strftime('%Y-%m-%d')
+        today_str = datetime.now(UTC).strftime('%Y-%m-%d')
         today_trades = [t for t in trades if t.get('exit_time', '').startswith(today_str)]
         today_pnl = sum(t.get('profit', 0) for t in today_trades)
         balance = get_account_balance()
@@ -727,7 +727,7 @@ def update_daily_performance():
         # Calculate win rate from history
         win_rate, _ = get_recent_performance()
         
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         date_str = now.strftime('%Y-%m-%d')
         
         # Check if we already logged today
@@ -750,7 +750,7 @@ def record_trade_history(symbol, side, price, quantity, pnl, reason, ml_score=0,
     Iteration 96.0: Enhanced Trade History with AI Score and Final_TP
     """
     path = os.path.join(DATA_DIR, 'trade_history.csv')
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     df = pd.DataFrame([{
         'timestamp': timestamp,
         'symbol': symbol,
@@ -791,7 +791,7 @@ def record_ai_prediction(symbol, side, ml_score, signal_data):
     
     header = ['timestamp', 'symbol', 'side', 'ml_score', 'rsi', 'adx', 'atr', 'vol_growth']
     row = [
-        datetime.utcnow().isoformat(),
+        datetime.now(UTC).isoformat(),
         symbol,
         side,
         f"{ml_score:.4f}",
@@ -815,7 +815,7 @@ def check_and_retrain_model():
     Iteration 92.0: Weekly Auto-Retrain Logic with Task Locking.
     Retrains the model every Sunday at 00:00 UTC, limited to once per day.
     """
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     today_str = now.strftime('%Y-%m-%d')
     retrain_lock_path = os.path.join(DATA_DIR, 'last_retrain.json')
     
@@ -908,11 +908,11 @@ KILL_SWITCH_ACTIVE = False
 
 # Iteration 55: AI Filter Tracking
 AI_FILTERED_COUNT = 0
-LAST_FILTER_RESET = datetime.utcnow().date()
+LAST_FILTER_RESET = datetime.now(UTC).date()
 
 def get_ai_filtered_count():
     global AI_FILTERED_COUNT, LAST_FILTER_RESET
-    today = datetime.utcnow().date()
+    today = datetime.now(UTC).date()
     if today > LAST_FILTER_RESET:
         AI_FILTERED_COUNT = 0
         LAST_FILTER_RESET = today
@@ -1164,7 +1164,7 @@ def manage_positions(prices_rsi):
                     cancel_sl_order(symbol, state.get('sl_order_id'))
                     state['status'] = 'Closed'
                     state['exit_price'] = current_price
-                    state['exit_time'] = datetime.utcnow().isoformat()
+                    state['exit_time'] = datetime.now(UTC).isoformat()
                     state['exit_reason'] = 'EMA 10 Trailing'
                     save_order_state(symbol, state)
                     continue
@@ -1184,7 +1184,7 @@ def manage_positions(prices_rsi):
                     cancel_sl_order(symbol, state.get('sl_order_id'))
                     state['status'] = 'Closed'
                     state['exit_price'] = current_price
-                    state['exit_time'] = datetime.utcnow().isoformat()
+                    state['exit_time'] = datetime.now(UTC).isoformat()
                     state['exit_reason'] = 'BB Upper'
                     save_order_state(symbol, state)
                     continue
@@ -1197,7 +1197,7 @@ def manage_positions(prices_rsi):
             cancel_sl_order(symbol, state.get('sl_order_id'))
             state['status'] = 'Closed'
             state['exit_price'] = current_price
-            state['exit_time'] = datetime.utcnow().isoformat()
+            state['exit_time'] = datetime.now(UTC).isoformat()
             state['exit_reason'] = 'SL'
             
             pnl_amount = (state['exit_price'] - state['entry_price']) * state['pos_size']
@@ -1213,14 +1213,14 @@ def manage_positions(prices_rsi):
         
         # 3. Time-based Exit (Iteration 30: 48h)
         entry_time = datetime.fromisoformat(state['entry_time'])
-        if (datetime.utcnow() - entry_time).total_seconds() >= 172800: # 48 hours
+        if (datetime.now(UTC) - entry_time).total_seconds() >= 172800: # 48 hours
             if current_price > entry_price:
                 msg = f"⏳ [Iteration 91.1 | Final Stability Fix] {symbol} 持倉超過 48 小時且獲利為正，強行平倉釋放資金！"
                 send_telegram_msg(msg)
                 cancel_sl_order(symbol, state.get('sl_order_id'))
                 state['status'] = 'Closed'
                 state['exit_price'] = current_price
-                state['exit_time'] = datetime.utcnow().isoformat()
+                state['exit_time'] = datetime.now(UTC).isoformat()
                 state['exit_reason'] = 'Time_Exit'
                 
                 # Iteration 32: Financial Tracking
@@ -1287,7 +1287,7 @@ if __name__ == "__main__":
         last_report_time = datetime.now()
         last_summary_date = None
         # Iteration 93.0: Delay retrain check by 1 hour after startup
-        startup_time = datetime.utcnow()
+        startup_time = datetime.now(UTC)
         
         # Iteration 91.1: Load Active Trades from Persistence
         ACTIVE_TRADES_PATH = os.path.join(DATA_DIR, 'active_trades.json')
@@ -1335,12 +1335,12 @@ if __name__ == "__main__":
         while True:
             try:
                 # Iteration 93.0: Heartbeat for PM2 Log diagnosis
-                print(f"💓 [Heartbeat] System Alive | {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+                print(f"💓 [Heartbeat] System Alive | {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')} UTC")
                 
                 if check_kill_switch():
                     trigger_panic_sell_all()
 
-                now = datetime.utcnow()
+                now = datetime.now(UTC)
                 
                 # Iteration 93.0: Delay retrain check by 1 hour after startup to prevent loop
                 if (now - startup_time).total_seconds() > 3600:

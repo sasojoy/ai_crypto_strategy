@@ -40,11 +40,11 @@ jobs:
             git reset --hard origin/main
             git clean -fd
             
-            # Iteration 133.8: Environment Isolation & Tactical Stop Loss
+            # Iteration 133.9: Python 3.12 Upgrade & Timezone Fix
             # 強制移除所有髒掉的舊資料夾
             rm -rf src/pandas_ta
             rm -rf venv
-            python3 -m venv venv
+            python3.12 -m venv venv
             source venv/bin/activate
             # 直接安裝倉庫裡的物理 Whl，不准連 PyPI 網路
             pip install ./wheels/*.whl
@@ -52,9 +52,10 @@ jobs:
             pip install ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn
             
             # 使用 venv 內部的 python 絕對路徑直接啟動，不依賴系統解釋器
-            pm2 delete H16_PREDATOR_V133 || true
+            pm2 delete H16_PREDATOR_V133_PRO || true
             pm2 start $(pwd)/src/market.py \
-              --name "H16_PREDATOR_V133" \
+              --name "H16_PREDATOR_V133_PRO" \
               --interpreter $(pwd)/venv/bin/python \
-              --cwd $(pwd)
+              --cwd $(pwd) \
+              --update-env
             pm2 save
