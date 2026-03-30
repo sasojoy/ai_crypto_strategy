@@ -40,7 +40,7 @@ jobs:
             git reset --hard origin/main
             git clean -fd
             
-            # Iteration 133.7: Offline Wheel Deployment
+            # Iteration 133.8: Environment Isolation & Tactical Stop Loss
             # 強制移除所有髒掉的舊資料夾
             rm -rf src/pandas_ta
             rm -rf venv
@@ -51,10 +51,10 @@ jobs:
             # 安裝其他基本庫
             pip install ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn
             
-            # 物理鎖定：將 venv 的 site-packages 加入路徑，防止 PM2 找不到
-            export PYTHONPATH=$PYTHONPATH:$(pwd)/venv/lib/python3.10/site-packages
-            
-            # PM2 Reset with Venv Interpreter
-            pm2 delete all || true
-            pm2 start src/market.py --name "H16_PREDATOR_V133" --interpreter ./venv/bin/python
+            # 使用 venv 內部的 python 絕對路徑直接啟動，不依賴系統解釋器
+            pm2 delete H16_PREDATOR_V133 || true
+            pm2 start $(pwd)/src/market.py \
+              --name "H16_PREDATOR_V133" \
+              --interpreter $(pwd)/venv/bin/python \
+              --cwd $(pwd)
             pm2 save

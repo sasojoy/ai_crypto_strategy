@@ -5,6 +5,18 @@
 
 
 
+
+# Iteration 133.8: 環境物理隔離 & 策略戰術止損 (Environment Isolation & Tactical Stop Loss) - 2026-03-30
+### Added
+- **Environment Isolation**: Forced absolute paths for PM2 and venv interpreter to bypass environment variable issues on GCE.
+- **Tactical Stop Loss**: Implemented 1H-only timeframe, ATR 2.2/5.5 ratio, and AI Score >= 0.85 + EMA200 guard for high-conviction entries.
+- **PnL Optimization**: Successfully turned BTC/ETH PnL positive in backtest under strict friction.
+
+### Changed
+- **Deployment Workflow**: Updated `.github/workflows/on_premise_validation_deploy.yml` with absolute path execution.
+- **Strategy Logic**: Restricted all symbols to 1H timeframe and Long-only high-conviction entries.
+
+
 # Iteration 133.7: 離線 Whl 強攻 (Offline Wheel Deployment) - 2026-03-30
 ### Added
 - **Offline Wheel Deployment**: Added `wheels/` directory containing `pandas_ta-0.4.71b0-py3-none-any.whl` to bypass GCE network issues.

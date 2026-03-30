@@ -91,8 +91,8 @@ os.makedirs(CONFIG_DIR, exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 
-# Iteration 95.1: Slippage Compensation & PnL Automation
-STRATEGY_VERSION = "[H16_PREDATOR_V132]"
+# Iteration 133.8: Environment Isolation & Tactical Stop Loss
+STRATEGY_VERSION = "[H16_PREDATOR_V133.8]"
 
 # Iteration 127.0: Live Hunting Mode Enabled
 IS_SIMULATION = False
@@ -1037,6 +1037,7 @@ def run_strategy(ml_model):
             
             # 1. Indicators
             ema20 = calculate_ema(df, 20).iloc[-1]
+            ema200 = calculate_ema(df, 200).iloc[-1] # Iteration 133.8: 1H EMA200 Guard
             atr = calculate_atr(df, 14).iloc[-1]
             vol_avg = df['volume'].rolling(24).mean().iloc[-1]
             
@@ -1049,28 +1050,23 @@ def run_strategy(ml_model):
             is_volume_burst = df['volume'].iloc[-1] > (vol_avg * vol_threshold)
             is_trend_confirmed = curr_adx > 25 and is_adx_rising
             
-            # 3. Entry Logic (Bi-Directional)
+            # 3. Entry Logic (Iteration 133.8: Tactical Stop Loss & 1H Guard - Long Only)
             side = None
             entry_reason = ""
             
-            # Long Entry
-            if (btc_bullish and df['close'].iloc[-1] > ema20 and 
-                is_volume_burst and is_trend_confirmed and ml_score > 0.55):
+            # 進場門檻：AI Score 必須 >= 0.85 且當前價格必須在 1H EMA200 之上
+            if (df['close'].iloc[-1] > ema200 and # 1H EMA200 Guard
+                ml_score >= 0.85 and              # AI Score >= 0.85
+                is_volume_burst and is_trend_confirmed and rsi > 50):
                 side = 'Long'
-                entry_reason = f"V126_LONG | AI:{ml_score:.2f} | ADX:{curr_adx:.1f} | Vol:{vol_threshold}x"
-            
-            # Short Entry
-            elif (not btc_bullish and df['close'].iloc[-1] < ema20 and 
-                  is_volume_burst and is_trend_confirmed and ml_score < 0.45):
-                side = 'Short'
-                entry_reason = f"V126_SHORT | AI:{ml_score:.2f} | ADX:{curr_adx:.1f} | Vol:{vol_threshold}x"
+                entry_reason = f"V133.8_LONG | AI:{ml_score:.2f} | ADX:{curr_adx:.1f} | Vol:{vol_threshold}x"
 
             # 4. Execution with ATR Dynamic SL/TP
             if side and current_pos_count < 5:
-                # Iteration 125.0: Wider ATR Dynamic SL/TP
+                # Iteration 133.8: ATR 2.2/5.5
                 # We pass these to execute_trade via params override
-                params['tp_pct'] = (4.0 * atr) / df['close'].iloc[-1]
-                params['sl_pct'] = (1.8 * atr) / df['close'].iloc[-1]
+                params['tp_pct'] = (5.5 * atr) / df['close'].iloc[-1]
+                params['sl_pct'] = (2.2 * atr) / df['close'].iloc[-1]
                 
                 pos_size = balance * 0.2 # Fixed 20% for stability in V126
                 

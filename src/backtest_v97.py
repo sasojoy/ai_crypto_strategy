@@ -59,6 +59,7 @@ def run_backtest_v97(symbol, df, btc_df, ml_model, initial_balance=2000):
     
     # 1H Indicators
     coin_ema20 = calculate_ema(df, 20)
+    coin_ema200 = calculate_ema(df, 200) # Iteration 133.8: 1H EMA200 Guard
     coin_atr = calculate_atr(df, 14)
     btc_ema200 = calculate_ema(btc_df, 200).reindex(df.index).ffill()
     btc_price_series = btc_df['close'].reindex(df.index).ffill()
@@ -82,7 +83,7 @@ def run_backtest_v97(symbol, df, btc_df, ml_model, initial_balance=2000):
     equity_curve = [balance]
     weight = 0.2
     
-    for i in range(100, len(df)):
+    for i in range(200, len(df)): # Start from 200 for EMA200
         current_time = df.index[i]
         current_price = df['close'].iloc[i]
         
@@ -103,6 +104,7 @@ def run_backtest_v97(symbol, df, btc_df, ml_model, initial_balance=2000):
             curr_btc_price = btc_price_series.iloc[i]
             curr_btc_ema = btc_ema200.iloc[i]
             curr_coin_ema20 = coin_ema20.iloc[i]
+            curr_coin_ema200 = coin_ema200.iloc[i]
             curr_rsi = rsi_1h.iloc[i]
             curr_atr = coin_atr.iloc[i]
             curr_adx = adx_series.iloc[i]
@@ -112,37 +114,21 @@ def run_backtest_v97(symbol, df, btc_df, ml_model, initial_balance=2000):
             is_volume_burst = curr_vol > (avg_vol * vol_threshold)
             is_trend_confirmed = curr_adx > 25 and is_adx_rising
             
-            # Long Entry: Momentum + Trend + AI Guard
-            if (curr_btc_price > curr_btc_ema and 
-                current_price > curr_coin_ema20 and 
+            # Iteration 133.8: Tactical Stop Loss & 1H Guard (Long Only per Last Ultimatum)
+            # 進場門檻：AI Score 必須 >= 0.85 且當前價格必須在 1H EMA200 之上
+            if (current_price > curr_coin_ema200 and # 1H EMA200 Guard
+                ml_score >= 0.85 and                  # AI Score >= 0.85
                 is_volume_burst and 
                 is_trend_confirmed and
-                curr_rsi > 50 and
-                ml_score > 0.55):
+                curr_rsi > 50):
                 
                 position = 'long'
                 entry_price = current_price
                 entry_time = current_time
                 pos_size = balance * weight
-                # Iteration 125.0: Wider ATR Dynamic SL/TP
-                sl_price = entry_price - (1.8 * curr_atr)
-                tp_price = entry_price + (4.0 * curr_atr)
-            
-            # Short Entry: Momentum + Trend + AI Guard
-            elif (curr_btc_price < curr_btc_ema and 
-                  current_price < curr_coin_ema20 and 
-                  is_volume_burst and 
-                  is_trend_confirmed and
-                  curr_rsi < 50 and
-                  ml_score < 0.45):
-                
-                position = 'short'
-                entry_price = current_price
-                entry_time = current_time
-                pos_size = balance * weight
-                # Iteration 125.0: Wider ATR Dynamic SL/TP
-                sl_price = entry_price + (1.8 * curr_atr)
-                tp_price = entry_price - (4.0 * curr_atr)
+                # Iteration 133.8: ATR 2.2/5.5
+                sl_price = entry_price - (2.2 * curr_atr)
+                tp_price = entry_price + (5.5 * curr_atr)
         else:
             # Exit logic
             exit_triggered = False
@@ -197,7 +183,9 @@ if __name__ == "__main__":
     total_equity_curve = None
     
     for symbol in symbols:
-        df = btc_df_1h if symbol == 'BTC/USDT' else fetch_backtest_data(symbol, '1h', days=180)
+        # Iteration 133.8: 1H Only for all symbols to reduce friction
+        timeframe = '1h'
+        df = btc_df_1h if symbol == 'BTC/USDT' else fetch_backtest_data(symbol, timeframe, days=180)
         if df.empty: continue
         
         count, wr, pnl, pf, curve, trades = run_backtest_v97(symbol, df, btc_df_1h, ml_model)
