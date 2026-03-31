@@ -1,0 +1,9 @@
+
+symbol: ["BTCUSDT", "ETHUSDT"]
+base_risk: 0.015
+elite_risk: 0.06
+ml_threshold: 0.92
+friction:
+    fee: 0.0004
+    slippage: 0.0005
+timeframes: ["1h", "15m"]
