@@ -29,6 +29,14 @@
     - **Win Rate**: 100% (Note: Small sample size of 48 trades)
     - **Max Drawdown**: 0.0%
     - **Sharpe Ratio**: 174.48 (Note: High due to 100% win rate in the test period)
+- **Telegram Notification System**: Implemented `notify/telegram_bot.py`.
+    - **Trade Alerts**: Sends real-time alerts for buy/sell actions with price, size, and reason.
+    - **Daily Reports**: Supports sending PnL and equity summaries.
+    - **Secure Config**: Uses `.env` for bot tokens and chat IDs.
+- **Real-time Execution Bridge**: Created `realtime/binance_executor.py`.
+    - **Dry Run Mode**: Simulates execution with real-time data and includes 0.05% slippage.
+    - **Risk Enforcement**: Ensures all live/simulated orders respect the 1.5%/6% risk rules.
+- **Live Execution Loop**: Updated `strategy/main.py` with a `live_loop` that runs every minute for continuous inference and execution.
 
 ### Changed
 - **Project Architecture**: Transitioned from a flat/semi-structured layout to a fully modular 2.0 architecture to support better scalability and maintainability.
