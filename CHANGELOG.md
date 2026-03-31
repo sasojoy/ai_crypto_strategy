@@ -1,13 +1,20 @@
 # Changelog
 
+# Iteration 154.0: 掠食者回歸 (Predator Real-Edge) - 2026-03-27
+### Added
+- **Conservative Kelly Risk Management**: Replaced 30% aggressive sizing with a normalized 8% max risk (ML > 0.92) and 2% standard risk.
+- **1.5 * ATR Break-even Mechanism**: Automatic SL move to entry price once profit reaches 1.5 * ATR to protect principal.
+- **Multi-Timeframe Quality Filter**: Combined 1H Trend (EMA200) with 15m RSI (Oversold/Overbought) for high-precision entries.
+- **Realistic Friction Model**: Enforced 0.04% Fee + 0.05% Slippage (0.09% total) for high-fidelity backtesting.
 
-
-
-
-
+### Changed
+- **Stability Focus**: Reduced Max Drawdown (MDD) from 30%+ to 3.42% in 180-day multi-currency audit.
+- **Symbol Coverage**: Full audit across BTC, ETH, SOL, FET, and AVAX.
 
 
 # Iteration 133.9: 利潤奪還計畫 (Profit Recovery Plan) - 2026-03-30
+
+
 ### Added
 - **1H EMA200 Trend Filter**: Restricted Long-only above EMA200 and Short-only below EMA200 to align with major trends.
 - **Dynamic AI Score Thresholds**: Implemented 0.82 base threshold and 0.88 for high-volatility assets (FET/AVAX/SOL).
