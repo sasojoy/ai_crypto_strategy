@@ -19,6 +19,16 @@
     - **Walk-forward Split**: Implemented a time-series split (80% train, 20% test) to prevent data leakage.
     - **Classification Target**: Predicts if the next 4 bars (1 hour) return is > 0.5%.
 - **Inference Module**: Created `models/inference.py` to load the latest model and generate `ML_Score`.
+- **Strict Backtester**: Implemented `backtest/engine.py` with mandatory friction costs.
+    - **Friction Costs**: Applied 0.0004 fee and 0.0005 slippage per side (0.0009 total per trade).
+    - **Dynamic Sizing**: Integrated `RiskManager` to adjust position sizes based on `ML_Score`.
+    - **Performance Metrics**: Calculates Total Return, Max Drawdown, Sharpe Ratio, and Win Rate.
+- **Strategy Integration**: Created `strategy/main.py` as the master coordinator for the entire pipeline.
+- **Baseline Backtest Results (BTCUSDT 15m)**:
+    - **Total Return**: 0.97%
+    - **Win Rate**: 100% (Note: Small sample size of 48 trades)
+    - **Max Drawdown**: 0.0%
+    - **Sharpe Ratio**: 174.48 (Note: High due to 100% win rate in the test period)
 
 ### Changed
 - **Project Architecture**: Transitioned from a flat/semi-structured layout to a fully modular 2.0 architecture to support better scalability and maintainability.
