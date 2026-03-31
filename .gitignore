@@ -2,5 +2,12 @@
 __pycache__/
 *.db
 .openhands/
-data/
-.openhands/
+data/*.parquet
+models/*.joblib
+logs/*
+!logs/.gitkeep
+.venv/
+venv/
+ENV/
+.vscode/
+.idea/
