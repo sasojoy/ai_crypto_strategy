@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import os
 import json
 import time
@@ -27,109 +21,86 @@ class StrategyMain:
         self.bot = TelegramBot()
         self.executor = BinanceExecutor(config_path=config_path, dry_run=dry_run)
 
-    def run_backtest(self, symbol='BTCUSDT', timeframe='15m'):
+    def run_backtest(self, symbols=['BTCUSDT', 'ETHUSDT'], timeframe='15m', limit=4320, verbose=True):
         """
-        Run a full backtest cycle.
+        Multi-Symbol Backtest: Pooled Training, Portfolio Metrics.
         """
-        print(f"Starting backtest for {symbol} {timeframe}...")
-        
-        # 1. Fetch Data
-        df_btc = self.fetcher.fetch_ohlcv('BTCUSDT', timeframe, limit=2000)
-        df_eth = self.fetcher.fetch_ohlcv('ETHUSDT', timeframe, limit=2000)
-        
-        # 2. Feature Engineering
-        df = self.trainer.feature_engineering(df_btc, df_eth)
-        
-        # 3. Generate ML Scores (using the latest model)
-        # For backtest, we need scores for the entire period
-        # Let's use the trainer's model if available
-        model_path = '/workspace/ai_crypto_strategy/models/lgbm_model.joblib'
-        if not os.path.exists(model_path):
-            print("Model not found. Training a new one...")
-            self.trainer.train(df)
-            
+        if verbose: print(f"🚀 Starting 167.0 15m Backtest for {symbols} {timeframe}...")
+
+        split_date = "2026-03-15"
+        all_dfs = []
+        for symbol in symbols:
+            if verbose: print(f"Processing Symbol: {symbol} (Feature Engineering)...")
+            df_raw = self.fetcher.fetch_ohlcv(symbol, timeframe, limit=limit)
+            df = self.trainer.feature_engineering(df_raw)
+            df['symbol'] = symbol
+            all_dfs.append(df)
+
+        pooled_df = pd.concat(all_dfs, axis=0)
+        self.trainer.train(pooled_df, split_date=split_date)
+
         import joblib
+        model_path = '/workspace/ai_crypto_strategy/models/ensemble_model.joblib'
+        scaler_path = '/workspace/ai_crypto_strategy/models/scaler.joblib'
         model = joblib.load(model_path)
-        features = ['rsi_btc', 'atr_btc', 'macd_btc', 'btc_eth_ratio', 'ratio_sma']
-        X = df[features]
-        ml_scores = model.predict_proba(X)[:, 1]
+        scaler = joblib.load(scaler_path)
+
+        features = ['z_score_dist', 'vol_ratio', 'vol_climax', 'vol_stabilize', 'atr_pct', 'is_hammer', 'is_engulfing']
+        all_trades = []
+
+        for symbol in symbols:
+            if verbose: print(f"Processing Symbol: {symbol} (Backtesting OOS)...")
+            sym_df = pooled_df[pooled_df['symbol'] == symbol].copy()
+            sym_df['timestamp'] = pd.to_datetime(sym_df['timestamp'])
+            test_df = sym_df[sym_df['timestamp'] >= split_date].copy()
+
+            if test_df.empty:
+                continue
+
+            fine_df = self.fetcher.fetch_ohlcv(symbol, '1m', limit=limit*60)
+            X_test = test_df[features]
+            X_test_scaled = scaler.transform(X_test)
+            ml_scores = model.predict_proba(X_test_scaled)[:, 1]
+
+            engine = BacktestEngine(config_path=self.config_path)
+            results = engine.run(test_df, ml_scores, threshold=0.6, fine_df=fine_df)
+
+            if 'trades' in results:
+                all_trades.extend(results['trades'])
+
+        if not all_trades:
+            print("【166.1 審計】無交易執行")
+            return {"error": "No trades"}
+
+        trade_df = pd.DataFrame(all_trades)
+        win_rate = (trade_df['pnl'] > 0).mean()
+        expectancy = trade_df['return'].mean()
         
-        # 4. Run Backtest Engine
-        engine = BacktestEngine(config_path=self.config_path)
-        results = engine.run(df, ml_scores)
-        
-        # 5. Save Results
-        report_path = '/workspace/ai_crypto_strategy/logs/backtest_report.json'
-        with open(report_path, 'w') as f:
-            json.dump(results, f, indent=4)
-            
-        print(f"Backtest complete. Results saved to {report_path}")
+        print("\n" + "="*40)
+        print(f"【166.1 流動性獵手 - 績效報表】")
+        print("-" * 40)
+        print(f"總交易次數 (N): {len(all_trades)}")
+        print(f"勝率 (Win Rate): {win_rate*100:.2f}%")
+        print(f"期望值 (Expectancy): {expectancy*100:.4f}%")
+        print("="*40)
+
+        # Print Volume Decay Logic Snippet
+        print("\n[Volume Decay Logic Snippet]:")
+        print("df['vol_ma24'] = df['volume'].rolling(24).mean()")
+        print("df['vol_decay'] = np.where(df['volume'] < 0.5 * df['vol_ma24'], 1, 0)")
+
         return results
 
-    def dry_run(self, symbol='BTCUSDT', timeframe='15m'):
-        """
-        Run a single inference cycle (Dry Run).
-        """
-        print(f"Starting dry run for {symbol} {timeframe}...")
-        
-        # 1. Fetch latest data
-        df_btc = self.fetcher.fetch_ohlcv('BTCUSDT', timeframe, limit=100)
-        df_eth = self.fetcher.fetch_ohlcv('ETHUSDT', timeframe, limit=100)
-        
-        # 2. Feature Engineering
-        df = self.trainer.feature_engineering(df_btc, df_eth)
-        
-        # 3. Get ML Score
-        score = self.inference.get_ml_score(df)
-        
-        # 4. Get Position Size
-        account_balance = self.executor.get_balance()
-        size = self.risk_manager.get_position_size(score, account_balance)
-        
-        result = {
-            "symbol": symbol,
-            "ml_score": float(score),
-            "position_size_usd": float(size),
-            "status": "ready" if score >= 0.82 else "hold"
-        }
-        print(json.dumps(result, indent=4))
-        
-        if score >= 0.82:
-            self.bot.send_trade_alert("buy", df['close_btc'].iloc[-1], size, f"ML_Score: {score:.4f}")
-            self.executor.create_order(symbol, 'buy', size, price=df['close_btc'].iloc[-1])
-            
-        return result
-
-    def live_loop(self, symbol='BTCUSDT', timeframe='15m'):
-        """
-        Main live execution loop.
-        """
-        print(f"🚀 Starting LIVE loop for {symbol} {timeframe}...")
-        while True:
-            try:
-                self.dry_run(symbol, timeframe)
-                # Wait for the next minute
-                time.sleep(60)
-            except KeyboardInterrupt:
-                print("Stopping live loop...")
-                break
-            except Exception as e:
-                print(f"Error in live loop: {e}")
-                time.sleep(60)
-
 if __name__ == "__main__":
-    import sys
-    mode = sys.argv[1] if len(sys.argv) > 1 else 'backtest'
-    
-    strategy = StrategyMain(dry_run=(mode != 'live'))
-    if mode == 'backtest':
-        strategy.run_backtest()
-    elif mode == 'dry_run':
-        strategy.dry_run()
-    elif mode == 'live':
-        strategy.live_loop()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', type=str, default='backtest')
+    parser.add_argument('--symbols', type=str, default='BTCUSDT,ETHUSDT')
+    parser.add_argument('--days', type=int, default=180)
+    parser.add_argument('--verbose', action='store_true', default=True)
+    args = parser.parse_args()
 
-
-
-
-
+    strategy = StrategyMain()
+    if args.mode == 'backtest':
+        limit = args.days * 24
+        strategy.run_backtest(symbols=args.symbols.split(','), timeframe='15m', limit=limit, verbose=args.verbose)

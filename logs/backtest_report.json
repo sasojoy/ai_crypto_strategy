@@ -1,10 +1,153 @@
 {
-    "total_return": 0.009672387247591008,
-    "win_rate": 1.0,
-    "max_drawdown": 0.0,
-    "sharpe_ratio": 174.4761221375802,
-    "total_trades": 48,
-    "final_balance": 10096.72387247591,
-    "avg_win": 0.007677059837365402,
-    "avg_loss": 0
+    "total_trades": 11,
+    "symbol_breakdown": {
+        "BTCUSDT": {
+            "win_rate": 0.0,
+            "profit_factor": 0.0,
+            "avg_win": 0.0,
+            "avg_loss": -0.0058879272438027465,
+            "pl_ratio": 0.0,
+            "expectancy": -0.0058879272438027465,
+            "max_drawdown": -0.0037186225808478906,
+            "total_trades": 2,
+            "total_return": -0.011745892683097897
+        },
+        "ETHUSDT": {
+            "win_rate": 0.3333333333333333,
+            "profit_factor": 1.034731743200521,
+            "avg_win": 0.018204990850108096,
+            "avg_loss": -0.008671339432139913,
+            "pl_ratio": 2.099443920120593,
+            "expectancy": 0.0002874373286094239,
+            "max_drawdown": -0.004228792227864979,
+            "total_trades": 3,
+            "total_return": 0.0006030541518592698
+        },
+        "SOLUSDT": {
+            "win_rate": 0.0,
+            "profit_factor": 0.0,
+            "avg_win": 0.0,
+            "avg_loss": -0.01024093041907216,
+            "pl_ratio": 0.0,
+            "expectancy": -0.01024093041907216,
+            "max_drawdown": -0.019543931192314203,
+            "total_trades": 3,
+            "total_return": -0.03042488870707302
+        },
+        "AVAXUSDT": {
+            "win_rate": 0.0,
+            "profit_factor": 0.0,
+            "avg_win": 0.0,
+            "avg_loss": -0.010247911133261118,
+            "pl_ratio": 0.0,
+            "expectancy": -0.010247911133261118,
+            "max_drawdown": -0.016960196282826086,
+            "total_trades": 3,
+            "total_return": -0.03045409749967889
+        }
+    },
+    "total_pnl": -720.2182473799053,
+    "final_balance": 9279.781752620094,
+    "portfolio_sharpe": -56.020375020504815,
+    "all_trades": [
+        {
+            "symbol": "BTCUSDT",
+            "entry_time": "2026-01-30 12:00:00",
+            "exit_time": "2026-01-30 15:29:00",
+            "duration": 3.4833333333333334,
+            "pnl": -80.57231906757643,
+            "return": -0.008057231906757643,
+            "exit_type": "SL"
+        },
+        {
+            "symbol": "BTCUSDT",
+            "entry_time": "2026-01-30 13:00:00",
+            "exit_time": "2026-01-30 15:29:00",
+            "duration": 2.4833333333333334,
+            "pnl": -36.88660776340254,
+            "return": -0.0037186225808478503,
+            "exit_type": "SL"
+        },
+        {
+            "symbol": "ETHUSDT",
+            "entry_time": "2026-01-31 11:00:00",
+            "exit_time": "2026-01-31 13:32:00",
+            "duration": 2.533333333333333,
+            "pnl": -131.13886636414972,
+            "return": -0.013113886636414973,
+            "exit_type": "SL"
+        },
+        {
+            "symbol": "ETHUSDT",
+            "entry_time": "2026-02-12 22:00:00",
+            "exit_time": "2026-02-13 09:00:00",
+            "duration": 11.0,
+            "pnl": 179.66252663882804,
+            "return": 0.018204990850108096,
+            "exit_type": "EXPIRED"
+        },
+        {
+            "symbol": "ETHUSDT",
+            "entry_time": "2026-03-28 00:00:00",
+            "exit_time": "2026-03-28 04:01:00",
+            "duration": 4.016666666666667,
+            "pnl": -42.49311875608562,
+            "return": -0.0042287922278648514,
+            "exit_type": "TIME_EXHAUST"
+        },
+        {
+            "symbol": "SOLUSDT",
+            "entry_time": "2026-01-20 22:00:00",
+            "exit_time": "2026-01-20 22:33:00",
+            "duration": 0.55,
+            "pnl": -110.97853193964033,
+            "return": -0.011097853193964034,
+            "exit_type": "SL"
+        },
+        {
+            "symbol": "SOLUSDT",
+            "entry_time": "2026-02-24 11:00:00",
+            "exit_time": "2026-02-24 14:35:00",
+            "duration": 3.5833333333333335,
+            "pnl": -135.68860858243193,
+            "return": -0.013721136011351585,
+            "exit_type": "SL"
+        },
+        {
+            "symbol": "SOLUSDT",
+            "entry_time": "2026-03-28 01:00:00",
+            "exit_time": "2026-03-28 05:01:00",
+            "duration": 4.016666666666667,
+            "pnl": -57.5817465486579,
+            "return": -0.005903802051900862,
+            "exit_type": "TIME_EXHAUST"
+        },
+        {
+            "symbol": "AVAXUSDT",
+            "entry_time": "2026-01-30 06:00:00",
+            "exit_time": "2026-01-30 06:27:00",
+            "duration": 0.45,
+            "pnl": -137.26708894012484,
+            "return": -0.013726708894012483,
+            "exit_type": "SL"
+        },
+        {
+            "symbol": "AVAXUSDT",
+            "entry_time": "2026-01-31 07:00:00",
+            "exit_time": "2026-01-31 07:38:00",
+            "duration": 0.6333333333333333,
+            "pnl": -122.83008102440402,
+            "return": -0.012453959985742368,
+            "exit_type": "SL"
+        },
+        {
+            "symbol": "AVAXUSDT",
+            "entry_time": "2026-02-24 07:00:00",
+            "exit_time": "2026-02-24 13:32:00",
+            "duration": 6.533333333333333,
+            "pnl": -44.44380503226006,
+            "return": -0.004563064520028502,
+            "exit_type": "SL"
+        }
+    ]
 }

@@ -19,7 +19,7 @@ class BinanceExecutor:
         
         self.dry_run = dry_run
         self.risk_manager = RiskManager(config_path)
-        self.friction = self.risk_manager.friction # 0.0009
+        self.friction = self.risk_manager.friction_rate # 0.0009
         
         # Initialize exchange
         self.exchange = ccxt.binance({
@@ -48,7 +48,7 @@ class BinanceExecutor:
             print(f"Error fetching balance: {e}")
             return 0.0
 
-    def create_order(self, symbol, side, amount_usd, price=None):
+    async def create_order(self, symbol, side, amount_usd, price=None):
         """
         Create a market or limit order.
         """

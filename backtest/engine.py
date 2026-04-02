@@ -1,8 +1,3 @@
-
-
-
-
-
 import pandas as pd
 import numpy as np
 import os
@@ -14,91 +9,133 @@ class BacktestEngine:
         self.balance = initial_balance
         self.initial_balance = initial_balance
         self.risk_manager = RiskManager(config_path)
-        self.friction = self.risk_manager.friction # 0.0009
+        self.friction = self.risk_manager.friction_rate
         self.trades = []
 
-    def run(self, df, ml_scores):
-        """
-        Vectorized backtest with dynamic sizing.
-        df: DataFrame with 'close' and 'timestamp'
-        ml_scores: Series of ML_Scores aligned with df
-        """
+    def run(self, df, ml_scores, threshold=0.7, fine_df=None):
         df = df.copy()
         df['ml_score'] = ml_scores
-        
-        # Simple strategy: Long if ml_score > 0.82, exit after 4 bars (1 hour)
-        # This matches the training target
-        
-        for i in range(len(df) - 4):
-            ml_score = df['ml_score'].iloc[i]
-            if ml_score >= 0.82:
-                entry_price = df['close_btc'].iloc[i]
-                exit_price = df['close_btc'].iloc[i+4]
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+        if fine_df is not None:
+            fine_df = fine_df.copy()
+            fine_df['timestamp'] = pd.to_datetime(fine_df['timestamp'])
+            fine_df.set_index('timestamp', inplace=True)
+
+        # Vectorized Entry Signal Check
+        # Iteration 166.0 Logic - Liquidity Hunter
+        # Entry: Extreme Oversold + Below Value Area + Volume Drying Up + Confirmation
+        df['is_liquidity_entry'] = (df['z_score_dist'] < -2.0) & (df['vol_climax'] == 1) & (df['vol_stabilize'] == 1) & ((df['is_hammer'] == 1) | (df['is_engulfing'] == 1)) & (df['ml_score'] >= threshold)
+
+        entry_indices = df.index[df['is_liquidity_entry']].tolist()
+
+        for i in entry_indices:
+            if i >= len(df) - 1: continue
+            if self.balance <= 0: break
+
+            entry_time = df['timestamp'].iloc[i]
+            entry_price = df['close'].iloc[i]
+            
+            # TP: EMA200 (The Mean)
+            tp_price = df['ema200'].iloc[i]
+            # SL: 1.5 * ATR
+            atr_val = df['atr'].iloc[i] if 'atr' in df.columns else entry_price * 0.01
+            sl_price = entry_price - 1.5 * atr_val
+            
+            exit_price = 0
+            exit_time = None
+            exit_type = None
+
+            if fine_df is not None:
+                end_time = entry_time + pd.Timedelta(hours=24)
+                window = fine_df.loc[entry_time:end_time]
                 
-                # Dynamic position sizing
-                position_size_usd = self.risk_manager.get_position_size(ml_score, self.balance)
-                
-                # Apply friction (entry + exit)
-                gross_return = (exit_price / entry_price) - 1
-                net_return = gross_return - (self.friction * 2)
-                
-                pnl = position_size_usd * net_return
-                self.balance += pnl
-                
-                self.trades.append({
-                    'timestamp': df['timestamp'].iloc[i],
-                    'entry_price': entry_price,
-                    'exit_price': exit_price,
-                    'ml_score': ml_score,
-                    'pnl': pnl,
-                    'return': net_return,
-                    'balance': self.balance
-                })
+                if not window.empty:
+                    # Vectorized Exit Checks
+                    sl_hits = window[window['low'] <= sl_price]
+                    tp_hits = window[window['high'] >= tp_price]
+                    
+                    # Find first hit
+                    sl_idx = sl_hits.index[0] if not sl_hits.empty else None
+                    tp_idx = tp_hits.index[0] if not tp_hits.empty else None
+                    
+                    if sl_idx and (not tp_idx or sl_idx < tp_idx):
+                        exit_time = sl_idx
+                        exit_price = sl_price
+                        exit_type = 'SL'
+                    elif tp_idx:
+                        exit_time = tp_idx
+                        exit_price = tp_price
+                        exit_type = 'TP_MEAN'
+                    else:
+                        # Time Stop
+                        exit_time = window.index[-1]
+                        exit_price = window['close'].iloc[-1]
+                        exit_type = 'TIME_STOP'
+
+            if not exit_type:
+                # Fallback to 12h exit if no fine_df or window empty
+                exit_idx = min(i + 12, len(df) - 1)
+                exit_price = df['close'].iloc[exit_idx]
+                exit_time = df['timestamp'].iloc[exit_idx]
+                exit_type = 'EXPIRED'
+
+            # Calculate PnL with Friction
+            slippage = 0.0005
+            fee = 0.0004
+            trade_return = (exit_price / entry_price) - 1
+            net_return = trade_return - (fee + slippage) * 2
+            total_pnl = self.balance * net_return
+            self.balance += total_pnl
+
+            duration = (pd.to_datetime(exit_time) - pd.to_datetime(entry_time)).total_seconds() / 3600
+            self.trades.append({
+                'symbol': df['symbol'].iloc[0] if 'symbol' in df.columns else 'UNKNOWN',
+                'entry_time': str(entry_time),
+                'exit_time': str(exit_time),
+                'duration': duration,
+                'pnl': total_pnl,
+                'return': net_return,
+                'exit_type': exit_type
+            })
 
         return self.calculate_metrics()
 
     def calculate_metrics(self):
         if not self.trades:
-            return {"error": "No trades executed"}
-            
+            return {'error': 'No trades executed'}
+
         trade_df = pd.DataFrame(self.trades)
-        total_return = (self.balance / self.initial_balance) - 1
         win_rate = (trade_df['pnl'] > 0).mean()
-        
-        # Max Drawdown
-        trade_df['cum_balance'] = trade_df['balance']
+        expectancy = trade_df['return'].mean()
+
+        wins = trade_df[trade_df['pnl'] > 0]
+        losses = trade_df[trade_df['pnl'] <= 0]
+
+        avg_win = wins['return'].mean() if not wins.empty else 0
+        avg_loss = losses['return'].mean() if not losses.empty else 0
+
+        gross_profits = wins['pnl'].sum()
+        gross_losses = abs(losses['pnl'].sum())
+        profit_factor = gross_profits / gross_losses if gross_losses != 0 else float('inf')
+
+        trade_df['cum_balance'] = trade_df['pnl'].cumsum() + self.initial_balance
         trade_df['cum_max'] = trade_df['cum_balance'].cummax()
-        trade_df['drawdown'] = (trade_df['cum_balance'] - trade_df['cum_max']) / trade_df['cum_max']
-        max_drawdown = trade_df['drawdown'].min()
-        
-        # Sharpe Ratio (assuming 0 risk-free rate for simplicity)
-        returns = trade_df['return']
-        sharpe_ratio = np.sqrt(252 * 24 * 4) * returns.mean() / returns.std() if returns.std() != 0 else 0
-        
+        max_drawdown = ((trade_df['cum_balance'] - trade_df['cum_max']) / trade_df['cum_max']).min()
+
         metrics = {
-            "total_return": float(total_return),
-            "win_rate": float(win_rate),
-            "max_drawdown": float(max_drawdown),
-            "sharpe_ratio": float(sharpe_ratio),
-            "total_trades": len(self.trades),
-            "final_balance": float(self.balance),
-            "avg_win": float(trade_df[trade_df['pnl'] > 0]['return'].mean()) if any(trade_df['pnl'] > 0) else 0,
-            "avg_loss": float(trade_df[trade_df['pnl'] <= 0]['return'].mean()) if any(trade_df['pnl'] <= 0) else 0
+            'total_trades': len(self.trades),
+            'win_rate': float(win_rate),
+            'expectancy': float(expectancy),
+            'max_drawdown': float(max_drawdown),
+            'profit_factor': float(profit_factor),
+            'avg_win': float(avg_win),
+            'avg_loss': float(avg_loss),
+            'total_return': float(trade_df['pnl'].sum() / self.initial_balance),
+            'trades': self.trades
         }
+
+        with open('/workspace/ai_crypto_strategy/logs/backtest_report.json', 'w') as f:
+            json.dump(metrics, f)
+
         return metrics
-
-if __name__ == "__main__":
-    # Example usage
-    engine = BacktestEngine()
-    # Dummy data for testing
-    df = pd.DataFrame({
-        'timestamp': pd.date_range(start='2026-01-01', periods=100, freq='15min'),
-        'close': np.random.normal(50000, 100, 100)
-    })
-    ml_scores = np.random.uniform(0.5, 0.95, 100)
-    results = engine.run(df, ml_scores)
-    print(json.dumps(results, indent=4))
-
-
-
-

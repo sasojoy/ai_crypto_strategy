@@ -2,6 +2,7 @@
 
 import yaml
 import os
+import numpy as np
 
 class RiskManager:
     def __init__(self, config_path='/workspace/ai_crypto_strategy/config/config.yaml'):
@@ -11,45 +12,79 @@ class RiskManager:
         self.base_risk = self.config.get('base_risk', 0.015)
         self.elite_risk = self.config.get('elite_risk', 0.06)
         self.ml_threshold = self.config.get('ml_threshold', 0.92)
-        self.friction = self.config.get('friction', {}).get('fee', 0.0004) + self.config.get('friction', {}).get('slippage', 0.0005)
+        self.friction_rate = self.config.get('friction', {}).get('fee', 0.0004) + self.config.get('friction', {}).get('slippage', 0.0005)
+        
+        # Sniper Parameters
+        self.tp1_ratio = 1.0  # Take 50% profit at 1.0 * ATR
+        self.tp_partial_pct = 0.5
+        self.sl_atr_mult = 1.5
 
-    def get_position_size(self, ml_score, account_balance):
+    def get_slippage_buffer(self, df_1m):
         """
-        Calculate position size based on ML score.
+        Volatility-Based Slippage (Iteration 161.0 - The Aegis)
+        If 1m Volatility > 2%, increase slippage from 0.0005 to 0.0015.
+        """
+        if df_1m is None or len(df_1m) < 20:
+            return 0.0005
+            
+        # Calculate 1m volatility (std of log returns)
+        log_ret = np.log(df_1m['close'] / df_1m['close'].shift(1))
+        vol = log_ret.std()
+        
+        # Threshold: 2% annualized or relative? 
+        # User said "1m Volatility > 2%". Let's assume 1m candle range or std.
+        # If max-min range > 2% in 1m, it's extreme.
+        recent_range = (df_1m['high'].iloc[-1] - df_1m['low'].iloc[-1]) / df_1m['low'].iloc[-1]
+        
+        if recent_range > 0.02:
+            return 0.0015
+        return 0.0005
+
+    def get_position_size(self, ml_score, account_balance, entry_price, stop_loss_price):
+        """
+        Calculate position size based on ML score and Stop Loss distance.
+        Formula: (Balance * Risk_Percent) / Stop_Loss_Distance_Pct
         """
         risk_percent = self.elite_risk if ml_score >= self.ml_threshold else self.base_risk
         
-        # Adjust for friction (0.0009)
-        adjusted_risk = risk_percent * (1 - self.friction)
-        
-        return account_balance * adjusted_risk
-
-    def sovereign_filter(self, btc_price_series, eth_price_series):
-        """
-        Decide fund allocation based on BTC/ETH price ratio trend.
-        Returns 'BTC' if BTC is stronger, otherwise 'ETH'.
-        """
-        if len(btc_price_series) < 2 or len(eth_price_series) < 2:
-            return 'BTC' # Default to BTC
+        sl_distance_pct = abs(entry_price - stop_loss_price) / entry_price
+        if sl_distance_pct == 0:
+            return 0
             
-        ratio_current = btc_price_series[-1] / eth_price_series[-1]
-        ratio_previous = btc_price_series[-2] / eth_price_series[-2]
+        risk_amount = account_balance * risk_percent
+        position_size = risk_amount / sl_distance_pct
         
-        if ratio_current > ratio_previous:
+        return position_size
+
+    def sovereign_filter(self, btc_price_series, eth_price_series, window=10):
+        """
+        Calculate the slope of (BTC_Price / ETH_Price).
+        If slope > 0, favor BTC; if slope < 0, favor ETH.
+        """
+        if len(btc_price_series) < window or len(eth_price_series) < window:
             return 'BTC'
-        else:
-            return 'ETH'
-
-    def check_break_even(self, entry_price, current_price, atr, position_type='long'):
-        """
-        Move Stop-Loss to entry price when profit reaches 1.5 * ATR.
-        Returns True if break-even should be triggered.
-        """
-        threshold = 1.5 * atr
-        if position_type == 'long':
-            profit = current_price - entry_price
-        else:
-            profit = entry_price - current_price
             
-        return profit >= threshold
+        ratios = np.array(btc_price_series[-window:]) / np.array(eth_price_series[-window:])
+        x = np.arange(len(ratios))
+        slope, _ = np.polyfit(x, ratios, 1)
+        
+        return 'BTC' if slope > 0 else 'ETH'
+
+    def get_tp_sl(self, entry_price, atr, position_type='long', ratio=2.0):
+        """
+        Calculate dynamic Take-Profit and Stop-Loss based on ATR and a target ratio.
+        Take Profit = Entry + (ratio * ATR)
+        Stop Loss = Entry - ATR
+        """
+        sl_distance = atr 
+        tp_distance = atr * ratio
+        
+        if position_type == 'long':
+            tp_price = entry_price + tp_distance
+            sl_price = entry_price - sl_distance
+        else:
+            tp_price = entry_price - tp_distance
+            sl_price = entry_price + sl_distance
+            
+        return tp_price, sl_price
 
