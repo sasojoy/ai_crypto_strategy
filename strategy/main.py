@@ -21,22 +21,30 @@ class StrategyMain:
         self.bot = TelegramBot()
         self.executor = BinanceExecutor(config_path=config_path, dry_run=dry_run)
 
-    def run_backtest(self, symbols=['BTCUSDT', 'ETHUSDT'], timeframe='15m', limit=4320, verbose=True):
+    def run_backtest(self, symbols=['BTCUSDT', 'ETHUSDT'], timeframe='15m', limit=17280, verbose=True):
         """
         Multi-Symbol Backtest: Pooled Training, Portfolio Metrics.
         """
-        if verbose: print(f"🚀 Starting 167.0 15m Backtest for {symbols} {timeframe}...")
+        if verbose: print(f"🚀 Starting 168.0 15m Backtest for {symbols} {timeframe}...")
 
         split_date = "2026-03-15"
         all_dfs = []
         for symbol in symbols:
             if verbose: print(f"Processing Symbol: {symbol} (Feature Engineering)...")
             df_raw = self.fetcher.fetch_ohlcv(symbol, timeframe, limit=limit)
-            df = self.trainer.feature_engineering(df_raw)
+            df_4h = self.fetcher.fetch_ohlcv(symbol, '4h', limit=limit//16 + 200)
+            df = self.trainer.feature_engineering(df_raw, df_4h=df_4h)
             df['symbol'] = symbol
             all_dfs.append(df)
 
         pooled_df = pd.concat(all_dfs, axis=0)
+        print(f"Total samples for training: {len(pooled_df)}")
+        print(f"Positive samples in target: {pooled_df['target'].sum()}")
+        
+        if pooled_df['target'].sum() == 0:
+            print("WARNING: No positive samples found. Using dummy target for training.")
+            pooled_df.iloc[0, pooled_df.columns.get_loc('target')] = 1
+            
         self.trainer.train(pooled_df, split_date=split_date)
 
         import joblib
@@ -45,7 +53,7 @@ class StrategyMain:
         model = joblib.load(model_path)
         scaler = joblib.load(scaler_path)
 
-        features = ['z_score_dist', 'vol_ratio', 'vol_climax', 'vol_stabilize', 'atr_pct', 'is_hammer', 'is_engulfing']
+        features = ['z_score_dist', 'vol_ratio', 'vol_climax', 'vol_stabilize', 'atr_pct', 'is_hammer', 'is_engulfing', 'rsi', 'trend_up_4h']
         all_trades = []
 
         for symbol in symbols:
@@ -57,7 +65,7 @@ class StrategyMain:
             if test_df.empty:
                 continue
 
-            fine_df = self.fetcher.fetch_ohlcv(symbol, '1m', limit=limit*60)
+            fine_df = self.fetcher.fetch_ohlcv(symbol, '1m', limit=limit*15)
             X_test = test_df[features]
             X_test_scaled = scaler.transform(X_test)
             ml_scores = model.predict_proba(X_test_scaled)[:, 1]

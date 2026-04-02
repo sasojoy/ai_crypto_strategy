@@ -9,15 +9,15 @@ class RiskManager:
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
         
-        self.base_risk = self.config.get('base_risk', 0.015)
-        self.elite_risk = self.config.get('elite_risk', 0.06)
+        self.base_risk = 0.01
+        self.elite_risk = 0.01
         self.ml_threshold = self.config.get('ml_threshold', 0.92)
         self.friction_rate = self.config.get('friction', {}).get('fee', 0.0004) + self.config.get('friction', {}).get('slippage', 0.0005)
         
         # Sniper Parameters
         self.tp1_ratio = 1.0  # Take 50% profit at 1.0 * ATR
         self.tp_partial_pct = 0.5
-        self.sl_atr_mult = 1.5
+        self.sl_atr_mult = 0.8
 
     def get_slippage_buffer(self, df_1m):
         """

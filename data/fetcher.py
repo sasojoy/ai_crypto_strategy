@@ -12,10 +12,10 @@ class BinanceFetcher:
             self.config = yaml.safe_load(f)
         self.exchange = ccxt.binance()
         self.symbols = self.config.get('symbol', ["BTCUSDT", "ETHUSDT"])
-        self.timeframes = self.config.get('timeframes', ["1h", "15m"])
+        self.timeframes = self.config.get('timeframes', ["1h", "15m", "4h"])
         self.data_dir = '/workspace/ai_crypto_strategy/data'
 
-    def fetch_ohlcv(self, symbol, timeframe, limit=1000):
+    def fetch_ohlcv(self, symbol, timeframe, limit=20000):
         """
         Fetch OHLCV data from Binance with correct historical pagination.
         """

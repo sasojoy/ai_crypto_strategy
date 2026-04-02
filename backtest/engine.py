@@ -23,9 +23,11 @@ class BacktestEngine:
             fine_df.set_index('timestamp', inplace=True)
 
         # Vectorized Entry Signal Check
-        # Iteration 166.0 Logic - Liquidity Hunter
-        # Entry: Extreme Oversold + Below Value Area + Volume Drying Up + Confirmation
-        df['is_liquidity_entry'] = (df['z_score_dist'] < -2.0) & (df['vol_climax'] == 1) & (df['vol_stabilize'] == 1) & ((df['is_hammer'] == 1) | (df['is_engulfing'] == 1)) & (df['ml_score'] >= threshold)
+        # 168.0 Logic: Z < -1.5 AND RSI Crosses 30 AND 4H Trend Up
+        df['rsi_prev'] = df['rsi'].shift(1)
+        df['rsi_cross_30'] = (df['rsi_prev'] < 30) & (df['rsi'] >= 30)
+        
+        df['is_liquidity_entry'] = (df['z_score_dist'] < -1.5) & (df['rsi_cross_30'] == 1) & (df['trend_up_4h'] == 1) & (df['ml_score'] >= threshold)
 
         entry_indices = df.index[df['is_liquidity_entry']].tolist()
 
@@ -35,12 +37,15 @@ class BacktestEngine:
 
             entry_time = df['timestamp'].iloc[i]
             entry_price = df['close'].iloc[i]
+            rsi_val = df['rsi'].iloc[i]
             
             # TP: EMA200 (The Mean)
             tp_price = df['ema200'].iloc[i]
-            # SL: 1.5 * ATR
+            # SL: 0.8 * ATR
             atr_val = df['atr'].iloc[i] if 'atr' in df.columns else entry_price * 0.01
-            sl_price = entry_price - 1.5 * atr_val
+            sl_price = entry_price - 0.8 * atr_val
+            
+            print(f"Entry: {entry_time} | Price: {entry_price:.2f} | RSI: {rsi_val:.2f} | Reason: Z={df['z_score_dist'].iloc[i]:.2f}, ML={df['ml_score'].iloc[i]:.2f}")
             
             exit_price = 0
             exit_time = None

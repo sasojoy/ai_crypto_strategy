@@ -17,7 +17,7 @@ class ModelTrainer:
             raise FileNotFoundError(f"Data file not found: {path}")
         return pd.read_parquet(path)
 
-    def feature_engineering(self, df, df_btc=None):
+    def feature_engineering(self, df, df_4h=None):
         df = df.copy()
         df['timestamp'] = pd.to_datetime(df['timestamp'])
 
@@ -26,7 +26,20 @@ class ModelTrainer:
         df['std200'] = df['close'].rolling(200).std()
         df['z_score_dist'] = (df['close'] - df['ema200']) / (df['std200'] + 1e-9)
 
-        # 2. Volume Climax & Stabilization (15m)
+        # 2. RSI (15m) for Momentum Flip
+        df['rsi'] = ta.rsi(df['close'], length=14)
+
+        # 3. 4H Trend Filter (EMA200)
+        if df_4h is not None:
+            df_4h = df_4h.copy()
+            df_4h['ema200_4h'] = ta.ema(df_4h['close'], length=200)
+            df_4h = df_4h[['timestamp', 'ema200_4h']]
+            df = pd.merge_asof(df.sort_values('timestamp'), df_4h.sort_values('timestamp'), on='timestamp', direction='backward')
+            df['trend_up_4h'] = df['close'] > df['ema200_4h']
+        else:
+            df['trend_up_4h'] = True # Fallback
+
+        # 4. Volume Climax & Stabilization (15m)
         df['vol_ma24'] = df['volume'].rolling(96).mean() # 24h = 96 * 15m
         df['vol_ratio'] = df['volume'] / (df['vol_ma24'] + 1e-9)
         
@@ -45,13 +58,17 @@ class ModelTrainer:
 
         # Labeling: 15m Mean Reversion (Future 4h return to EMA200)
         # 4h = 16 * 15m
-        df['target'] = np.where((df['z_score_dist'] < -1.8) & (df['vol_climax'] == 1) & (df['vol_stabilize'] == 1) & (df['close'].shift(-16) > df['close']), 1, 0)
+        # 168.0 Logic: Z < -1.5 AND RSI Crosses 30 AND 4H Trend Up
+        df['rsi_prev'] = df['rsi'].shift(1)
+        df['rsi_cross_30'] = (df['rsi_prev'] < 30) & (df['rsi'] >= 30)
+        
+        df['target'] = np.where((df['z_score_dist'] < -1.5) & (df['rsi_cross_30']) & (df['trend_up_4h']) & (df['close'].shift(-16) > df['close']), 1, 0)
         
         df.dropna(inplace=True)
         return df
 
     def train(self, df, model_name='ensemble_model.joblib', split_date=None):
-        features = ['z_score_dist', 'vol_ratio', 'vol_climax', 'vol_stabilize', 'atr_pct', 'is_hammer', 'is_engulfing']
+        features = ['z_score_dist', 'vol_ratio', 'vol_climax', 'vol_stabilize', 'atr_pct', 'is_hammer', 'is_engulfing', 'rsi', 'trend_up_4h']
         
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         if split_date:
@@ -80,8 +97,9 @@ class ModelTrainer:
 
         importances = model.feature_importances_
         print('\nFeature Importance (Random Forest):')
+        max_imp = max(importances) if len(importances) > 0 and max(importances) > 0 else 1
         for f, imp in zip(features, importances):
-            print(f'{f:<20}: {"#" * int(imp/max(importances)*50)} ({imp})')
+            print(f'{f:<20}: {"#" * int(imp/max_imp*50)} ({imp})')
 
         joblib.dump(model, os.path.join(self.model_dir, model_name))
         print(f'Model saved to {os.path.join(self.model_dir, model_name)}')
