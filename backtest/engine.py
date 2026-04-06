@@ -12,135 +12,119 @@ class BacktestEngine:
         self.friction = self.risk_manager.friction_rate
         self.trades = []
 
-    def run(self, df, ml_scores, threshold=0.7, fine_df=None):
+    def run(self, df, ml_scores, threshold=0.3, fine_df=None):
         df = df.copy()
         df['ml_score'] = ml_scores
         df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-        if fine_df is not None:
-            fine_df = fine_df.copy()
-            fine_df['timestamp'] = pd.to_datetime(fine_df['timestamp'])
-            fine_df.set_index('timestamp', inplace=True)
-
-        # Vectorized Entry Signal Check
-        # 168.0 Logic: Z < -1.5 AND RSI Crosses 30 AND 4H Trend Up
-        df['rsi_prev'] = df['rsi'].shift(1)
-        df['rsi_cross_30'] = (df['rsi_prev'] < 30) & (df['rsi'] >= 30)
+        # 180.0 Breakout Logic
+        df['is_long_entry'] = df['is_long_breakout']
+        df['is_short_entry'] = df['is_short_breakout']
         
-        df['is_liquidity_entry'] = (df['z_score_dist'] < -1.5) & (df['rsi_cross_30'] == 1) & (df['trend_up_4h'] == 1) & (df['ml_score'] >= threshold)
-
-        entry_indices = df.index[df['is_liquidity_entry']].tolist()
+        # ML Filter
+        df['is_liquidity_entry'] = (df['is_long_entry'] | df['is_short_entry']) & (df['ml_score'] >= threshold)
+        
+        entry_indices = np.where(df['is_liquidity_entry'])[0]
+        active_until = None
 
         for i in entry_indices:
             if i >= len(df) - 1: continue
             if self.balance <= 0: break
-
+            
             entry_time = df['timestamp'].iloc[i]
+            if active_until and entry_time < active_until:
+                continue
+
             entry_price = df['close'].iloc[i]
-            rsi_val = df['rsi'].iloc[i]
+            is_long = df['is_long_entry'].iloc[i]
+            atr_val = df['atr'].iloc[i]
             
-            # TP: EMA200 (The Mean)
-            tp_price = df['ema200'].iloc[i]
-            # SL: 0.8 * ATR
-            atr_val = df['atr'].iloc[i] if 'atr' in df.columns else entry_price * 0.01
-            sl_price = entry_price - 0.8 * atr_val
-            
-            print(f"Entry: {entry_time} | Price: {entry_price:.2f} | RSI: {rsi_val:.2f} | Reason: Z={df['z_score_dist'].iloc[i]:.2f}, ML={df['ml_score'].iloc[i]:.2f}")
+            # Trailing Stop: 2.0 * ATR
+            trailing_dist = 2.0 * atr_val
+            # Intended Stop Loss for position sizing
+            intended_sl = entry_price - trailing_dist if is_long else entry_price + trailing_dist
             
             exit_price = 0
             exit_time = None
-            exit_type = None
-
-            if fine_df is not None:
-                end_time = entry_time + pd.Timedelta(hours=24)
-                window = fine_df.loc[entry_time:end_time]
+            
+            # Simulation loop for trailing stop
+            highest_price = entry_price
+            lowest_price = entry_price
+            
+            for j in range(i + 1, len(df)):
+                current_high = df['high'].iloc[j]
+                current_low = df['low'].iloc[j]
+                current_close = df['close'].iloc[j]
                 
-                if not window.empty:
-                    # Vectorized Exit Checks
-                    sl_hits = window[window['low'] <= sl_price]
-                    tp_hits = window[window['high'] >= tp_price]
-                    
-                    # Find first hit
-                    sl_idx = sl_hits.index[0] if not sl_hits.empty else None
-                    tp_idx = tp_hits.index[0] if not tp_hits.empty else None
-                    
-                    if sl_idx and (not tp_idx or sl_idx < tp_idx):
-                        exit_time = sl_idx
-                        exit_price = sl_price
-                        exit_type = 'SL'
-                    elif tp_idx:
-                        exit_time = tp_idx
-                        exit_price = tp_price
-                        exit_type = 'TP_MEAN'
-                    else:
-                        # Time Stop
-                        exit_time = window.index[-1]
-                        exit_price = window['close'].iloc[-1]
-                        exit_type = 'TIME_STOP'
+                if is_long:
+                    highest_price = max(highest_price, current_high)
+                    stop_price = highest_price - trailing_dist
+                    if current_low <= stop_price:
+                        exit_price = stop_price
+                        exit_time = df['timestamp'].iloc[j]
+                        break
+                else:
+                    lowest_price = min(lowest_price, current_low)
+                    stop_price = lowest_price + trailing_dist
+                    if current_high >= stop_price:
+                        exit_price = stop_price
+                        exit_time = df['timestamp'].iloc[j]
+                        break
+            
+            if not exit_time:
+                exit_price = df['close'].iloc[-1]
+                exit_time = df['timestamp'].iloc[-1]
 
-            if not exit_type:
-                # Fallback to 12h exit if no fine_df or window empty
-                exit_idx = min(i + 12, len(df) - 1)
-                exit_price = df['close'].iloc[exit_idx]
-                exit_time = df['timestamp'].iloc[exit_idx]
-                exit_type = 'EXPIRED'
+            # Risk Management & PnL
+            # Use intended_sl for position sizing
+            pos_size = self.risk_manager.get_position_size(0.5, self.balance, entry_price, intended_sl)
+            if pos_size <= 0: continue
 
-            # Calculate PnL with Friction
-            slippage = 0.0005
-            fee = 0.0004
-            trade_return = (exit_price / entry_price) - 1
-            net_return = trade_return - (fee + slippage) * 2
-            total_pnl = self.balance * net_return
-            self.balance += total_pnl
-
-            duration = (pd.to_datetime(exit_time) - pd.to_datetime(entry_time)).total_seconds() / 3600
+            raw_pnl = (exit_price - entry_price) * pos_size if is_long else (entry_price - exit_price) * pos_size
+            fee = (entry_price + exit_price) * pos_size * self.friction
+            net_pnl = raw_pnl - fee
+            
+            self.balance += net_pnl
+            active_until = exit_time
+            
             self.trades.append({
                 'symbol': df['symbol'].iloc[0] if 'symbol' in df.columns else 'UNKNOWN',
                 'entry_time': str(entry_time),
                 'exit_time': str(exit_time),
-                'duration': duration,
-                'pnl': total_pnl,
-                'return': net_return,
-                'exit_type': exit_type
+                'pnl': net_pnl,
+                'return': net_pnl / self.initial_balance,
+                'exit_type': 'TRAILING_STOP'
             })
 
         return self.calculate_metrics()
 
     def calculate_metrics(self):
         if not self.trades:
-            return {'error': 'No trades executed'}
+            return {'total_trades': 0, 'all_trades': []}
 
         trade_df = pd.DataFrame(self.trades)
         win_rate = (trade_df['pnl'] > 0).mean()
         expectancy = trade_df['return'].mean()
-
+        
+        trade_df['cum_balance'] = trade_df['pnl'].cumsum() + self.initial_balance
+        balance_series = pd.Series([self.initial_balance] + trade_df['cum_balance'].tolist())
+        cum_max = balance_series.cummax()
+        drawdowns = (balance_series - cum_max) / cum_max
+        max_drawdown = float(drawdowns.min())
+        
         wins = trade_df[trade_df['pnl'] > 0]
         losses = trade_df[trade_df['pnl'] <= 0]
-
-        avg_win = wins['return'].mean() if not wins.empty else 0
-        avg_loss = losses['return'].mean() if not losses.empty else 0
-
         gross_profits = wins['pnl'].sum()
         gross_losses = abs(losses['pnl'].sum())
-        profit_factor = gross_profits / gross_losses if gross_losses != 0 else float('inf')
-
-        trade_df['cum_balance'] = trade_df['pnl'].cumsum() + self.initial_balance
-        trade_df['cum_max'] = trade_df['cum_balance'].cummax()
-        max_drawdown = ((trade_df['cum_balance'] - trade_df['cum_max']) / trade_df['cum_max']).min()
-
+        profit_factor = gross_profits / gross_losses if gross_losses > 0 else 0.0
+        
         metrics = {
             'total_trades': len(self.trades),
             'win_rate': float(win_rate),
             'expectancy': float(expectancy),
-            'max_drawdown': float(max_drawdown),
+            'max_drawdown': max_drawdown,
             'profit_factor': float(profit_factor),
-            'avg_win': float(avg_win),
-            'avg_loss': float(avg_loss),
-            'total_return': float(trade_df['pnl'].sum() / self.initial_balance),
-            'trades': self.trades
+            'exit_type_counts': trade_df['exit_type'].value_counts().to_dict(),
+            'all_trades': self.trades
         }
-
-        with open('/workspace/ai_crypto_strategy/logs/backtest_report.json', 'w') as f:
-            json.dump(metrics, f)
-
         return metrics

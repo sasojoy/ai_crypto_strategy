@@ -1,4 +1,14 @@
 
+# AI Strategy Changelog
+
+## [179.0] - 2026-04-03
+### 🚀 The Momentum Flip
+- **Entry Logic**: Updated Z-Score threshold to < -2.5 and added 15m RSI cross-up 30 confirmation.
+- **Risk Control**: Tightened Stop-Loss to 0.8 * ATR. Single trade risk maintained at < 1%.
+- **Timeframe**: Standardized all operations to 15m.
+- **Compliance**: Adhering to DEVOPS_RULES.md.
+
+
 
 
 

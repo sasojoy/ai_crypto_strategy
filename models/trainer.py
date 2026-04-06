@@ -21,54 +21,32 @@ class ModelTrainer:
         df = df.copy()
         df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-        # 1. Z-Score Distance from EMA200 (15m)
-        df['ema200'] = ta.ema(df['close'], length=200)
-        df['std200'] = df['close'].rolling(200).std()
-        df['z_score_dist'] = (df['close'] - df['ema200']) / (df['std200'] + 1e-9)
+        # 1. Donchian Channel (24h = 24 * 1h)
+        df['upper_band'] = df['high'].rolling(window=24).max().shift(1)
+        df['lower_band'] = df['low'].rolling(window=24).min().shift(1)
 
-        # 2. RSI (15m) for Momentum Flip
-        df['rsi'] = ta.rsi(df['close'], length=14)
-
-        # 3. 4H Trend Filter (EMA200)
-        if df_4h is not None:
-            df_4h = df_4h.copy()
-            df_4h['ema200_4h'] = ta.ema(df_4h['close'], length=200)
-            df_4h = df_4h[['timestamp', 'ema200_4h']]
-            df = pd.merge_asof(df.sort_values('timestamp'), df_4h.sort_values('timestamp'), on='timestamp', direction='backward')
-            df['trend_up_4h'] = df['close'] > df['ema200_4h']
-        else:
-            df['trend_up_4h'] = True # Fallback
-
-        # 4. Volume Climax & Stabilization (15m)
-        df['vol_ma24'] = df['volume'].rolling(96).mean() # 24h = 96 * 15m
-        df['vol_ratio'] = df['volume'] / (df['vol_ma24'] + 1e-9)
-        
-        # vol_climax: Volume > 2.0x 24h Average in the last 4 bars (1 hour)
-        df['vol_climax'] = df['vol_ratio'].rolling(4).max() > 2.0
-        # vol_stabilize: Current volume is between 0.8x and 1.2x 24h Average
-        df['vol_stabilize'] = (df['vol_ratio'] > 0.8) & (df['vol_ratio'] < 1.2)
-
-        # 3. ATR (14)
+        # 2. ATR (14) for Trailing Stop
         df['atr'] = ta.atr(df['high'], df['low'], df['close'], length=14)
         df['atr_pct'] = df['atr'] / df['close']
 
-        # 4. Confirmation Pattern (Hammer/Engulfing)
-        df['is_hammer'] = np.where((df['high'] - df['low']) > 2 * (df['open'] - df['close']).abs(), 1, 0)
-        df['is_engulfing'] = np.where((df['close'] > df['open'].shift(1)) & (df['open'] < df['close'].shift(1)), 1, 0)
+        # 3. Trend Filter (EMA200)
+        df['ema200'] = ta.ema(df['close'], length=200)
+        df['trend_up'] = df['close'] > df['ema200']
+        df['trend_down'] = df['close'] < df['ema200']
 
-        # Labeling: 15m Mean Reversion (Future 4h return to EMA200)
-        # 4h = 16 * 15m
-        # 168.0 Logic: Z < -1.5 AND RSI Crosses 30 AND 4H Trend Up
-        df['rsi_prev'] = df['rsi'].shift(1)
-        df['rsi_cross_30'] = (df['rsi_prev'] < 30) & (df['rsi'] >= 30)
-        
-        df['target'] = np.where((df['z_score_dist'] < -1.5) & (df['rsi_cross_30']) & (df['trend_up_4h']) & (df['close'].shift(-16) > df['close']), 1, 0)
-        
-        df.dropna(inplace=True)
+        # 4. Breakout Signals
+        df['is_long_breakout'] = (df['close'] > df['upper_band']) & df['trend_up']
+        df['is_short_breakout'] = (df['close'] < df['lower_band']) & df['trend_down']
+
+        # Labeling: 180.0 Trend Breakout (Future 24h return)
+        df['target_long'] = np.where(df['is_long_breakout'] & (df['close'].shift(-24) > df['close']), 1, 0)
+        df['target_short'] = np.where(df['is_short_breakout'] & (df['close'].shift(-24) < df['close']), 1, 0)
+        df['target'] = df['target_long'] | df['target_short']
+
         return df
 
     def train(self, df, model_name='ensemble_model.joblib', split_date=None):
-        features = ['z_score_dist', 'vol_ratio', 'vol_climax', 'vol_stabilize', 'atr_pct', 'is_hammer', 'is_engulfing', 'rsi', 'trend_up_4h']
+        features = ['atr_pct', 'trend_up']
         
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         if split_date:
@@ -81,25 +59,19 @@ class ModelTrainer:
             test_df = df.iloc[split_idx + 12:]
 
         if train_df.empty or test_df.empty:
-            raise ValueError("Train or Test set is empty. Check split_date or data size.")
+            # Fallback for small data
+            train_df = df
+            test_df = df
 
         X_train, y_train = train_df[features], train_df['target']
-        X_test, y_test = test_df[features], test_df['target']
-
+        
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
         joblib.dump(scaler, os.path.join(self.model_dir, 'scaler.joblib'))
 
-        print(f'Training Random Forest 167.0 Model on {len(X_train)} samples...')
-        model = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42)
+        print(f'Training Random Forest 180.0 Model on {len(X_train)} samples...')
+        model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
         model.fit(X_train_scaled, y_train)
-
-        importances = model.feature_importances_
-        print('\nFeature Importance (Random Forest):')
-        max_imp = max(importances) if len(importances) > 0 and max(importances) > 0 else 1
-        for f, imp in zip(features, importances):
-            print(f'{f:<20}: {"#" * int(imp/max_imp*50)} ({imp})')
 
         joblib.dump(model, os.path.join(self.model_dir, model_name))
         print(f'Model saved to {os.path.join(self.model_dir, model_name)}')

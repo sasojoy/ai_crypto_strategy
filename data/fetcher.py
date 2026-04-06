@@ -2,6 +2,7 @@
 
 
 import ccxt
+from datetime import datetime
 import pandas as pd
 import os
 import yaml
@@ -15,7 +16,7 @@ class BinanceFetcher:
         self.timeframes = self.config.get('timeframes', ["1h", "15m", "4h"])
         self.data_dir = '/workspace/ai_crypto_strategy/data'
 
-    def fetch_ohlcv(self, symbol, timeframe, limit=20000):
+    def fetch_ohlcv(self, symbol, timeframe, limit=20000, end_time=None):
         """
         Fetch OHLCV data from Binance with correct historical pagination.
         """
@@ -23,7 +24,14 @@ class BinanceFetcher:
         
         # Calculate 'since' to get historical data
         duration_ms = limit * self.exchange.parse_timeframe(timeframe) * 1000
-        since = self.exchange.milliseconds() - duration_ms
+        if end_time is None:
+            end_time_ms = self.exchange.milliseconds()
+        elif isinstance(end_time, datetime):
+            end_time_ms = int(end_time.timestamp() * 1000)
+        else:
+            end_time_ms = end_time
+            
+        since = end_time_ms - duration_ms
         
         all_ohlcv = []
         while len(all_ohlcv) < limit:
@@ -33,6 +41,8 @@ class BinanceFetcher:
                 break
             all_ohlcv.extend(ohlcv)
             since = ohlcv[-1][0] + 1
+            if since >= end_time_ms:
+                break
             
         df = pd.DataFrame(all_ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')

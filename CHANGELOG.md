@@ -1,5 +1,26 @@
 # Changelog - Project Restructuring 2.0
 
+## [180.0] - 2026-04-03
+### 戰略轉型 (The Great Pivot)
+- **核心邏輯變更**：徹底放棄「均值回歸 (Mean Reversion)」邏輯，轉向「趨勢突破 (Trend Breakout)」邏輯。
+- **指標更新**：引入 Donchian Channel (24h) 作為突破基準，並使用 EMA200 作為趨勢過濾器。
+- **出場機制**：廢除固定 TP/SL，全面採用 Trailing Stop (2.0 * ATR) 以捕捉大趨勢利潤。
+- **時框調整**：從 15m 全面升級至 1h 時框，旨在提高單筆獲利空間並降低手續費摩擦影響。
+
+### 技術修正
+- **數據獲取**：修復 `BinanceFetcher` 在處理 `datetime` 對象時的 `TypeError`。
+- **風控引擎**：修復 `RiskManager` 的 `AttributeError` 並優化倉位計算邏輯（Quantity-based）。
+- **回測引擎**：優化 Trailing Stop 模擬邏輯，支持多品種並行回測與全局指標彙總。
+
+### 審計結果
+- **回測範圍**：BTC/ETH/SOL/AVAX (180 Days, 1h)。
+- **關鍵指標**：勝率 33.02%，期望值 -0.1647%，盈虧比 0.54。
+- **結論**：趨勢追蹤邏輯在當前參數下仍需進一步優化以覆蓋止損成本。
+
+---
+*Co-authored-by: openhands <openhands@all-hands.dev>*
+
+
 ## [2.2.0] - 2026-03-31
 
 ### Added
