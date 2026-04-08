@@ -1,10 +1,13 @@
 {
-    "total_trades": 645,
-    "win_rate": 0.3302325581395349,
-    "expectancy": -0.0016469895059549016,
-    "max_drawdown": -1.0733982540265408,
-    "profit_factor": 0.5395391123079575,
+    "total_trades": 155,
+    "win_rate": 0.25161290322580643,
+    "expectancy": -0.0027630514991493402,
+    "max_drawdown": 0.4279214211293877,
+    "profit_factor": 0.5775043955099232,
     "exit_type_counts": {
-        "TRAILING_STOP": 645
+        "STOP_LOSS": 81,
+        "TAKE_PROFIT": 33,
+        "BREAKEVEN": 25,
+        "TIMEOUT": 16
     }
 }
