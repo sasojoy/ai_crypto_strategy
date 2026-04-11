@@ -1,116 +1,99 @@
-import argparse
 import pandas as pd
 import numpy as np
+import argparse
 import os
 import json
-import joblib
 from strategy.metadata import *
 from data.fetcher import BinanceFetcher
 from models.trainer import ModelTrainer
 from backtest.engine import BacktestEngine
 
-class Strategy:
-    _last_trade_index = {}
+class GoldilocksDispatcher:
+    def __init__(self, z_score_threshold=1.2, entropy_threshold=0.7, rsi_slope_min=5, be_trigger=2.0):
+        self.name = "GOLDILOCKS"
+        self.z_score_threshold = z_score_threshold
+        self.entropy_threshold = entropy_threshold
+        self.rsi_slope_min = rsi_slope_min
+        self.be_trigger = be_trigger
+        self.last_trade_time = {}
 
-    def __init__(self):
-        self.name = f"Orbit-{VERSION}"
+    def calculate_entropy(self, series):
+        if series.empty: return 1.0
+        prob = series.value_counts(normalize=True)
+        return -1 * (prob * np.log2(prob + 1e-9)).sum()
 
-    def get_signal(self, df, symbol="UNKNOWN"):
-        if len(df) < 100: return None, {}
-        
-        current_idx = len(df)
-        if symbol in Strategy._last_trade_index:
-            if current_idx - Strategy._last_trade_index[symbol] < COOLDOWN_BARS:
-                return None, {}
+    def get_signal(self, df_15m, symbol="UNKNOWN", df_1h=None):
+        if df_1h is None or len(df_1h) < 168 or len(df_15m) < 100:
+            return None, {}
 
-        latest = df.iloc[-1]
-        prev = df.iloc[-2]
-        
-        # 1. 趨勢背景 (4H EMA 200)
-        is_trend_up = latest['close'] > latest.get('ema_200_4h', latest['close'])
-        
-        # 2. 三重轉折確認 (ORBIT 核心)
-        # A. 結構：收盤價重新站回 EMA 20
-        back_above_ema20 = latest['close'] > latest['ema_20']
-        # B. 價格行為：前低點獲支撐 (Low > Prev Low)
-        is_support_held = latest['low'] > prev['low']
-        # C. 動能：MACD 柱狀體翻紅 (Hist > 0)
-        is_momentum_red = latest['hist'] > 0
+        current_time = df_15m['timestamp'].iloc[-1]
+        if symbol in self.last_trade_time:
+            hours_since = (current_time - self.last_trade_time[symbol]).total_seconds() / 3600
+            if hours_since < 8: return None, {}
 
-        if is_trend_up and back_above_ema20 and is_support_held and is_momentum_red:
-            Strategy._last_trade_index[symbol] = current_idx
-            
-            # 3. 結構化止損：前 3 根 K 線最低點 - 0.1% 緩衝
-            recent_low = df['low'].iloc[-3:].min()
-            sl_price = recent_low * 0.999
-            
-            risk = latest['close'] - sl_price
-            if risk <= 0 or (risk / latest['close']) > 0.05:
-                return None, {}
-                
-            tp_price = latest['close'] + (risk * RR_TARGET)
-            
-            return 'LONG', {
-                'tp_price': tp_price,
-                'sl_price': sl_price,
-                'be_trigger_price': latest['close'] + (risk * BE_TRIGGER_RR),
-                'timeout': 48
-            }
+        latest_1h = df_1h.iloc[-1]
+        latest_15m = df_15m.iloc[-1]
+        prev_15m = df_15m.iloc[-2]
+
+        rolling_mean = df_1h['adx'].rolling(168).mean()
+        rolling_std = df_1h['adx'].rolling(168).std()
+        adx_z = (latest_1h['adx'] - rolling_mean.iloc[-1]) / (rolling_std.iloc[-1] + 1e-9)
+        entropy_1h = self.calculate_entropy(np.sign(df_1h['close'].diff()).tail(24))
+
+        if adx_z > self.z_score_threshold and entropy_1h < self.entropy_threshold:
+            ema_200_val = latest_1h.get('ema_200', latest_1h.get('ema_200_1h', latest_1h['close']))
+            rsi_slope = latest_15m['rsi'] - prev_15m['rsi']
+            current_atr = latest_15m.get('atr', latest_15m['close'] * 0.01)
+
+            if latest_1h['close'] > ema_200_val and rsi_slope > self.rsi_slope_min:
+                self.last_trade_time[symbol] = current_time
+                return 'LONG', {
+                    'tp_price': latest_15m['close'] + (current_atr * 4.0),
+                    'sl_price': latest_15m['close'] - (current_atr * 2.0),
+                    'be_trigger_price': latest_15m['close'] + (current_atr * self.be_trigger)
+                }
+            elif latest_1h['close'] < ema_200_val and rsi_slope < -self.rsi_slope_min:
+                self.last_trade_time[symbol] = current_time
+                return 'SHORT', {
+                    'tp_price': latest_15m['close'] - (current_atr * 4.0),
+                    'sl_price': latest_15m['close'] + (current_atr * 2.0),
+                    'be_trigger_price': latest_15m['close'] - (current_atr * self.be_trigger)
+                }
         return None, {}
 
 class StrategyMain:
     def __init__(self):
         self.fetcher = BinanceFetcher()
         self.trainer = ModelTrainer()
-        self.strategy = Strategy()
 
-    def run_backtest(self, symbols, days):
-        print(f"🚀 Starting {VERSION} Backtest for {symbols}...")
+    def run_backtest(self, symbols, days, dispatcher=None):
+        if dispatcher is None: dispatcher = GoldilocksDispatcher()
         all_trades = []
-        limit = days * 24
-        Strategy._last_trade_index = {}
-        
         for symbol in symbols:
-            df_raw = self.fetcher.fetch_ohlcv(symbol, TIMEFRAME, limit=limit)
-            if df_raw.empty: continue
-            df = self.trainer.feature_engineering(df_raw)
-            df['symbol'] = symbol
+            df_15m_raw = self.fetcher.fetch_ohlcv(symbol, "15m", limit=days * 96 + 200)
+            df_1h_raw = self.fetcher.fetch_ohlcv(symbol, "1h", limit=days * 24 + 200)
+            if df_15m_raw.empty or df_1h_raw.empty: continue
+            df_15m = self.trainer.feature_engineering(df_15m_raw)
+            df_1h = self.trainer.feature_engineering(df_1h_raw)
+            df_15m['symbol'] = symbol
+            df_15m['timestamp'] = pd.to_datetime(df_15m['timestamp'])
+            df_1h['timestamp'] = pd.to_datetime(df_1h['timestamp'])
             engine = BacktestEngine()
-            results = engine.run(df, self.strategy)
+            class DualTFWrapper:
+                def __init__(self, d, h): self.d, self.h = d, h
+                def get_signal(self, s, symbol="UNKNOWN"):
+                    ts = s['timestamp'].iloc[-1]
+                    h_slice = self.h[self.h['timestamp'] <= ts]
+                    return self.d.get_signal(s, symbol, df_1h=h_slice)
+            results = engine.run(df_15m, DualTFWrapper(dispatcher, df_1h))
             all_trades.extend(results.get('all_trades', []))
-            
-        if not all_trades:
-            print("No trades executed.")
-            return
-
-        trade_df = pd.DataFrame(all_trades)
-        win_rate = (trade_df['pnl'] > 0).mean()
-        trade_df['cum_balance'] = trade_df['pnl'].cumsum() + 10000
-        max_drawdown = ((trade_df['cum_balance'].cummax() - trade_df['cum_balance']) / trade_df['cum_balance'].cummax()).max()
-        pf = trade_df[trade_df['pnl']>0]['pnl'].sum() / abs(trade_df[trade_df['pnl']<=0]['pnl'].sum()) if (trade_df['pnl']<=0).any() else 999
-
-        final_metrics = {
-            'total_trades': len(all_trades),
-            'win_rate': float(win_rate),
-            'expectancy': float(trade_df['return'].mean()),
-            'max_drawdown': float(max_drawdown),
-            'profit_factor': float(pf),
-            'exit_type_counts': trade_df['exit_type'].value_counts().to_dict()
-        }
-        
-        os.makedirs('/workspace/ai_crypto_strategy/logs', exist_ok=True)
-        with open('/workspace/ai_crypto_strategy/logs/backtest_report.json', 'w') as f:
-            json.dump(final_metrics, f, indent=4)
-            
-        print(f"\n【{VERSION} 最終報表】\n" + "-"*40)
-        for k, v in final_metrics.items(): print(f"{k}: {v}")
-        print("-" * 40)
+        return all_trades
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='backtest')
-    parser.add_argument('--symbols', type=str, default='BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,LINKUSDT')
-    parser.add_argument('--days', type=int, default=120)
+    parser.add_argument('--symbols', type=str, default='BTCUSDT,ETHUSDT,SOLUSDT')
+    parser.add_argument('--days', type=int, default=90)
     args = parser.parse_args()
     if args.mode == 'backtest':
         StrategyMain().run_backtest(args.symbols.split(','), args.days)

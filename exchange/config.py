@@ -1,0 +1,3 @@
+API_KEY = "ENV_VAR_REQUIRED"
+API_SECRET = "ENV_VAR_REQUIRED"
+DRY_RUN = True  # 預設為模擬盤，安全第一

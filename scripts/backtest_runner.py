@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.indicators import *
-from src.features import extract_features
+from src.features import calculate_features
 import ccxt
 
 def run_backtest(symbol='SOL/USDT', days=30):
@@ -31,7 +31,7 @@ def run_backtest(symbol='SOL/USDT', days=30):
 
     # 2. Extract Features
     print("📊 Extracting features...")
-    features_df = extract_features(df.reset_index(), btc_df.reset_index())
+    features_df = calculate_features(df.reset_index(), btc_df.reset_index())
     
     # 3. Load Model
     model_path = 'models/rf_model.joblib'

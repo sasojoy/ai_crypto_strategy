@@ -24,10 +24,14 @@ class ModelTrainer:
         
         # Bollinger Bands
         bb = ta.bbands(df['close'], length=20, std=2)
-        df['bb_width'] = (bb.iloc[:, 2] - bb.iloc[:, 0]) / bb.iloc[:, 1]
+        df['bb_lower'] = bb.iloc[:, 0]
+        df['bb_mid'] = bb.iloc[:, 1]
+        df['bb_upper'] = bb.iloc[:, 2]
+        df['bb_width'] = (df['bb_upper'] - df['bb_lower']) / df['bb_mid']
         
         # Trend Filters
         df['ema_20'] = df['close'].ewm(span=20).mean()
+        df['ema_200'] = df['close'].ewm(span=200).mean()
         df['ema_200_4h'] = df['close'].ewm(span=800).mean()
         
         # MACD

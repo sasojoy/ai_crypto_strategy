@@ -7,7 +7,7 @@
 必須完整顯示 Terminal 的執行日誌，禁止隱藏 Warning 或 Error。
 
 ## 第三階段：標準化審計表 (Standard Audit Table)
-所有任務結尾必須包含以下表格，禁止任何形容詞（如：Sniper Mode）：
+所有任務結尾必須包含以下表格中的所有數據：
 
 [FINAL_AUDIT_REPORT]
 | 指標 | 數值 |
