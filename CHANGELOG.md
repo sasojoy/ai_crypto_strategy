@@ -1,10 +1,9 @@
 # Changelog - Project Restructuring 2.0
 
 
-## [600.0-DYNAMO] - 2026-04-06
-- **Stable Sync**: 修正路徑修復邏輯，整合 Telegram Bot 並建立 PM2 生態系配置。
-- **Stable Sync**: 修正路徑修復邏輯，整合 Telegram Bot 並建立 PM2 生態系配置。
+## Iteration 600.0 - 2026-04-06 (DYNAMO)
 ### 核心定位：自適應環境矩陣與實戰壓力對齊
+- **Stable Sync**: 修正路徑修復邏輯，整合 Telegram Bot 並建立 PM2 生態系配置。
 - **DYNAMO Matrix**: 實作 GMM (高斯混合模型) 環境標籤與策略參數的動態映射。系統不再使用單一參數，而是根據「趨勢」、「震盪」、「混亂」三種天氣自動切換 Z-Score 與 TP/SL 權重。
 - **Dual-TF Resonance**: 完善 1H/15m 雙時框同步機制。1H 鎖定結構與熵值過濾，15m 執行 RSI 斜率脈衝觸發。
 - **Bayesian Optimized**: 參數集均通過 Optuna 貝氏優化運算，並通過 90 天樣本內（In-Sample）與 90 天樣本外（OOS）橫向驗證。
