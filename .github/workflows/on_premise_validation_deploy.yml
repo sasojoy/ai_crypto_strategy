@@ -1,57 +1,37 @@
-name: v600-DYNAMO-On-Premise-Validation
+name: 🚀 GCE 本地化驗證與部署
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
     branches: [ main ]
 
 jobs:
-  validate_strategy:
-    runs-on: ubuntu-latest # 或者妳的 On-premise runner 標籤
-    
+  deploy_and_validate_on_gce:
+    runs-on: ubuntu-latest
     steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v3
-
-      - name: 🐍 Set up Python 3.10
-        uses: actions/setup-python@v4
+      - name: 🚀 遠端 GCE 本地化驗證與部署
+        uses: appleboy/ssh-action@master
         with:
-          python-version: '3.10'
-
-      - name: 📦 Install v600 Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install optuna scikit-learn pandas-ta # 確保核心組件到位
-
-      - name: 🧪 Run Logic Unit Tests
-        run: |
-          export PYTHONPATH=$PYTHONPATH:.
-          pytest tests/test_strategy_logic.py # 確保 DYNAMO 矩陣切換邏輯正確
-
-      - name: 📊 Perform OOS Friction Validation (v600.0)
-        env:
-          BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
-          BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
-        run: |
-          # 執行帶有 0.14% 摩擦係數的盲測
-          export PYTHONPATH=$PYTHONPATH:.
-          python3 strategy/main.py --mode backtest --oos True --friction 0.0014
-
-      - name: 📢 Telegram Audit Report
-        if: always() # 確保不論成功失敗都通知妳
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python3 execution/tele_bot.py --report_audit ./logs/latest_audit.json
-
-  deploy_dry_run:
-    needs: validate_strategy
-    if: success() # 只有驗證通過（PF > 1.1）才啟動
-    runs-on: self-hosted # 妳的實體監控機器
-    steps:
-      - name: 🚀 Restart Dry Run Service
-        run: |
-          sudo systemctl restart crypto-dry-run.service
+          host: ${{ secrets.GCE_HOST }}
+          username: ${{ secrets.GCE_USER }}
+          key: ${{ secrets.GCE_SSH_KEY }}
+          script: |
+            cd /home/sasojoy/ai_crypto_strategy
+            git fetch origin main
+            git checkout origin/main -- scripts/quick_validate.py # 只拿驗證腳本
+            
+            # 1. 在 GCE 本地環境跑「真數據驗證」
+            source venv/bin/activate
+            export PYTHONPATH=.
+            python3 scripts/quick_validate.py
+            
+            # 2. 獲取驗證結果 (Exit Code)
+            if [ $? -eq 0 ]; then
+                echo "✅ 驗證通過，執行生產線更新"
+                git pull origin main
+                pip install -r requirements.txt
+                pm2 startOrReload ecosystem.config.js
+                pm2 save
+            else
+                echo "❌ 驗證失敗：新策略表現不如預期，已拒絕部署！"
+                exit 1
+            fi

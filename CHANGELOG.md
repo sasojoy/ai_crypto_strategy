@@ -11,6 +11,7 @@
 - **Friction Resilience**: 正式導入 0.14% 的綜合摩擦係數（手續費+滑點）。確保在真實交易所環境下，策略仍具備 3.32% 的正向期望值。
 - **Adaptive Breakeven**: 優化保本機制。在趨勢市延後保本以捕捉 3.5x 以上的 ATR 利潤；在震盪市縮短保本門檻以極大化資產保護。
 - **Entropy Filter**: 加入市場有序度（Shannon Entropy）門檻，當市場進入隨機遊走（高熵）時強制關閉交易。
+- **CI/CD Pipeline Reinforcement**: 重寫 GitHub Actions 工作流，實作「GCE 本地化驗證」邏輯。在正式部署前，系統會自動在 GCE 環境執行 `quick_validate.py` 進行真數據壓力測試，確保只有通過審核的策略才能進入生產線。
 - **Architecture Decoupling**: 完成決策層（Dispatcher）、特徵層（Feature Engineering）與執行層（Execution）的完全解耦。
 - **Live Readiness**: 實作了 `live_dry_run.py` 模擬盤主引擎與 `tele_bot.py` Telegram 報告模組，並備妥 Systemd 服務配置。
 

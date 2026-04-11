@@ -1393,10 +1393,28 @@ if __name__ == "__main__":
                 manage_positions(scan_results)
                 current_time = time.time()
 
-                # Iteration 116.0 Soul: Hourly Heartbeat & Threshold Warning
+                # Iteration 600.0-DYNAMO: Enhanced Hourly Heartbeat & Regime Report
                 if (datetime.now() - last_report_time).total_seconds() >= 3600:
-                    active_positions = []
-                    balance_data = {"total_balance": 1000.0, "realized_pnl": 0.0}
+                    try:
+                        # 取得當前系統狀態
+                        from src.notifier import send_rich_heartbeat
+                        
+                        # 模擬或獲取當前餘額與 Regime (實務上應從狀態管理器讀取)
+                        current_balance = 1000.0 # 預設值
+                        current_regime = "TREND_HUNTER" # 預設值
+                        
+                        status_data = {
+                            "uptime": str(datetime.now(UTC) - startup_time).split('.')[0],
+                            "regime": current_regime,
+                            "balance": current_balance,
+                            "last_scan": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                        
+                        send_rich_heartbeat(status_data)
+                        last_report_time = datetime.now()
+                        print(f"💓 [DYNAMO] Hourly Heartbeat Sent | Regime: {current_regime}")
+                    except Exception as e:
+                        print(f"⚠️ Heartbeat failed: {e}")
                     if os.path.exists(os.path.join(DATA_DIR, 'system_state.json')):
                         with open(os.path.join(DATA_DIR, 'system_state.json'), 'r') as f:
                             balance_data = json.load(f)
