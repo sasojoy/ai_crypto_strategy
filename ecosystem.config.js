@@ -1,11 +1,15 @@
-// Iteration 67 - Dynamic Sniper.
 module.exports = {
   apps : [{
-    name: "Iteration71_Hybrid",
-    script: "src/market.py",
+    name: "H16_PREDATOR_V133_PRO",
+    script: "./src/market.py",
+    cwd: "/workspace/ai_crypto_strategy",
     env: {
-      NODE_ENV: "production",
-      PYTHONPATH: "."
-    }
+      "PYTHONPATH": ".",
+      "DRY_RUN": "True"
+    },
+    interpreter: "./venv/bin/python3",
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G'
   }]
 }
