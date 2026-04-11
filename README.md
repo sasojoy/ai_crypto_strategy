@@ -1,33 +1,17 @@
-# Iteration 154.0 "Fortress Hunter"
+# Iteration 600.0-DYNAMO "Adaptive Matrix"
 
 ## Goals
-- Restructure project to 2.0 modular architecture.
-- Initialize configuration with risk and friction parameters.
-- Enhance strategy robustness and maintainability.
+- Implement GMM-based Adaptive Market Regime Switching.
+- Production-ready infrastructure (venv, Systemd, Telegram alerts).
+- Extreme friction resilience (0.14% total cost).
+- CI/CD Governance with automated GCE validation.
 
 ## Key Parameters
-- Symbols: ["BTCUSDT", "ETHUSDT"]
-- Base Risk: 0.015
-- Elite Risk: 0.06
-- ML Threshold: 0.92
+- Symbols: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT"]
+- Market Regimes: 0 (Trend Hunter), 1 (Mean Reversion), 2 (Stay Out)
+- Base Risk: 0.02
+- ML Threshold: 0.85
 - Friction:
     - Fee: 0.0004
-    - Slippage: 0.0005
-- Timeframes: ["1h", "15m"]
-EOF > README.md
-# Iteration 154.0 "Fortress Hunter"
-
-## Goals
-- Restructure project to 2.0 modular architecture.
-- Initialize configuration with risk and friction parameters.
-- Enhance strategy robustness and maintainability.
-
-## Key Parameters
-- Symbols: ["BTCUSDT", "ETHUSDT"]
-- Base Risk: 0.015
-- Elite Risk: 0.06
-- ML Threshold: 0.92
-- Friction:
-    - Fee: 0.0004
-    - Slippage: 0.0005
+    - Slippage: 0.0010 (Total 0.14%)
 - Timeframes: ["1h", "15m"]

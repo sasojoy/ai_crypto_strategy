@@ -12,6 +12,8 @@
 - **Adaptive Breakeven**: 優化保本機制。在趨勢市延後保本以捕捉 3.5x 以上的 ATR 利潤；在震盪市縮短保本門檻以極大化資產保護。
 - **Entropy Filter**: 加入市場有序度（Shannon Entropy）門檻，當市場進入隨機遊走（高熵）時強制關閉交易。
 - **CI/CD Pipeline Reinforcement**: 重寫 GitHub Actions 工作流，實作「GCE 本地化驗證」邏輯。在正式部署前，系統會自動在 GCE 環境執行 `quick_validate.py` 進行真數據壓力測試，確保只有通過審核的策略才能進入生產線。
+- **CI/CD Governance**: 引入「文檔一致性強制檢查」機制。現在每次推送必須包含 `CHANGELOG.md` 的更新，且系統會自動驗證 `README.md` 中的版本號是否與 `CHANGELOG.md` 同步，確保開發文檔的嚴謹性。
+- **Deployment Hardening**: 優化 GCE 部署流程，恢復 SSH Secret 命名規範，並強化了 PM2 絕對路徑啟動邏輯與本地 Wheels 優先安裝機制。
 - **Architecture Decoupling**: 完成決策層（Dispatcher）、特徵層（Feature Engineering）與執行層（Execution）的完全解耦。
 - **Live Readiness**: 實作了 `live_dry_run.py` 模擬盤主引擎與 `tele_bot.py` Telegram 報告模組，並備妥 Systemd 服務配置。
 
