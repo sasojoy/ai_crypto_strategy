@@ -5,3 +5,4 @@
 - 補齊 notifier.py 心跳函式參數 (scan_results, active_count, version)
 - 強化 .github/workflows 解決 Pip AssertionError 與環境快取問題
 - CI/CD: Increased SSH command_timeout to 30m and optimized installation steps for GCE deployment.
+- CI/CD: Increased SSH command_timeout to 30m and optimized installation steps for GCE deployment.
