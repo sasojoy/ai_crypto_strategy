@@ -5,7 +5,6 @@ on:
     branches: [ main ]
 
 jobs:
-  # 第一階段：文檔與版本一致性檢查 (Joy's Original QA)
   doc_check:
     runs-on: ubuntu-latest
     steps:
@@ -15,14 +14,10 @@ jobs:
       - name: Check Documentation Updates
         run: |
           if ! git diff --name-only HEAD^ HEAD | grep -q "CHANGELOG.md"; then
-            echo "❌ Error: CHANGELOG.md must be updated in every push!"
+            echo "❌ Error: CHANGELOG.md must be updated!"
             exit 1
           fi
-          # 驗證版本號是否符合規範 (可視需求調整關鍵字)
-          VERSION=$(grep "v600" CHANGELOG.md | head -n 1 | grep -o "v600\.[0-9]*" || echo "UNKNOWN")
-          echo "✅ Version Detected: $VERSION"
 
-  # 第二階段：GCE 強化部署 (解決 AssertionError 與路徑問題)
   on_premise_validation_deploy:
     needs: doc_check
     runs-on: ubuntu-latest
@@ -35,37 +30,29 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd ~/ai_crypto_strategy
-            
-            # 1. 數據同步與清理
             git fetch --all
             git reset --hard origin/main
             git clean -fd
             
-            # 2. 環境徹底重組 (解決 Pip AssertionError)
+            # 清理快取與舊環境 (解決 AssertionError)
             rm -rf venv
             find . -name "*.pyc" -delete
             find . -name "__pycache__" -delete
             
-            # 3. 安裝 Python 3.12 環境與依賴
+            # 重建 Python 3.12 環境
             python3.12 -m venv venv
             source venv/bin/activate
             pip install --upgrade pip
             
-            # 4. 禁用快取安裝，確保 Wheels 與 雲端庫 完全對齊
-            pip install --no-cache-dir ./wheels/*.whl || echo "No wheels found, skipping..."
+            # 強制禁用快取安裝 (防止編譯路徑錯誤)
+            pip install --no-cache-dir ./wheels/*.whl || echo "No wheels"
             pip install --no-cache-dir ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn optuna requests
             
-            # 5. 修復潛在的縮排問題與環境變數注入
-            export PYTHONPATH=.
-            
-            # 6. PM2 精準重啟 (使用絕對路徑防止路徑迷失)
+            # PM2 啟動
             pm2 delete H16_PREDATOR_V133_PRO || true
             pm2 start $(pwd)/src/market.py \
               --name "H16_PREDATOR_V133_PRO" \
               --interpreter $(pwd)/venv/bin/python \
               --cwd $(pwd) \
               --update-env
-            
-            # 7. 固化配置
             pm2 save
-            echo "🚀 [SUCCESS] v600.5-DYNAMO Is Now Live on GCE!"
