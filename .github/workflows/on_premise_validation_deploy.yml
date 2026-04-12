@@ -28,27 +28,31 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          command_timeout: 30m
           script: |
             cd ~/ai_crypto_strategy
             git fetch --all
             git reset --hard origin/main
             git clean -fd
             
-            # 清理快取與舊環境 (解決 AssertionError)
+            # 1. 深度清理
             rm -rf venv
             find . -name "*.pyc" -delete
             find . -name "__pycache__" -delete
             
-            # 重建 Python 3.12 環境
+            # 2. 重建環境
             python3.12 -m venv venv
             source venv/bin/activate
             pip install --upgrade pip
             
-            # 強制禁用快取安裝 (防止編譯路徑錯誤)
-            pip install --no-cache-dir ./wheels/*.whl || echo "No wheels"
-            pip install --no-cache-dir ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn optuna requests
+            # 3. 分段安裝以降低崩潰風險
+            echo "📦 Installing wheels..."
+            pip install --no-cache-dir ./wheels/*.whl || echo "No wheels found"
             
-            # PM2 啟動
+            echo "📦 Installing heavy AI libraries (this may take time)..."
+            pip install ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn optuna requests
+            
+            # 4. PM2 重啟
             pm2 delete H16_PREDATOR_V133_PRO || true
             pm2 start $(pwd)/src/market.py \
               --name "H16_PREDATOR_V133_PRO" \
@@ -56,3 +60,4 @@ jobs:
               --cwd $(pwd) \
               --update-env
             pm2 save
+            echo "🚀 [SUCCESS] v600.6-DYNAMO Is Now Live!"
