@@ -577,3 +577,10 @@ v1.16.7 - Final Feature Alignment and Emergency Fix
 - 修復 market.py 中 balance_data 未定義導致的 NameError
 - 修正 src.features 導入路徑與函數名稱衝突
 - 統一全系統版本號為 v600.0-DYNAMO
+
+## [v600.0-DYNAMO] - 2026-04-12
+### Fixed
+- 修復 notifier.py 接口參數不匹配問題
+- 修復 market.py 中 balance_data 未定義導致的 NameError
+- 修正 src.features 導入路徑與函數名稱衝突
+- 統一全系統版本號為 v600.0-DYNAMO
