@@ -17,6 +17,14 @@
 - **Architecture Decoupling**: 完成決策層（Dispatcher）、特徵層（Feature Engineering）與執行層（Execution）的完全解耦。
 - **Live Readiness**: 實作了 `live_dry_run.py` 模擬盤主引擎與 `tele_bot.py` Telegram 報告模組，並備妥 Systemd 服務配置。
 
+## [v600.5-DYNAMO] - 2026-04-12
+### Added
+- **Robust Deployment Protocol**: 實作了環境徹底重組邏輯，自動清理 `__pycache__` 與 `.pyc` 檔案，解決 GCE 環境下的 Pip AssertionError。
+- **Cache-Free Installation**: 引入 `--no-cache-dir` 安裝機制，確保本地 Wheels 與雲端依賴庫完全對齊。
+- **Version Detection**: 強化了 GitHub Actions 的版本偵測邏輯，支援 `v600` 系列版本號的自動識別。
+- **Environment Hardening**: 完善了 PM2 的絕對路徑啟動與 `PYTHONPATH` 注入，確保策略在生產環境的運行穩定性。
+
+
 ---
 *Co-authored-by: openhands <openhands@all-hands.dev>*
 
