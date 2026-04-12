@@ -1417,10 +1417,9 @@ if __name__ == "__main__":
                         print(f"⚠️ Heartbeat failed: {e}")
                     if os.path.exists(os.path.join(DATA_DIR, 'system_state.json')):
                         with open(os.path.join(DATA_DIR, 'system_state.json'), 'r') as f:
-                            balance_data = {'total_balance': 1000.0}
-        balance_data = {'total_balance': 1000.0}
                             balance_data = json.load(f)
                     
+                    balance_data = {'total_balance': 1000.0}
                     equity = balance_data.get('total_balance', 1000.0)
                     
                     # Scan for active positions
