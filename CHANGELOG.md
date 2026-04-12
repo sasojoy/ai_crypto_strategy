@@ -8,3 +8,4 @@
 - CI/CD: Increased SSH command_timeout to 30m and optimized installation steps for GCE deployment.
 - Final Precision Fix: Resolved SyntaxError by aligning balance_data with usage scope.
 - Hotfix: Aligned calculate_features function name in src/features.py
+- Hotfix: Aligned calculate_features function name in src/features.py
