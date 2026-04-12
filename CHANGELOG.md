@@ -592,3 +592,4 @@ v1.16.7 - Final Feature Alignment and Emergency Fix
 - 修復 market.py 中 balance_data 未定義導致的 NameError
 - 修正 src.features 導入路徑與函數名稱衝突
 - 統一全系統版本號為 v600.0-DYNAMO
+- Hotfix: Precise indentation for market.py line 1420
