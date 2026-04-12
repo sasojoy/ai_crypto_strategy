@@ -1,4 +1,4 @@
-# Iteration 600.0 "Adaptive Matrix"
+# v600.0-DYNAMO "Adaptive Matrix"
 
 ## Goals
 - Implement GMM-based Adaptive Market Regime Switching.
