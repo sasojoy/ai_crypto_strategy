@@ -1,23 +1,11 @@
-joblib
-fastparquet
-# 核心數據處理
-pandas==2.1.1
-numpy==1.26.0
-pyarrow>=12.0.0
-
-# 技術指標矩陣
+pandas==2.2.2
+numpy==1.26.4
 pandas_ta==0.3.14b0
 ta==0.11.0
-
-# AI 與 自動化調參 (The Brain)
-optuna==3.3.0
-scikit-learn==1.3.0
-scipy>=1.11.0
-
-# 交易所連線與 API (The Hands)
-python-binance==1.0.19
+ccxt==4.2.95
+xgboost==2.0.3
+joblib==1.4.0
+python-dotenv==1.0.1
+scikit-learn==1.4.2
+optuna==3.6.1
 requests==2.31.0
-
-# 環境與測試
-python-dotenv==1.0.0
-pytest==7.4.2

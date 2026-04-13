@@ -27,3 +27,6 @@
 
 ## [v600.12-ULTIMATE] - 2026-04-13
 - Critical: Fixed pandas_ta ModuleNotFoundError in venv.
+
+## [v600.15-PRO] - 2026-04-13
+- 生產級別固化：全依賴包版本鎖定 (Pinned Versions)

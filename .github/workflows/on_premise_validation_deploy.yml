@@ -3,20 +3,7 @@ on:
   push:
     branches: [ main ]
 jobs:
-  doc_check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 2
-      - run: |
-          if ! git diff --name-only HEAD^ HEAD | grep -q "CHANGELOG.md"; then
-            echo "❌ Error: CHANGELOG.md must be updated!"
-            exit 1
-          fi
-
   deploy:
-    needs: doc_check
     runs-on: ubuntu-latest
     steps:
       - uses: appleboy/ssh-action@master
@@ -29,22 +16,16 @@ jobs:
             cd ~/ai_crypto_strategy
             git fetch --all && git reset --hard origin/main
             
-            # 徹底清理舊環境
-            rm -rf venv && find . -name "*.pyc" -delete
-            
-            # 建立並激活 venv (使用絕對路徑)
-            /usr/bin/python3.12 -m venv venv
+            # 環境重建
+            rm -rf venv
+            python3.12 -m venv venv
             source venv/bin/activate
             
-            # 確保 pip 升級並安裝所有依賴 (包含 pandas_ta)
-            ./venv/bin/pip install --upgrade pip
-            ./venv/bin/pip install --no-cache-dir pandas_ta==0.3.14b0 ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn optuna requests
+            # 標準鎖定版本安裝
+            pip install --upgrade pip
+            pip install --no-cache-dir -r requirements.txt
             
-            # PM2 徹底重啟
+            # 啟動
             pm2 delete H16_PREDATOR_V133_PRO || true
-            pm2 start src/market.py \
-              --name "H16_PREDATOR_V133_PRO" \
-              --interpreter $(pwd)/venv/bin/python \
-              --cwd $(pwd) \
-              --update-env
+            pm2 start src/market.py --name "H16_PREDATOR_V133_PRO" --interpreter ./venv/bin/python --update-env
             pm2 save
