@@ -97,3 +97,7 @@
 ## [v600.27] - 2026-04-13
 - 修正 else 塊的 IndentationError
 - 鎖定依賴版本並優化 PM2 部署流程
+
+## [v600.29] - 2026-04-13
+- 核心修復：使用 py_compile 解決 market.py 縮排錯誤
+- 流程強化：新增 GitHub Action 語法檢查門檻 (quality_gate)

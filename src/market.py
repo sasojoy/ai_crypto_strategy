@@ -5,6 +5,8 @@ import ccxt
 os.environ['SSL_CERT_FILE'] = certifi.where()
 os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
+import os, sys, time, certifi
+
 import os
 import sys
 import time
@@ -144,6 +146,7 @@ if not IS_SIMULATION:
         print("⚠️ [SECURITY WARNING] No API keys found. Entering WATCH_ONLY mode.")
         WATCH_ONLY = True
     else:
+    pass  # Forced indentation fix by Architect
         print("🚀 [SECURITY] API keys found. Full Trade Mode Active.")
 
 # Initialize Exchange
@@ -152,6 +155,7 @@ if WATCH_ONLY:
         'enableRateLimit': True,
     })
 else:
+    pass  # Forced indentation fix by Architect
     exchange = ccxt.binance({
         'apiKey': os.getenv('BINANCE_API_KEY'),
         'secret': os.getenv('BINANCE_SECRET'),
@@ -179,6 +183,7 @@ def execute_trade(symbol, side, qty, price, atr, params, ml_score=0, reason=""):
     elif symbol == 'SOL/USDT':
         fee_buffer = 0.002  # 0.2%
     else:
+    pass  # Forced indentation fix by Architect
         fee_buffer = 0.005  # 0.5% (FET/AVAX/Alts)
 
     # 2. TP/SL Calculation
@@ -206,6 +211,7 @@ def execute_trade(symbol, side, qty, price, atr, params, ml_score=0, reason=""):
         # In simulation, we just log it
         record_trade_history(symbol, side, price, qty, 0, reason, ml_score, tp_price)
     else:
+    pass  # Forced indentation fix by Architect
         # Real order logic would go here
         # create_order_with_hard_sl(symbol, side, qty, price, sl_price, tp_price)
         # Iteration 96.0: Residual Analysis (Placeholder for real execution)
@@ -307,6 +313,7 @@ def fetch_15m_data(symbol='BTC/USDT', limit=500):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
             else:
+    pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol} (15m)")
                 if os.path.exists(cache_file):
                     print(f"📂 Loading {symbol} 15m data from cache after all retries failed...")
@@ -330,6 +337,7 @@ def fetch_5m_data(symbol='BTC/USDT'):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
             else:
+    pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol} (5m)")
                 return pd.DataFrame()
 
@@ -358,6 +366,7 @@ def fetch_4h_data(symbol='BTC/USDT'):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
             else:
+    pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol} (4h)")
                 return pd.DataFrame()
 
@@ -378,6 +387,7 @@ def fetch_ohlcv(symbol, timeframe="1h", limit=500):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
             else:
+    pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol} ({timeframe})")
                 return pd.DataFrame()
 
@@ -406,6 +416,7 @@ def fetch_1h_data(symbol='BTC/USDT', limit=500):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt) # Exponential backoff
             else:
+    pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol}")
                 return pd.DataFrame()
 
@@ -604,6 +615,7 @@ def log_data(timestamp, price, rsi, ema200):
     if not os.path.isfile(log_file):
         df.to_csv(log_file, index=False)
     else:
+    pass  # Forced indentation fix by Architect
         df.to_csv(log_file, mode='a', header=False, index=False)
 
 def get_active_positions_count():
@@ -678,6 +690,7 @@ def trigger_rollback(reason):
         send_telegram_msg(msg)
         print(msg)
     else:
+    pass  # Forced indentation fix by Architect
         print("Rollback failed: Stable version not found.")
 
 def get_account_balance():
@@ -747,6 +760,7 @@ def update_daily_performance():
             if date_str in df['date'].values:
                 return
         else:
+    pass  # Forced indentation fix by Architect
             df = pd.DataFrame(columns=['date', 'balance', 'win_rate'])
             
         new_row = pd.DataFrame([{'date': date_str, 'balance': balance, 'win_rate': win_rate}])
@@ -776,6 +790,7 @@ def record_trade_history(symbol, side, price, quantity, pnl, reason, ml_score=0,
     if not os.path.exists(path):
         df.to_csv(path, index=False)
     else:
+    pass  # Forced indentation fix by Architect
         # Check if columns match, if not, we might need to handle it
             existing_df = pd.read_csv(path, nrows=0)
             if 'ml_score' not in existing_df.columns:
@@ -885,6 +900,7 @@ def save_order_state(symbol, state):
             'side': state.get('side', 'LONG')
         }
     else:
+    pass  # Forced indentation fix by Architect
         if symbol in active_trades:
             del active_trades[symbol]
             
@@ -983,6 +999,7 @@ def run_strategy(ml_model):
             warmup_count += 1
             prices_rsi[s] = {'price': df_1h.iloc[-1]['close'], 'missed_reason': 'Ready'}
         else:
+    pass  # Forced indentation fix by Architect
             prices_rsi[s] = {'price': 0, 'missed_reason': 'Initializing'}
     
     if warmup_count < len(symbols):
@@ -1060,6 +1077,7 @@ def run_strategy(ml_model):
             elif symbol == 'SOL/USDT':
                 fee_buffer = 0.0025
             else:
+    pass  # Forced indentation fix by Architect
                 fee_buffer = 0.0055
             
             potential_tp_long = df['close'].iloc[-1] + (5.0 * atr)
@@ -1278,6 +1296,7 @@ if __name__ == "__main__":
                 print(f"Total Trades: {len(df)}")
                 print(f"Total PnL from History: ${df['pnl'].sum():.2f}")
             else:
+    pass  # Forced indentation fix by Architect
                 print("No trade history found.")
             
             symbols = ['SOL/USDT', 'ETH/USDT', 'AVAX/USDT', 'FET/USDT', 'NEAR/USDT']
@@ -1320,6 +1339,7 @@ if __name__ == "__main__":
         if ml_model.load():
             print("✅ Model Loaded Successfully.")
         else:
+    pass  # Forced indentation fix by Architect
             print("⚠️ Model Load Failed or Not Found. Using default/untrained state.")
         
         # Iteration 93.0: Optimized Data Pre-warmup (Single Telegram Update)
