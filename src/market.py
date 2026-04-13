@@ -1,18 +1,23 @@
-import os
-import sys
-import time
-import pandas as pd
-
-# 專業動態環境加載
+import os, sys
 try:
     import certifi
     os.environ['SSL_CERT_FILE'] = certifi.where()
     os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+except Exception:
+    pass
+import pandas as pd
+import pandas_ta as ta
+import ccxt
+import time
+import os
+import sys
+import time
+
+# 專業動態環境加載
+try:
 except ImportError:
     pass
 
-import pandas_ta as ta
-import ccxt
 import os
 import sys
 import time
