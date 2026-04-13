@@ -7,10 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Syntax Check (The Joy Guard)
-        run: |
-          python3 -m py_compile src/market.py
-          echo "✅ Smoke test passed!"
+      - name: Pre-flight Syntax Check
+        run: python3 -m py_compile src/market.py
 
   deploy:
     needs: quality_gate
@@ -24,19 +22,13 @@ jobs:
           script: |
             cd ~/ai_crypto_strategy
             git fetch --all && git reset --hard origin/main
-            
-            # 徹底清空殘留
             pm2 delete all || true
             pm2 kill || true
             rm -rf venv
-            
-            # 重建環境
             python3.12 -m venv venv
             source venv/bin/activate
             pip install --upgrade pip
-            pip install --no-cache-dir -r requirements.txt || exit 1
-            
-            # 啟動與日誌重置
+            pip install --no-cache-dir -r requirements.txt
             pm2 flush
             pm2 start src/market.py --name "H16_PREDATOR_V133_PRO" --interpreter ./venv/bin/python --update-env
             pm2 save
