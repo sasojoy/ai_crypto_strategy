@@ -34,7 +34,7 @@ jobs:
             git fetch --all && git reset --hard origin/main
             git clean -fd
             
-            # 1. 徹底殺死 PM2 守護進程，清空所有緩存
+            # 1. 徹底殺掉舊進程
             pm2 delete all || true
             pm2 kill || true
             rm -rf venv
@@ -44,13 +44,14 @@ jobs:
             source venv/bin/activate
             pip install --upgrade pip
             
-            # 3. 安裝依賴 (失敗就報錯，不啟動)
+            # 3. 全量安裝依賴
+            pip install --no-cache-dir ./wheels/*.whl || echo "No wheels found"
             pip install --no-cache-dir -r requirements.txt || exit 1
             
-            # 4. 驗證環境
-            python -c "import ccxt; import pandas_ta; import certifi; print('✅ Environment Ready')" || exit 1
+            # 4. 啟動前環境最後驗證
+            python -c "import pandas_ta; import ccxt; import certifi; print('✅ Environment Ready')" || exit 1
             
-            # 5. 啟動
+            # 5. 使用絕對路徑啟動
             pm2 start $(pwd)/src/market.py \
               --name "H16_PREDATOR_V133_PRO" \
               --interpreter $(pwd)/venv/bin/python \

@@ -5,9 +5,15 @@ import certifi
 import pandas as pd
 import pandas_ta as ta
 import ccxt
-# 動態設定 SSL 憑證，不寫死路徑
+
+# 動態設定環境變數，解決 SSL 憑證 OSError
 os.environ['SSL_CERT_FILE'] = certifi.where()
 os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+
+import os
+import sys
+import time
+# 動態設定 SSL 憑證，不寫死路徑
 import time
 import time
 import os
@@ -15,7 +21,6 @@ import sys
 import time
 
 # 專業動態環境加載
-except ImportError:
 
 import os
 import sys
