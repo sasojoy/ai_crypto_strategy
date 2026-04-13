@@ -6,6 +6,13 @@ os.environ['SSL_CERT_FILE'] = certifi.where()
 os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
 import os, sys, time, certifi
+pass  # Sanitized for structure integrity
+pass  # Sanitized for structure integrity
+pass  # Sanitized for structure integrity
+pass  # Sanitized for structure integrity
+pass  # Sanitized for structure integrity
+
+import os, sys, time, certifi
 pass  # Sanitized by Architect
 pass  # Sanitized by Architect
 pass  # Sanitized by Architect
@@ -225,9 +232,8 @@ def execute_trade(symbol, side, qty, price, atr, params, ml_score=0, reason=""):
         # In simulation, we just log it
         record_trade_history(symbol, side, price, qty, 0, reason, ml_score, tp_price)
     else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
         # Real order logic would go here
+        pass
         # create_order_with_hard_sl(symbol, side, qty, price, sl_price, tp_price)
         # Iteration 96.0: Residual Analysis (Placeholder for real execution)
         # actual_price = ...
@@ -242,6 +248,7 @@ def execute_trade(symbol, side, qty, price, atr, params, ml_score=0, reason=""):
 
 def load_params():
     params_path = os.path.join(CONFIG_DIR, 'params.json')
+    try:
         if not os.path.exists(params_path):
             # Create default params if not exists
             default_params = {"ema_f": 12, "ema_s": 26, "bb_std": 2}
@@ -251,6 +258,7 @@ def load_params():
             return default_params
         with open(params_path, 'r') as f:
             return json.load(f)
+    except Exception as e:
         print(f"❌ [JSON PATH ERROR] Failed to load params from {params_path}: {e}")
         return {"ema_f": 12, "ema_s": 26, "bb_std": 2}
 
@@ -258,7 +266,8 @@ def get_recent_performance():
     """
     Iteration 49: Track recent 10 trades for dynamic risk sizing
     """
-    history_path = os.path.join(DATA_DIR, 'trade_history.json')
+    try:
+        history_path = os.path.join(DATA_DIR, 'trade_history.json')
         if not os.path.exists(history_path):
             return 0.5, 0 # Default win rate 50%, 0 losses
         
@@ -277,6 +286,7 @@ def get_recent_performance():
         losses = len([t for t in last_two if t.get('pnl', 0) < 0])
         
         return win_rate, losses
+    except Exception as e:
         print(f"Error tracking performance: {e}")
         return 0.5, 0
 
@@ -328,8 +338,6 @@ def fetch_15m_data(symbol='BTC/USDT', limit=500):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
             else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol} (15m)")
                 if os.path.exists(cache_file):
                     print(f"📂 Loading {symbol} 15m data from cache after all retries failed...")
@@ -353,8 +361,6 @@ def fetch_5m_data(symbol='BTC/USDT'):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
             else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol} (5m)")
                 return pd.DataFrame()
 
@@ -383,8 +389,6 @@ def fetch_4h_data(symbol='BTC/USDT'):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
             else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol} (4h)")
                 return pd.DataFrame()
 
@@ -405,8 +409,6 @@ def fetch_ohlcv(symbol, timeframe="1h", limit=500):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
             else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol} ({timeframe})")
                 return pd.DataFrame()
 
@@ -435,8 +437,6 @@ def fetch_1h_data(symbol='BTC/USDT', limit=500):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt) # Exponential backoff
             else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol}")
                 return pd.DataFrame()
 
@@ -446,9 +446,11 @@ def fetch_funding_rate(symbol):
     Iteration 17: Funding Rate Filter
     Fetch current funding rate for the symbol using Public API.
     """
+    try:
         # Iteration 88.0: Use Singleton
         funding = exchange_futures.fetch_funding_rate(symbol)
         return funding['fundingRate']
+    except Exception as e:
         print(f"Error fetching funding rate for {symbol}: {e}")
         return 0
 
@@ -457,6 +459,7 @@ def check_order_book_depth(symbol, amount_usd):
     Iteration 50: Slippage & Depth Protection
     Checks if the order book can handle the order with < 0.5% slippage.
     """
+    try:
         # Iteration 88.0: Use Singleton
         order_book = exchange.fetch_order_book(symbol, limit=20)
         bids = order_book['bids'] # [price, amount]
@@ -468,6 +471,7 @@ def check_order_book_depth(symbol, amount_usd):
                 slippage = (bids[0][0] - price) / bids[0][0]
                 return slippage < 0.005
         return False
+    except Exception as e:
         print(f"Depth check error: {e}")
         return True # Default to True to not block if API fails
 
@@ -476,9 +480,11 @@ def fetch_open_interest(symbol):
     Iteration 17: OI Divergence
     Fetch current open interest for the symbol.
     """
+    try:
         # Iteration 88.0: Use Singleton
         oi_data = exchange_futures.fetch_open_interest(symbol)
         return oi_data['openInterestAmount']
+    except Exception as e:
         print(f"Error fetching OI for {symbol}: {e}")
         return 0
 
@@ -635,8 +641,6 @@ def log_data(timestamp, price, rsi, ema200):
     if not os.path.isfile(log_file):
         df.to_csv(log_file, index=False)
     else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
         df.to_csv(log_file, mode='a', header=False, index=False)
 
 def get_active_positions_count():
@@ -671,10 +675,11 @@ def stability_monitor():
                 print(f"⏳ [CIRCUIT BREAKER] 系統熔斷中，預計 {datetime.fromtimestamp(cb_data['resume_time'])} 恢復。")
                 return False # 暫停交易
 
-    if not os.path.exists(history_file): return True
+    if not os.path.exists(history_file):
+        return True
 
-        with open(history_file, 'r') as f:
-            trades = json.load(f)
+    with open(history_file, 'r') as f:
+        trades = json.load(f)
 
         # 1. 連續止損檢查
         last_3_trades = trades[-3:]
@@ -711,8 +716,6 @@ def trigger_rollback(reason):
         send_telegram_msg(msg)
         print(msg)
     else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
         print("Rollback failed: Stable version not found.")
 
 def get_account_balance():
@@ -767,24 +770,22 @@ def update_daily_performance():
     Iteration 54: Automatic Performance Tracker
     Logs daily net value and win rate to data/daily_performance.csv at 00:00 UTC.
     """
-        path = os.path.join(BASE_DIR, 'data', 'daily_performance.csv')
-        balance = get_account_balance()
-        
-        # Calculate win rate from history
-        win_rate, _ = get_recent_performance()
-        
-        now = datetime.now(UTC)
-        date_str = now.strftime('%Y-%m-%d')
-        
-        # Check if we already logged today
-        if os.path.exists(path):
-            df = pd.read_csv(path)
-            if date_str in df['date'].values:
-                return
-        else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
-            df = pd.DataFrame(columns=['date', 'balance', 'win_rate'])
+    path = os.path.join(BASE_DIR, 'data', 'daily_performance.csv')
+    balance = get_account_balance()
+    
+    # Calculate win rate from history
+    win_rate, _ = get_recent_performance()
+    
+    now = datetime.now(UTC)
+    date_str = now.strftime('%Y-%m-%d')
+    
+    # Check if we already logged today
+    if os.path.exists(path):
+        df = pd.read_csv(path)
+        if date_str in df['date'].values:
+            return
+    else:
+        df = pd.DataFrame(columns=['date', 'balance', 'win_rate'])
             
         new_row = pd.DataFrame([{'date': date_str, 'balance': balance, 'win_rate': win_rate}])
         df = pd.concat([df, new_row], ignore_index=True)
@@ -813,18 +814,16 @@ def record_trade_history(symbol, side, price, quantity, pnl, reason, ml_score=0,
     if not os.path.exists(path):
         df.to_csv(path, index=False)
     else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
         # Check if columns match, if not, we might need to handle it
-            existing_df = pd.read_csv(path, nrows=0)
-            if 'ml_score' not in existing_df.columns:
-                # Re-write with new headers if columns changed
-                full_df = pd.read_csv(path)
-                full_df['ml_score'] = 0
-                full_df['final_tp'] = 0
-                full_df = pd.concat([full_df, df], ignore_index=True)
-                full_df.to_csv(path, index=False)
-                return
+        existing_df = pd.read_csv(path, nrows=0)
+        if 'ml_score' not in existing_df.columns:
+            # Re-write with new headers if columns changed
+            full_df = pd.read_csv(path)
+            full_df['ml_score'] = 0
+            full_df['final_tp'] = 0
+            full_df = pd.concat([full_df, df], ignore_index=True)
+            full_df.to_csv(path, index=False)
+            return
         df.to_csv(path, mode='a', header=False, index=False)
 
 
@@ -878,6 +877,7 @@ def check_and_retrain_model():
             return
 
         print(f"🔄 [AI Auto-Retrain] {today_str} 00:00 UTC. Starting weekly model re-training...")
+        try:
             from src.train_model import train
             train()
             
@@ -886,6 +886,7 @@ def check_and_retrain_model():
                 json.dump({'last_retrain_date': today_str}, f)
                 
             send_telegram_msg(f"🔄 [AI Auto-Retrain] {today_str} 每週模型再訓練完成，AI 已更新至最新市場狀態。")
+        except Exception as e:
             print(f"Error during auto-retrain: {e}")
             send_telegram_msg(f"⚠️ [AI Auto-Retrain] 模型再訓練失敗: {e}")
 
@@ -924,8 +925,6 @@ def save_order_state(symbol, state):
             'side': state.get('side', 'LONG')
         }
     else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
         if symbol in active_trades:
             del active_trades[symbol]
             
@@ -1024,8 +1023,6 @@ def run_strategy(ml_model):
             warmup_count += 1
             prices_rsi[s] = {'price': df_1h.iloc[-1]['close'], 'missed_reason': 'Ready'}
         else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
             prices_rsi[s] = {'price': 0, 'missed_reason': 'Initializing'}
     
     if warmup_count < len(symbols):
@@ -1447,6 +1444,7 @@ if __name__ == "__main__":
                     pass  # Sanitized by Architect
                     pass  # Sanitized by Architect
                     pass  # Sanitized by Architect
+                    pass  # Sanitized for structure integrity
                     balance_data = {'total_balance': 1000.0}
                     equity = balance_data.get('total_balance', 1000.0)
                     
