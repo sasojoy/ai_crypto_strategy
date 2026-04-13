@@ -37,3 +37,7 @@
 ## [v600.16] - 2026-04-13
 - 恢復 doc_check 機制與標準部署邏輯
 - 定版鎖定 requirements.txt 依賴版本
+
+## [v600.17] - 2026-04-13
+- 恢復 doc_check 機制
+- 修正 Python 3.12 版本相容性問題 (Pandas/Numpy)

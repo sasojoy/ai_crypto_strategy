@@ -17,7 +17,6 @@ jobs:
             echo "❌ Error: CHANGELOG.md must be updated!"
             exit 1
           fi
-          echo "✅ Documentation Check Passed!"
 
   on_premise_validation_deploy:
     needs: doc_check
@@ -32,21 +31,20 @@ jobs:
           command_timeout: 30m
           script: |
             cd ~/ai_crypto_strategy
-            git fetch --all
-            git reset --hard origin/main
+            git fetch --all && git reset --hard origin/main
             git clean -fd
             
-            # 徹底清理
+            # 環境深度清理
             rm -rf venv
             find . -name "*.pyc" -delete
             find . -name "__pycache__" -delete
             
-            # 重建 Python 3.12 環境
+            # 重建 3.12 環境
             python3.12 -m venv venv
             source venv/bin/activate
             pip install --upgrade pip
             
-            # 安裝 wheels 與 鎖定版本的 requirements.txt
+            # 先裝 Wheels (包含 pandas_ta)，再裝 requirements
             pip install --no-cache-dir ./wheels/*.whl || echo "No wheels"
             pip install --no-cache-dir -r requirements.txt
             
