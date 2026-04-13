@@ -44,3 +44,6 @@
 
 ## [v600.19] - 2026-04-13
 - Fix: Locked llvmlite and numba versions for Python 3.12 stability.
+
+## [v600.19] - 2026-04-13
+- Fix: Locked llvmlite and numba versions for Python 3.12 stability.
