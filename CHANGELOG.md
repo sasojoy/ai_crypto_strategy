@@ -11,3 +11,4 @@
 - Hotfix: Aligned calculate_features function name in src/features.py
 - Hotfix v600.9: Fixed DataFrame vs List type mismatch and environment recovery.
 - Hotfix v600.9: Fixed DataFrame vs List type mismatch and environment recovery.
+- Final Alignment: Synchronized 19 feature columns and recovered env dependencies.
