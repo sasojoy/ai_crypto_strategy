@@ -93,3 +93,7 @@
 ## [v600.26] - 2026-04-13
 - 修正 pandas_ta 版本衝突
 - 徹底移除 market.py 內的 try/except 縮排錯誤
+
+## [v600.27] - 2026-04-13
+- 修正 else 塊的 IndentationError
+- 鎖定依賴版本並優化 PM2 部署流程

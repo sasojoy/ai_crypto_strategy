@@ -1,12 +1,13 @@
-import os
-import sys
-import time
-import certifi
+import os, sys, time, certifi
 import pandas as pd
 import pandas_ta as ta
 import ccxt
 os.environ['SSL_CERT_FILE'] = certifi.where()
 os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+
+import os
+import sys
+import time
 
 import os
 import sys
