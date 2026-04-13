@@ -1,9 +1,7 @@
 name: On-Premise Validation & Deploy
-
 on:
   push:
     branches: [ main ]
-
 jobs:
   doc_check:
     runs-on: ubuntu-latest
@@ -11,19 +9,17 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 2
-      - name: Check Documentation Updates
-        run: |
+      - run: |
           if ! git diff --name-only HEAD^ HEAD | grep -q "CHANGELOG.md"; then
             echo "❌ Error: CHANGELOG.md must be updated!"
             exit 1
           fi
 
-  on_premise_validation_deploy:
+  deploy:
     needs: doc_check
     runs-on: ubuntu-latest
     steps:
-      - name: SSH and Robust Deploy on GCE
-        uses: appleboy/ssh-action@master
+      - uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -31,33 +27,13 @@ jobs:
           command_timeout: 30m
           script: |
             cd ~/ai_crypto_strategy
-            git fetch --all
-            git reset --hard origin/main
-            git clean -fd
-            
-            # 1. 深度清理
-            rm -rf venv
-            find . -name "*.pyc" -delete
-            find . -name "__pycache__" -delete
-            
-            # 2. 重建環境
+            git fetch --all && git reset --hard origin/main
+            rm -rf venv && find . -name "*.pyc" -delete
             python3.12 -m venv venv
             source venv/bin/activate
             pip install --upgrade pip
-            
-            # 3. 分段安裝以降低崩潰風險
-            echo "📦 Installing wheels..."
-            pip install --no-cache-dir ./wheels/*.whl || echo "No wheels found"
-            
-            echo "📦 Installing heavy AI libraries (this may take time)..."
-            pip install ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn optuna requests
-            
-            # 4. PM2 重啟
+            # 確保安裝 PREDATOR 所有的依賴庫
+            pip install --no-cache-dir pandas_ta==0.3.14b0 ta ccxt xgboost joblib python-dotenv pandas numpy scikit-learn optuna requests
             pm2 delete H16_PREDATOR_V133_PRO || true
-            pm2 start $(pwd)/src/market.py \
-              --name "H16_PREDATOR_V133_PRO" \
-              --interpreter $(pwd)/venv/bin/python \
-              --cwd $(pwd) \
-              --update-env
+            pm2 start src/market.py --name "H16_PREDATOR_V133_PRO" --interpreter ./venv/bin/python --update-env
             pm2 save
-            echo "🚀 [SUCCESS] v600.6-DYNAMO Is Now Live!"

@@ -13,3 +13,7 @@
 - Hotfix v600.9: Fixed DataFrame vs List type mismatch and environment recovery.
 - Final Alignment: Synchronized 19 feature columns and recovered env dependencies.
 - Final Alignment: Synchronized 19 feature columns and recovered env dependencies.
+
+## [v600.11-STABLE] - 2026-04-13
+- Resolved ModuleNotFoundError: pandas_ta
+- Fixed Indentation and SyntaxErrors in market.py
