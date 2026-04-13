@@ -1,12 +1,30 @@
 name: On-Premise Validation & Deploy
+
 on:
   push:
     branches: [ main ]
+
 jobs:
-  deploy:
+  doc_check:
     runs-on: ubuntu-latest
     steps:
-      - uses: appleboy/ssh-action@master
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      - name: Check Documentation Updates
+        run: |
+          if ! git diff --name-only HEAD^ HEAD | grep -q "CHANGELOG.md"; then
+            echo "❌ Error: CHANGELOG.md must be updated!"
+            exit 1
+          fi
+          echo "✅ Documentation Check Passed!"
+
+  on_premise_validation_deploy:
+    needs: doc_check
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and Robust Deploy on GCE
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -14,18 +32,29 @@ jobs:
           command_timeout: 30m
           script: |
             cd ~/ai_crypto_strategy
-            git fetch --all && git reset --hard origin/main
+            git fetch --all
+            git reset --hard origin/main
+            git clean -fd
             
-            # 環境重建
+            # 徹底清理
             rm -rf venv
+            find . -name "*.pyc" -delete
+            find . -name "__pycache__" -delete
+            
+            # 重建 Python 3.12 環境
             python3.12 -m venv venv
             source venv/bin/activate
-            
-            # 標準鎖定版本安裝
             pip install --upgrade pip
+            
+            # 安裝 wheels 與 鎖定版本的 requirements.txt
+            pip install --no-cache-dir ./wheels/*.whl || echo "No wheels"
             pip install --no-cache-dir -r requirements.txt
             
-            # 啟動
+            # PM2 啟動
             pm2 delete H16_PREDATOR_V133_PRO || true
-            pm2 start src/market.py --name "H16_PREDATOR_V133_PRO" --interpreter ./venv/bin/python --update-env
+            pm2 start $(pwd)/src/market.py \
+              --name "H16_PREDATOR_V133_PRO" \
+              --interpreter $(pwd)/venv/bin/python \
+              --cwd $(pwd) \
+              --update-env
             pm2 save
