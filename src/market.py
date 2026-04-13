@@ -9,6 +9,11 @@ import pandas as pd
 import pandas_ta as ta
 import ccxt
 import time
+import os, sys
+try:
+except Exception:
+    pass
+import time
 import os
 import sys
 import time
