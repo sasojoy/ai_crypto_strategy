@@ -1,4 +1,4 @@
-# v600.11-STABLE-STABLE-STABLE-STABLE-RECOVERY-RECOVERY-DYNAMO "Adaptive Matrix"
+# v600.12-ULTIMATE-STABLE-STABLE-STABLE-STABLE-RECOVERY-RECOVERY-DYNAMO "Adaptive Matrix"
 
 ## Goals
 - Implement GMM-based Adaptive Market Regime Switching.

@@ -1035,7 +1035,7 @@ def run_strategy(ml_model):
             dist_ema200 = (df['close'].iloc[-1] - calculate_ema(df, 200).iloc[-1]) / calculate_ema(df, 200).iloc[-1]
             
             # Iteration 126.0: Precision Hunter Production Logic
-            import pandas_ta as ta
+import pandas_ta as ta
             
             # 1. Indicators
             ema20 = calculate_ema(df, 20).iloc[-1]
@@ -1419,6 +1419,7 @@ if __name__ == "__main__":
                         with open(os.path.join(DATA_DIR, 'system_state.json'), 'r') as f:
                             balance_data = json.load(f)
                     
+                    balance_data = {'total_balance': 1000.0}
                     balance_data = {'total_balance': 1000.0}
                     balance_data = {'total_balance': 1000.0}
                     balance_data = {'total_balance': 1000.0}
