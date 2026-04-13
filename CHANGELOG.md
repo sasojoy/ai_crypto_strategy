@@ -89,3 +89,7 @@
 - 核心修復：重構 market.py 頭部，徹底解決 IndentationError
 - 環境鎖定：恢復鎖定版本 requirements.txt 安裝流程
 - 部署強化：增加啟動前依賴包完整性驗證
+
+## [v600.26] - 2026-04-13
+- 修正 pandas_ta 版本衝突
+- 徹底移除 market.py 內的 try/except 縮排錯誤

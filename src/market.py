@@ -5,10 +5,14 @@ import certifi
 import pandas as pd
 import pandas_ta as ta
 import ccxt
-
-# 動態設定環境變數，解決 SSL 憑證 OSError
 os.environ['SSL_CERT_FILE'] = certifi.where()
 os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+
+import os
+import sys
+import time
+
+# 動態設定環境變數，解決 SSL 憑證 OSError
 
 import os
 import sys
@@ -70,11 +74,9 @@ def safe_get_float(obj, index=-1):
     """
     if hasattr(obj, 'values'):
             return float(obj.values[index])
-        except:
             return float(obj.values)
     if hasattr(obj, 'iloc'):
             return float(obj.iloc[index])
-        except:
             return float(obj.iloc)
     if isinstance(obj, (list, np.ndarray)):
         return float(obj[index])
@@ -86,11 +88,9 @@ def safe_get_bool(obj, index=-1):
     """
     if hasattr(obj, 'values'):
             return bool(obj.values[index])
-        except:
             return bool(obj.values)
     if hasattr(obj, 'iloc'):
             return bool(obj.iloc[index])
-        except:
             return bool(obj.iloc)
     if isinstance(obj, (list, np.ndarray)):
         return bool(obj[index])
@@ -229,7 +229,6 @@ def load_params():
             return default_params
         with open(params_path, 'r') as f:
             return json.load(f)
-    except Exception as e:
         print(f"❌ [JSON PATH ERROR] Failed to load params from {params_path}: {e}")
         return {"ema_f": 12, "ema_s": 26, "bb_std": 2}
 
@@ -256,7 +255,6 @@ def get_recent_performance():
         losses = len([t for t in last_two if t.get('pnl', 0) < 0])
         
         return win_rate, losses
-    except Exception as e:
         print(f"Error tracking performance: {e}")
         return 0.5, 0
 
@@ -304,7 +302,6 @@ def fetch_15m_data(symbol='BTC/USDT', limit=500):
             # Save to cache
             df.to_csv(cache_file, index=False)
             return df
-        except Exception as e:
             print(f"❌ Attempt {attempt+1}/{max_retries} failed for {symbol} (15m): {type(e).__name__} - {e}")
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
@@ -328,7 +325,6 @@ def fetch_5m_data(symbol='BTC/USDT'):
             df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
             return df
-        except Exception as e:
             print(f"❌ Attempt {attempt+1}/{max_retries} failed for {symbol} (5m): {type(e).__name__} - {e}")
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
@@ -357,7 +353,6 @@ def fetch_4h_data(symbol='BTC/USDT'):
             df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
             return df
-        except Exception as e:
             print(f"❌ Attempt {attempt+1}/{max_retries} failed for {symbol} (4h): {type(e).__name__} - {e}")
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
@@ -378,7 +373,6 @@ def fetch_ohlcv(symbol, timeframe="1h", limit=500):
             df = pd.DataFrame(ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
             df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
             return df
-        except Exception as e:
             print(f"❌ Attempt {attempt+1}/{max_retries} failed for {symbol} ({timeframe}): {type(e).__name__} - {e}")
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
@@ -407,7 +401,6 @@ def fetch_1h_data(symbol='BTC/USDT', limit=500):
             # Save to cache
             df.to_csv(cache_file, index=False)
             return df
-        except Exception as e:
             print(f"❌ Attempt {attempt+1}/{max_retries} failed for {symbol}: {type(e).__name__} - {e}")
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt) # Exponential backoff
@@ -424,7 +417,6 @@ def fetch_funding_rate(symbol):
         # Iteration 88.0: Use Singleton
         funding = exchange_futures.fetch_funding_rate(symbol)
         return funding['fundingRate']
-    except Exception as e:
         print(f"Error fetching funding rate for {symbol}: {e}")
         return 0
 
@@ -444,7 +436,6 @@ def check_order_book_depth(symbol, amount_usd):
                 slippage = (bids[0][0] - price) / bids[0][0]
                 return slippage < 0.005
         return False
-    except Exception as e:
         print(f"Depth check error: {e}")
         return True # Default to True to not block if API fails
 
@@ -456,7 +447,6 @@ def fetch_open_interest(symbol):
         # Iteration 88.0: Use Singleton
         oi_data = exchange_futures.fetch_open_interest(symbol)
         return oi_data['openInterestAmount']
-    except Exception as e:
         print(f"Error fetching OI for {symbol}: {e}")
         return 0
 
@@ -599,7 +589,6 @@ def check_upside_potential(symbol, entry_price, df_1h):
         if upside_pct < 0.012:
             print(f"🛡️ [Iteration 89.0 | Rigid Data] [Space Check] {symbol} upside {upside_pct:.2%} < 1.2% to resistance ({recent_high:.2f}). Skipping.")
             return False
-    except Exception as e:
         print(f"Error in check_upside_potential for {symbol}: {e}")
         return True
     return True
@@ -629,7 +618,6 @@ def get_active_positions_count():
                     state = json.load(f)
                     if state.get('status') == 'Open':
                         count += 1
-            except:
     return count
 
 def stability_monitor():
@@ -675,7 +663,6 @@ def stability_monitor():
             print(msg)
             return False
             
-    except Exception as e:
         print(f"Stability monitor error: {e}")
     return True
 
@@ -765,7 +752,6 @@ def update_daily_performance():
         df = pd.concat([df, new_row], ignore_index=True)
         df.to_csv(path, index=False)
         print(f"📈 Daily performance logged: {date_str} | Balance: {balance}")
-    except Exception as e:
         print(f"Error updating daily performance: {e}")
 
 def record_trade_history(symbol, side, price, quantity, pnl, reason, ml_score=0, tp_price=0):
@@ -799,7 +785,6 @@ def record_trade_history(symbol, side, price, quantity, pnl, reason, ml_score=0,
                 full_df = pd.concat([full_df, df], ignore_index=True)
                 full_df.to_csv(path, index=False)
                 return
-        except:
         df.to_csv(path, mode='a', header=False, index=False)
 
 
@@ -845,7 +830,6 @@ def check_and_retrain_model():
     if os.path.exists(retrain_lock_path):
             with open(retrain_lock_path, 'r') as f:
                 last_retrain_date = json.load(f).get('last_retrain_date', "")
-        except:
 
     # Sunday is 6 in weekday()
     if now.weekday() == 6 and now.hour == 0 and now.minute < 15:
@@ -862,7 +846,6 @@ def check_and_retrain_model():
                 json.dump({'last_retrain_date': today_str}, f)
                 
             send_telegram_msg(f"🔄 [AI Auto-Retrain] {today_str} 每週模型再訓練完成，AI 已更新至最新市場狀態。")
-        except Exception as e:
             print(f"Error during auto-retrain: {e}")
             send_telegram_msg(f"⚠️ [AI Auto-Retrain] 模型再訓練失敗: {e}")
 
@@ -889,7 +872,6 @@ def save_order_state(symbol, state):
     if os.path.exists(ACTIVE_TRADES_PATH):
             with open(ACTIVE_TRADES_PATH, 'r') as f:
                 active_trades = json.load(f)
-        except Exception as e:
             print(f"❌ [JSON PATH ERROR] Failed to read {ACTIVE_TRADES_PATH}: {e}")
     
     if state.get('status') == 'Open':
@@ -913,7 +895,6 @@ def load_order_state(symbol):
     if os.path.exists(path):
             with open(path, 'r') as f:
                 return json.load(f)
-        except Exception as e:
             print(f"❌ [JSON PATH ERROR] Failed to read {path}: {e}")
             return None
     return None
@@ -1110,7 +1091,6 @@ def run_strategy(ml_model):
                 print(f"🎯 [SIGNAL] {symbol} (1H) {side} | Reason: {entry_reason}")
                 execute_trade(symbol, side, pos_size, df['close'].iloc[-1], atr, params, ml_score, entry_reason)
                 
-        except Exception as e:
             print(f"Error processing {symbol}: {e}")
             continue
 
@@ -1276,7 +1256,6 @@ def close_partial_position(symbol, qty):
         # For now, we simulate the exchange call and update our local state
         print(f"💰 [EXCHANGE] Partial close executed for {symbol}: {qty} units.")
         return True
-    except Exception as e:
         print(f"❌ [Iteration 91.1 | DevOps Compliance] Error in partial close for {symbol}: {e}")
         import traceback
         traceback.print_exc()
@@ -1328,12 +1307,10 @@ if __name__ == "__main__":
                 with open(ACTIVE_TRADES_PATH, 'r') as f:
                     persisted_trades = json.load(f)
                     print(f"📦 [Iteration 91.1] Loaded {len(persisted_trades)} persisted trades.")
-            except Exception as e:
                 print(f"⚠️ Error loading persisted trades: {e}")
 
         # Iteration 93.0: Lightweight Startup Notification
             send_telegram_msg(f"🚀 【{STRATEGY_VERSION}】已啟動。正在執行背景數據同步與模型載入...")
-        except Exception as e:
             print(f"Failed to send startup notification: {e}")
 
         # Iteration 93.0: Rule 3 - Single Load Verification
@@ -1357,7 +1334,6 @@ if __name__ == "__main__":
             time.sleep(1.0)
         
             send_telegram_msg(f"✅ {STRATEGY_VERSION} 數據同步完成 ({total_warmup}/{total_warmup} 幣種)，進入主循環。")
-        except:
             
         print(f"✅ {STRATEGY_VERSION} Initialization Complete.")
 
@@ -1413,7 +1389,6 @@ if __name__ == "__main__":
                         send_rich_heartbeat(status_data)
                         last_report_time = datetime.now()
                         print(f"💓 [DYNAMO] Hourly Heartbeat Sent | Regime: {current_regime}")
-                    except Exception as e:
                         print(f"⚠️ Heartbeat failed: {e}")
                     if os.path.exists(os.path.join(DATA_DIR, 'system_state.json')):
                         with open(os.path.join(DATA_DIR, 'system_state.json'), 'r') as f:
@@ -1460,7 +1435,6 @@ if __name__ == "__main__":
                         send_rich_heartbeat(active_positions, scan_results, len(active_positions), STRATEGY_VERSION, btc_status)
                     
                     last_report_time = datetime.now()
-            except Exception as e:
                 # Iteration 92.0: Cooldown & Logic Lock
                 print(f"❌ [Iteration 92.0 | Cooldown & Logic Lock] Main Loop Error: {e}")
                 import traceback
@@ -1468,12 +1442,10 @@ if __name__ == "__main__":
                 time.sleep(60)
             # Iteration 92.0: Mandatory 60s sleep to prevent infinite loop
             time.sleep(60)
-    except Exception as fatal_e:
         error_msg = f"❌ [Iteration 92.0 | Cooldown & Logic Lock] 核心啟動崩潰: {str(fatal_e)}"
         print(error_msg)
         import traceback
         traceback.print_exc()
             from src.notifier import send_telegram_msg
             send_telegram_msg(error_msg)
-        except:
         sys.exit(1)
