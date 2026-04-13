@@ -7,6 +7,7 @@ os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
 
 
+
 import os
 import sys
 import time
@@ -146,8 +147,6 @@ if not IS_SIMULATION:
         print("⚠️ [SECURITY WARNING] No API keys found. Entering WATCH_ONLY mode.")
         WATCH_ONLY = True
     else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
         print("🚀 [SECURITY] API keys found. Full Trade Mode Active.")
 
 # Initialize Exchange
