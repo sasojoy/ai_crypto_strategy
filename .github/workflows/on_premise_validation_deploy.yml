@@ -7,9 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Pre-flight Syntax Check
+      - name: Syntax Check
         run: python3 -m py_compile src/market.py
-
   deploy:
     needs: quality_gate
     runs-on: ubuntu-latest
@@ -27,8 +26,7 @@ jobs:
             rm -rf venv
             python3.12 -m venv venv
             source venv/bin/activate
-            pip install --upgrade pip
             pip install --no-cache-dir -r requirements.txt
             pm2 flush
-            pm2 start src/market.py --name "H16_PREDATOR_V133_PRO" --interpreter ./venv/bin/python --update-env
+            pm2 start src/market.py --name "H16_PREDATOR_PRO" --interpreter ./venv/bin/python
             pm2 save
