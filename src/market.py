@@ -1,14 +1,20 @@
 import os
 import sys
+import certifi
 import pandas as pd
 import pandas_ta as ta
 import ccxt
+import time
+
+# 動態偵測 SSL 憑證路徑，拒絕寫死絕對路徑
+os.environ['SSL_CERT_FILE'] = certifi.where()
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+import os
+import sys
 import certifi
 import time
 
 # 動態鎖定 SSL 憑證路徑
-os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
-os.environ['SSL_CERT_FILE'] = certifi.where()
 import os
 import sys
 import time
