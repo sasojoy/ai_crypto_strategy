@@ -1,27 +1,21 @@
-import os, sys
-try:
-    import certifi
-    os.environ['SSL_CERT_FILE'] = certifi.where()
-    os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
-except Exception:
-    pass
+import os
+import sys
+import time
+import certifi
 import pandas as pd
 import pandas_ta as ta
 import ccxt
+# 動態設定 SSL 憑證，不寫死路徑
+os.environ['SSL_CERT_FILE'] = certifi.where()
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 import time
-import os, sys
-try:
-except Exception:
-    pass
 import time
 import os
 import sys
 import time
 
 # 專業動態環境加載
-try:
 except ImportError:
-    pass
 
 import os
 import sys
@@ -70,12 +64,10 @@ def safe_get_float(obj, index=-1):
     Safely extract a float value from a pandas Series, numpy array, or scalar.
     """
     if hasattr(obj, 'values'):
-        try:
             return float(obj.values[index])
         except:
             return float(obj.values)
     if hasattr(obj, 'iloc'):
-        try:
             return float(obj.iloc[index])
         except:
             return float(obj.iloc)
@@ -88,12 +80,10 @@ def safe_get_bool(obj, index=-1):
     Safely extract a boolean value from a pandas Series, numpy array, or scalar.
     """
     if hasattr(obj, 'values'):
-        try:
             return bool(obj.values[index])
         except:
             return bool(obj.values)
     if hasattr(obj, 'iloc'):
-        try:
             return bool(obj.iloc[index])
         except:
             return bool(obj.iloc)
@@ -216,7 +206,6 @@ def execute_trade(symbol, side, qty, price, atr, params, ml_score=0, reason=""):
         # actual_price = ...
         # if (actual_price - price)/price > fee_buffer:
         #     send_telegram_msg(f"⚠️ [SLIPPAGE ALERT] {symbol} actual slippage exceeds buffer!")
-        pass
 
     print(f"✅ [EXECUTION] execute_trade defined. Ready for H16_FINAL_SHARP.")
     return True
@@ -226,7 +215,6 @@ def execute_trade(symbol, side, qty, price, atr, params, ml_score=0, reason=""):
 
 def load_params():
     params_path = os.path.join(CONFIG_DIR, 'params.json')
-    try:
         if not os.path.exists(params_path):
             # Create default params if not exists
             default_params = {"ema_f": 12, "ema_s": 26, "bb_std": 2}
@@ -245,7 +233,6 @@ def get_recent_performance():
     Iteration 49: Track recent 10 trades for dynamic risk sizing
     """
     history_path = os.path.join(DATA_DIR, 'trade_history.json')
-    try:
         if not os.path.exists(history_path):
             return 0.5, 0 # Default win rate 50%, 0 losses
         
@@ -296,7 +283,6 @@ def fetch_15m_data(symbol='BTC/USDT', limit=500):
     # Iteration 91.1.3: Rigid Data Alignment (Force 500)
     max_retries = 3
     for attempt in range(max_retries):
-        try:
             timeframe = '15m'
             ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             if ohlcv is None or len(ohlcv) < limit:
@@ -329,7 +315,6 @@ def fetch_5m_data(symbol='BTC/USDT'):
     limit = 500
     max_retries = 3
     for attempt in range(max_retries):
-        try:
             timeframe = '5m'
             ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             if ohlcv is None or len(ohlcv) < limit:
@@ -359,7 +344,6 @@ def fetch_4h_data(symbol='BTC/USDT'):
     limit = 500
     max_retries = 3
     for attempt in range(max_retries):
-        try:
             timeframe = '4h'
             ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             if ohlcv is None or len(ohlcv) < limit:
@@ -382,7 +366,6 @@ def fetch_ohlcv(symbol, timeframe="1h", limit=500):
     limit = 500
     max_retries = 3
     for attempt in range(max_retries):
-        try:
             ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             if ohlcv is None or len(ohlcv) < limit:
                 print(f"⚠️ [Iteration 89.0 | Rigid Data] {symbol} Data insufficient (count: {len(ohlcv) if ohlcv else 0}/{limit})")
@@ -405,7 +388,6 @@ def fetch_1h_data(symbol='BTC/USDT', limit=500):
     limit = 500
     max_retries = 3
     for attempt in range(max_retries):
-        try:
             timeframe = '1h'
             ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             if ohlcv is None or len(ohlcv) < limit:
@@ -434,7 +416,6 @@ def fetch_funding_rate(symbol):
     Iteration 17: Funding Rate Filter
     Fetch current funding rate for the symbol using Public API.
     """
-    try:
         # Iteration 88.0: Use Singleton
         funding = exchange_futures.fetch_funding_rate(symbol)
         return funding['fundingRate']
@@ -447,7 +428,6 @@ def check_order_book_depth(symbol, amount_usd):
     Iteration 50: Slippage & Depth Protection
     Checks if the order book can handle the order with < 0.5% slippage.
     """
-    try:
         # Iteration 88.0: Use Singleton
         order_book = exchange.fetch_order_book(symbol, limit=20)
         bids = order_book['bids'] # [price, amount]
@@ -468,7 +448,6 @@ def fetch_open_interest(symbol):
     Iteration 17: OI Divergence
     Fetch current open interest for the symbol.
     """
-    try:
         # Iteration 88.0: Use Singleton
         oi_data = exchange_futures.fetch_open_interest(symbol)
         return oi_data['openInterestAmount']
@@ -608,7 +587,6 @@ def check_upside_potential(symbol, entry_price, df_1h):
     if not isinstance(df_1h, pd.DataFrame) or df_1h.empty or len(df_1h) < 24:
         return True
     
-    try:
         # Use safe_get_float for robust extraction
         recent_high = safe_get_float(df_1h['high'].values[-24:].max())
         upside_pct = (recent_high - entry_price) / entry_price
@@ -642,13 +620,11 @@ def get_active_positions_count():
         return 0
     for filename in os.listdir(DATA_DIR):
         if filename.startswith('order_state_') and filename.endswith('.json'):
-            try:
                 with open(os.path.join(DATA_DIR, filename), 'r') as f:
                     state = json.load(f)
                     if state.get('status') == 'Open':
                         count += 1
             except:
-                pass
     return count
 
 def stability_monitor():
@@ -670,7 +646,6 @@ def stability_monitor():
 
     if not os.path.exists(history_file): return True
 
-    try:
         with open(history_file, 'r') as f:
             trades = json.load(f)
 
@@ -764,7 +739,6 @@ def update_daily_performance():
     Iteration 54: Automatic Performance Tracker
     Logs daily net value and win rate to data/daily_performance.csv at 00:00 UTC.
     """
-    try:
         path = os.path.join(BASE_DIR, 'data', 'daily_performance.csv')
         balance = get_account_balance()
         
@@ -811,7 +785,6 @@ def record_trade_history(symbol, side, price, quantity, pnl, reason, ml_score=0,
         df.to_csv(path, index=False)
     else:
         # Check if columns match, if not, we might need to handle it
-        try:
             existing_df = pd.read_csv(path, nrows=0)
             if 'ml_score' not in existing_df.columns:
                 # Re-write with new headers if columns changed
@@ -822,7 +795,6 @@ def record_trade_history(symbol, side, price, quantity, pnl, reason, ml_score=0,
                 full_df.to_csv(path, index=False)
                 return
         except:
-            pass
         df.to_csv(path, mode='a', header=False, index=False)
 
 
@@ -866,11 +838,9 @@ def check_and_retrain_model():
     # Load last retrain date
     last_retrain_date = ""
     if os.path.exists(retrain_lock_path):
-        try:
             with open(retrain_lock_path, 'r') as f:
                 last_retrain_date = json.load(f).get('last_retrain_date', "")
         except:
-            pass
 
     # Sunday is 6 in weekday()
     if now.weekday() == 6 and now.hour == 0 and now.minute < 15:
@@ -879,7 +849,6 @@ def check_and_retrain_model():
             return
 
         print(f"🔄 [AI Auto-Retrain] {today_str} 00:00 UTC. Starting weekly model re-training...")
-        try:
             from src.train_model import train
             train()
             
@@ -913,7 +882,6 @@ def save_order_state(symbol, state):
     ACTIVE_TRADES_PATH = os.path.join(DATA_DIR, 'active_trades.json')
     active_trades = {}
     if os.path.exists(ACTIVE_TRADES_PATH):
-        try:
             with open(ACTIVE_TRADES_PATH, 'r') as f:
                 active_trades = json.load(f)
         except Exception as e:
@@ -938,7 +906,6 @@ def save_order_state(symbol, state):
 def load_order_state(symbol):
     path = os.path.join(DATA_DIR, f'order_state_{symbol.replace("/", "_")}.json')
     if os.path.exists(path):
-        try:
             with open(path, 'r') as f:
                 return json.load(f)
         except Exception as e:
@@ -1042,7 +1009,6 @@ def run_strategy(ml_model):
     print(f"🚀 {STRATEGY_VERSION} LIVE WATCHER ACTIVE.")
 
     for symbol in symbols:
-        try:
             df = fetch_1h_data(symbol, limit=500)
             if df.empty: continue
 
@@ -1114,7 +1080,6 @@ def run_strategy(ml_model):
             profit_space_long = (potential_tp_long - df['close'].iloc[-1]) / df['close'].iloc[-1] - fee_buffer
             profit_space_short = (df['close'].iloc[-1] - potential_tp_short) / df['close'].iloc[-1] - fee_buffer
 
-            # Long Entry: Price > EMA200 + AI Score + Profit Space
             if (df['close'].iloc[-1] > ema200 and 
                 ml_score >= ai_threshold and 
                 profit_space_long > 0.015 and
@@ -1122,7 +1087,6 @@ def run_strategy(ml_model):
                 side = 'Long'
                 entry_reason = f"V133.9_LONG | AI:{ml_score:.2f} | Space:{profit_space_long*100:.1f}%"
             
-            # Short Entry: Price < EMA200 + AI Score + Profit Space
             elif (df['close'].iloc[-1] < ema200 and 
                   (1 - ml_score) >= ai_threshold and 
                   profit_space_short > 0.015 and
@@ -1277,7 +1241,6 @@ def manage_positions(prices_rsi):
             continue
 
         # Iteration 45: Redundant Partial TP logic removed in favor of Iteration 57 1.2 R/R logic.
-        pass
         
         # 3. Time-based Exit (Iteration 30: 48h)
         entry_time = datetime.fromisoformat(state['entry_time'])
@@ -1304,7 +1267,6 @@ def close_partial_position(symbol, qty):
     """
     Iteration 53: Close 50% of the position at 1.2 RR.
     """
-    try:
         # In a real exchange, you would send a market order to close 'qty'
         # For now, we simulate the exchange call and update our local state
         print(f"💰 [EXCHANGE] Partial close executed for {symbol}: {qty} units.")
@@ -1319,7 +1281,6 @@ def close_partial_position(symbol, qty):
 
 
 if __name__ == "__main__":
-    try:
         # Iteration 91.1: Startup Message
         send_telegram_msg("🚀 【Iteration 91.1】 寧靜與純淨化完成，系統正式上線")
         import sys
@@ -1339,7 +1300,6 @@ if __name__ == "__main__":
             for s in symbols:
                 state = load_order_state(s)
                 if state and state.get('status') == 'Open':
-                    print(f"📍 Active Position: {s} | Size: {state.get('pos_size', 0):.4f} | Entry: {state.get('entry_price', 0):.4f}")
                     active_found = True
             if not active_found:
                 print("No active positions.")
@@ -1360,7 +1320,6 @@ if __name__ == "__main__":
         # Iteration 91.1: Load Active Trades from Persistence
         ACTIVE_TRADES_PATH = os.path.join(DATA_DIR, 'active_trades.json')
         if os.path.exists(ACTIVE_TRADES_PATH):
-            try:
                 with open(ACTIVE_TRADES_PATH, 'r') as f:
                     persisted_trades = json.load(f)
                     print(f"📦 [Iteration 91.1] Loaded {len(persisted_trades)} persisted trades.")
@@ -1368,7 +1327,6 @@ if __name__ == "__main__":
                 print(f"⚠️ Error loading persisted trades: {e}")
 
         # Iteration 93.0: Lightweight Startup Notification
-        try:
             send_telegram_msg(f"🚀 【{STRATEGY_VERSION}】已啟動。正在執行背景數據同步與模型載入...")
         except Exception as e:
             print(f"Failed to send startup notification: {e}")
@@ -1393,15 +1351,12 @@ if __name__ == "__main__":
             fetch_15m_data(s)
             time.sleep(1.0)
         
-        try:
             send_telegram_msg(f"✅ {STRATEGY_VERSION} 數據同步完成 ({total_warmup}/{total_warmup} 幣種)，進入主循環。")
         except:
-            pass
             
         print(f"✅ {STRATEGY_VERSION} Initialization Complete.")
 
         while True:
-            try:
                 # Iteration 93.0: Heartbeat for PM2 Log diagnosis
                 print(f"💓 [Heartbeat] System Alive | {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')} UTC")
                 
@@ -1436,7 +1391,6 @@ if __name__ == "__main__":
 
                 # Iteration 600.0-DYNAMO: Enhanced Hourly Heartbeat & Regime Report
                 if (datetime.now() - last_report_time).total_seconds() >= 3600:
-                    try:
                         # 取得當前系統狀態
                         from src.notifier import send_rich_heartbeat
                         
@@ -1514,9 +1468,7 @@ if __name__ == "__main__":
         print(error_msg)
         import traceback
         traceback.print_exc()
-        try:
             from src.notifier import send_telegram_msg
             send_telegram_msg(error_msg)
         except:
-            pass
         sys.exit(1)
