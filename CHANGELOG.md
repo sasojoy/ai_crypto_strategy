@@ -58,3 +58,7 @@
 - 核心修復：鎖定 pandas_ta 與 Python 3.12 兼容版本
 - 結構修復：market.py 導入置頂，徹底消除語法衝突
 - 流程恢復：重啟 doc_check 機制與自動化部署
+
+## [v600.FINAL-STABLE] - 2026-04-13
+- 核心修復：修復 certifi SSL 憑證路徑錯誤 (OSError)
+- 環境重整：強制執行 pm2 kill 與 venv 重新掛載

@@ -1,5 +1,9 @@
-import pandas_ta as ta
+import os
+import sys
 import pandas as pd
+import pandas_ta as ta
+import ccxt
+import time
 import time
 import os
 import time
@@ -13,7 +17,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import os
 import time
-import ccxt
 import json
 import shutil
 import datetime

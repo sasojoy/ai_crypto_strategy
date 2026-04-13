@@ -9,3 +9,4 @@ python-dotenv==1.0.1
 scikit-learn==1.4.2
 optuna==3.6.1
 requests==2.31.0
+certifi>=2024.02.02
