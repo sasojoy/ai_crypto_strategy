@@ -5,7 +5,7 @@ import ccxt
 os.environ['SSL_CERT_FILE'] = certifi.where()
 os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
-import os, sys, time, certifi
+
 
 import os
 import sys
@@ -146,6 +146,7 @@ if not IS_SIMULATION:
         print("⚠️ [SECURITY WARNING] No API keys found. Entering WATCH_ONLY mode.")
         WATCH_ONLY = True
     else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
         print("🚀 [SECURITY] API keys found. Full Trade Mode Active.")
 
@@ -155,6 +156,7 @@ if WATCH_ONLY:
         'enableRateLimit': True,
     })
 else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
     exchange = ccxt.binance({
         'apiKey': os.getenv('BINANCE_API_KEY'),
@@ -183,6 +185,7 @@ def execute_trade(symbol, side, qty, price, atr, params, ml_score=0, reason=""):
     elif symbol == 'SOL/USDT':
         fee_buffer = 0.002  # 0.2%
     else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
         fee_buffer = 0.005  # 0.5% (FET/AVAX/Alts)
 
@@ -211,6 +214,7 @@ def execute_trade(symbol, side, qty, price, atr, params, ml_score=0, reason=""):
         # In simulation, we just log it
         record_trade_history(symbol, side, price, qty, 0, reason, ml_score, tp_price)
     else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
         # Real order logic would go here
         # create_order_with_hard_sl(symbol, side, qty, price, sl_price, tp_price)
@@ -313,6 +317,7 @@ def fetch_15m_data(symbol='BTC/USDT', limit=500):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
             else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol} (15m)")
                 if os.path.exists(cache_file):
@@ -337,6 +342,7 @@ def fetch_5m_data(symbol='BTC/USDT'):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
             else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol} (5m)")
                 return pd.DataFrame()
@@ -366,6 +372,7 @@ def fetch_4h_data(symbol='BTC/USDT'):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
             else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol} (4h)")
                 return pd.DataFrame()
@@ -387,6 +394,7 @@ def fetch_ohlcv(symbol, timeframe="1h", limit=500):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
             else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol} ({timeframe})")
                 return pd.DataFrame()
@@ -416,6 +424,7 @@ def fetch_1h_data(symbol='BTC/USDT', limit=500):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt) # Exponential backoff
             else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
                 print(f"🚨 CRITICAL: All retries failed for {symbol}")
                 return pd.DataFrame()
@@ -615,6 +624,7 @@ def log_data(timestamp, price, rsi, ema200):
     if not os.path.isfile(log_file):
         df.to_csv(log_file, index=False)
     else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
         df.to_csv(log_file, mode='a', header=False, index=False)
 
@@ -690,6 +700,7 @@ def trigger_rollback(reason):
         send_telegram_msg(msg)
         print(msg)
     else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
         print("Rollback failed: Stable version not found.")
 
@@ -760,6 +771,7 @@ def update_daily_performance():
             if date_str in df['date'].values:
                 return
         else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
             df = pd.DataFrame(columns=['date', 'balance', 'win_rate'])
             
@@ -790,6 +802,7 @@ def record_trade_history(symbol, side, price, quantity, pnl, reason, ml_score=0,
     if not os.path.exists(path):
         df.to_csv(path, index=False)
     else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
         # Check if columns match, if not, we might need to handle it
             existing_df = pd.read_csv(path, nrows=0)
@@ -900,6 +913,7 @@ def save_order_state(symbol, state):
             'side': state.get('side', 'LONG')
         }
     else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
         if symbol in active_trades:
             del active_trades[symbol]
@@ -999,6 +1013,7 @@ def run_strategy(ml_model):
             warmup_count += 1
             prices_rsi[s] = {'price': df_1h.iloc[-1]['close'], 'missed_reason': 'Ready'}
         else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
             prices_rsi[s] = {'price': 0, 'missed_reason': 'Initializing'}
     
@@ -1077,6 +1092,7 @@ def run_strategy(ml_model):
             elif symbol == 'SOL/USDT':
                 fee_buffer = 0.0025
             else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
                 fee_buffer = 0.0055
             
@@ -1296,6 +1312,7 @@ if __name__ == "__main__":
                 print(f"Total Trades: {len(df)}")
                 print(f"Total PnL from History: ${df['pnl'].sum():.2f}")
             else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
                 print("No trade history found.")
             
@@ -1339,6 +1356,7 @@ if __name__ == "__main__":
         if ml_model.load():
             print("✅ Model Loaded Successfully.")
         else:
+    pass  # Forced fix
     pass  # Forced indentation fix by Architect
             print("⚠️ Model Load Failed or Not Found. Using default/untrained state.")
         
@@ -1415,6 +1433,7 @@ if __name__ == "__main__":
                         with open(os.path.join(DATA_DIR, 'system_state.json'), 'r') as f:
                             balance_data = json.load(f)
                     
+                    balance_data = {'total_balance': 1000.0}
                     balance_data = {'total_balance': 1000.0}
                     equity = balance_data.get('total_balance', 1000.0)
                     
