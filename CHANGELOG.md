@@ -24,3 +24,6 @@
 
 ## [v600.12-ULTIMATE] - 2026-04-13
 - Critical: Fixed pandas_ta ModuleNotFoundError in venv.
+
+## [v600.12-ULTIMATE] - 2026-04-13
+- Critical: Fixed pandas_ta ModuleNotFoundError in venv.
