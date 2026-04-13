@@ -70,3 +70,7 @@
 ## [v600.22-PRO] - 2026-04-13
 - 核心修復：使用 certifi.where() 動態解決 SSL 憑證報錯
 - 流程恢復：重啟 doc_check 並優化 PM2 全量部屬流程
+
+## [v600.23-PRO] - 2026-04-13
+- 核心修復：放寬 requirements.txt 相容性，解決 Pip 安裝中斷問題
+- 工程標準：使用 try-except 包裝動態 SSL 載入，提高系統魯棒性

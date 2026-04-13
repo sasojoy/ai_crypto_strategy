@@ -34,24 +34,21 @@ jobs:
             git fetch --all && git reset --hard origin/main
             git clean -fd
             
-            # 1. 強制重置 PM2 背景進程
+            # 1. 深度清理
             pm2 delete all || true
             pm2 kill || true
-            
-            # 2. 徹底清空日誌與舊環境
             rm -rf venv
-            rm -rf ~/.pm2/logs/*
             
-            # 3. 重建 3.12 環境
+            # 2. 重建 3.12 環境
             python3.12 -m venv venv
             source venv/bin/activate
             pip install --upgrade pip
             
-            # 4. 全量安裝
+            # 3. 安裝依賴 (嚴格檢查)
+            pip install --no-cache-dir -r requirements.txt || exit 1
             pip install --no-cache-dir ./wheels/*.whl || echo "No wheels"
-            pip install --no-cache-dir -r requirements.txt
             
-            # 5. 使用絕對動態路徑啟動
+            # 4. 動態啟動
             pm2 start $(pwd)/src/market.py \
               --name "H16_PREDATOR_V133_PRO" \
               --interpreter $(pwd)/venv/bin/python \
