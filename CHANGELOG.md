@@ -47,3 +47,6 @@
 
 ## [v600.19] - 2026-04-13
 - Fix: Locked llvmlite and numba versions for Python 3.12 stability.
+
+## [v600.21] - 2026-04-13
+- 修正 pandas_ta 版本鎖定邏輯，回歸 wheels 指定版本

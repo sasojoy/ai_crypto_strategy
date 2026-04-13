@@ -11,19 +11,17 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 2
-      - name: Check Documentation Updates
-        run: |
+      - run: |
           if ! git diff --name-only HEAD^ HEAD | grep -q "CHANGELOG.md"; then
             echo "❌ Error: CHANGELOG.md must be updated!"
             exit 1
           fi
 
-  on_premise_validation_deploy:
+  deploy:
     needs: doc_check
     runs-on: ubuntu-latest
     steps:
-      - name: SSH and Robust Deploy on GCE
-        uses: appleboy/ssh-action@master
+      - uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -32,25 +30,21 @@ jobs:
           script: |
             cd ~/ai_crypto_strategy
             git fetch --all && git reset --hard origin/main
-            git clean -fd
             
-            # 環境深度清理
+            # 1. 深度清理
             rm -rf venv
-            find . -name "*.pyc" -delete
-            find . -name "__pycache__" -delete
-            
-            # 重建 3.12 環境
             python3.12 -m venv venv
             source venv/bin/activate
-            pip install --upgrade pip
             
-            # 先裝 Wheels (包含 pandas_ta)，再裝 requirements
-            pip install --no-cache-dir ./wheels/*.whl || echo "No wheels"
+            # 2. 安裝 (優先從 wheels 安裝，再補其餘)
+            pip install --upgrade pip
+            pip install --no-cache-dir ./wheels/*.whl || echo "No wheels found"
             pip install --no-cache-dir -r requirements.txt
             
-            # PM2 啟動
+            # 3. 清理舊日誌並啟動
             pm2 delete H16_PREDATOR_V133_PRO || true
-            pm2 start $(pwd)/src/market.py \
+            pm2 flush
+            pm2 start src/market.py \
               --name "H16_PREDATOR_V133_PRO" \
               --interpreter $(pwd)/venv/bin/python \
               --cwd $(pwd) \
