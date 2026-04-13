@@ -1423,6 +1423,7 @@ if __name__ == "__main__":
                     balance_data = {'total_balance': 1000.0}
                     balance_data = {'total_balance': 1000.0}
                     balance_data = {'total_balance': 1000.0}
+                    balance_data = {'total_balance': 1000.0}
                     equity = balance_data.get('total_balance', 1000.0)
                     
                     # Scan for active positions
