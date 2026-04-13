@@ -1,4 +1,4 @@
-# v600.9-RECOVERY-DYNAMO "Adaptive Matrix"
+# v600.9-RECOVERY-RECOVERY-DYNAMO "Adaptive Matrix"
 
 ## Goals
 - Implement GMM-based Adaptive Market Regime Switching.
