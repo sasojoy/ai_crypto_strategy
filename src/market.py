@@ -3,6 +3,14 @@ import sys
 import pandas as pd
 import pandas_ta as ta
 import ccxt
+import certifi
+import time
+
+# 動態鎖定 SSL 憑證路徑
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+os.environ['SSL_CERT_FILE'] = certifi.where()
+import os
+import sys
 import time
 import time
 import os

@@ -11,7 +11,8 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 2
-      - run: |
+      - name: Check Documentation Updates
+        run: |
           if ! git diff --name-only HEAD^ HEAD | grep -q "CHANGELOG.md"; then
             echo "❌ Error: CHANGELOG.md must be updated!"
             exit 1
@@ -21,7 +22,8 @@ jobs:
     needs: doc_check
     runs-on: ubuntu-latest
     steps:
-      - uses: appleboy/ssh-action@v1.0.3
+      - name: SSH and Robust Deploy on GCE
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -32,24 +34,21 @@ jobs:
             git fetch --all && git reset --hard origin/main
             git clean -fd
             
-            # 1. 強制殺死所有 PM2 背景守護進程
+            # 1. 徹底清空 PM2 殭屍與舊環境
             pm2 delete all || true
             pm2 kill || true
-            
-            # 2. 徹底清空日誌與舊環境
             rm -rf venv
-            rm -rf ~/.pm2/logs/*
             
-            # 3. 重建 3.12 環境
+            # 2. 重建 3.12 環境
             python3.12 -m venv venv
             source venv/bin/activate
             pip install --upgrade pip
+            
+            # 3. 依照真理清單安裝
+            pip install --no-cache-dir ./wheels/*.whl || echo "No wheels found"
             pip install --no-cache-dir -r requirements.txt
             
-            # 4. 同步 Python 證書路徑
-            python -m certifi || echo "Certifi check skipped"
-            
-            # 5. 使用絕對路徑啟動
+            # 4. 使用絕對路徑啟動
             pm2 start $(pwd)/src/market.py \
               --name "H16_PREDATOR_V133_PRO" \
               --interpreter $(pwd)/venv/bin/python \

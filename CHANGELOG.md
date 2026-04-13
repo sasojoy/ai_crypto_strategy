@@ -62,3 +62,7 @@
 ## [v600.FINAL-STABLE] - 2026-04-13
 - 核心修復：修復 certifi SSL 憑證路徑錯誤 (OSError)
 - 環境重整：強制執行 pm2 kill 與 venv 重新掛載
+
+## [v600.22-PRO] - 2026-04-13
+- 工程標準化：移除所有寫死路徑，改用 certifi.where() 動態偵測 SSL
+- 流程恢復：重啟 doc_check 並優化 PM2 啟動參數
