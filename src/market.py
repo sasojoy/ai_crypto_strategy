@@ -198,8 +198,6 @@ def execute_trade(symbol, side, qty, price, atr, params, ml_score=0, reason=""):
     elif symbol == 'SOL/USDT':
         fee_buffer = 0.002  # 0.2%
     else:
-    pass  # Forced fix
-    pass  # Forced indentation fix by Architect
         fee_buffer = 0.005  # 0.5% (FET/AVAX/Alts)
 
     # 2. TP/SL Calculation
