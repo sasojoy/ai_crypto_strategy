@@ -60,6 +60,7 @@ def run_strategy(ml_model):
             
             # 特徵計算
             X = extract_features(df, df_btc)
+            print(f"📏 [Feature Check] {s} Combined Rows: {len(X)}")
             
             # 偵錯日誌：檢查最後一筆特徵是否有 NaN
             last_features = X.tail(1)
