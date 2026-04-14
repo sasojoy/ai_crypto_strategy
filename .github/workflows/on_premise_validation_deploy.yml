@@ -9,6 +9,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Syntax Check
         run: python3 -m py_compile src/market.py
+
   deploy:
     needs: quality_gate
     runs-on: ubuntu-latest
@@ -21,12 +22,18 @@ jobs:
           script: |
             cd ~/ai_crypto_strategy
             git fetch --all && git reset --hard origin/main
+            
+            # 徹底清理並重置
             pm2 delete all || true
             pm2 kill || true
             rm -rf venv
+            
+            # 重建環境
             python3.12 -m venv venv
             source venv/bin/activate
             pip install --no-cache-dir -r requirements.txt
+            
+            # 使用 -m 模組化方式啟動，這是最標準的做法
             pm2 flush
             pm2 start src/market.py --name "H16_PREDATOR_PRO" --interpreter ./venv/bin/python
             pm2 save
