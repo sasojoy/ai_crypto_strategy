@@ -1,0 +1,11 @@
+
+
+# H16 鋼鐵開發協議 2.0 - Strategy Configuration
+friction:
+  total_friction_rate: 0.0018  # 0.18% per trade
+  description: "Mandatory friction rate for Profit calculation"
+
+features:
+  count: 19
+  registry: "Registry_Lock"
+

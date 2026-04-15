@@ -1,9 +1,0 @@
-{
-  "rsi_th": 45,
-  "ema_f": 20,
-  "ema_s": 100,
-  "sl_mult": 2.5,
-  "macd_confirm": true,
-  "reason": "Iteration 11 yielded near-zero trades, indicating entry criteria were too strict. Raising RSI to 45 allows for entries during shallower pullbacks, while 20/100 EMAs align faster with changing trends.",
-  "version": "Iteration 11"
-}
