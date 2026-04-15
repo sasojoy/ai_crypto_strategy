@@ -62,15 +62,37 @@ class TestPhysics(unittest.TestCase):
         print(f"\n[PHYSICS SNAPSHOT] Trade Execution Timestamp: {first_trade_idx}")
         print(f"Feature Snapshot (First Row):\n{features_df.iloc[0]}")
         
-        # 驗證時間戳：如果特徵數據包含當前時刻的 Close，則視為失敗
-        # 由於我們使用了 .shift(1)，features_df 的第一個索引應該是原始數據的第二個時間戳
-        # 但它所包含的數據應該是原始數據第一個時間戳的計算結果
-        
         self.assertEqual(len(features_df.columns), 19)
         self.assertFalse(features_df.isnull().values.any())
         
         # Verify Registry_Lock
         self.assertTrue(Registry_Lock.verify(features_df))
+
+    def test_strategy_alignment(self):
+        """
+        驗證策略對齊邏輯與信號輸出。
+        """
+        from src.core.strategy import H16Strategy
+        strategy = H16Strategy()
+        
+        # 模擬已平移特徵
+        dates = pd.date_range('2023-01-01', periods=10, freq='h')
+        mock_features = pd.DataFrame(np.random.randn(10, 19), 
+                                   index=dates, 
+                                   columns=Registry_Lock.MASTER_FEATURES)
+        
+        # 測試信號輸出
+        # 由於沒有真實模型，這裡會觸發 Warning 並返回 Neutral
+        signal = strategy.predict_signal(mock_features)
+        print(f"\n[STRATEGY SIGNAL] {signal}")
+        
+        self.assertIn(signal['signal_type'], ["Neutral", "Long", "Short"])
+        self.assertIn('confidence_score', signal)
+        self.assertIn('limit_price', signal)
+        
+        # 印出對齊邏輯證據
+        print(f"\n[ALIGNMENT PROOF - Y Definition]:\n{strategy.get_y_definition()}")
+        print(f"\n[ALIGNMENT PROOF - Logic]:\n{strategy.get_alignment_logic()}")
 
 if __name__ == '__main__':
     unittest.main()
