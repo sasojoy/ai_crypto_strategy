@@ -41,14 +41,23 @@ class DualTrackStrategy:
 
     def get_signal(self, symbol, ml_score, df_1h=None):
         """
-        Dual-Track Signal Logic
+        H16 Optimized Signal Logic
+        - BARD/USDT: Allows oversold rebound entry even if trend is bearish
         """
-        # 1. 1H Trend Filter
+        # 1. 1H Trend Filter with H16 Exception
         if df_1h is not None and not df_1h.empty:
             from src.indicators import calculate_ema
             ema50 = calculate_ema(df_1h, 50).iloc[-1]
             current_price = df_1h['close'].iloc[-1]
-            if current_price <= ema50:
+            
+            # H16 Exception for BARD: Physical Oversold + AI Confirmation
+            from src.indicators import calculate_atr
+            atr = calculate_atr(df_1h, 14).iloc[-1]
+            is_oversold = current_price < (ema50 - 1.5 * atr)
+            
+            if symbol == 'BARD/USDT' and is_oversold and ml_score >= 0.65:
+                pass # Allow entry in bearish trend if severely oversold
+            elif current_price <= ema50:
                 return False, "1H Trend Bearish"
 
         # 2. Cooldown Check

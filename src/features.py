@@ -9,8 +9,10 @@ def calculate_features(df_input, df_btc_input):
     df = df_input.copy()
     df_btc = df_btc_input.copy()
 
-    df.set_index('timestamp', inplace=True)
-    df_btc.set_index('timestamp', inplace=True)
+    if 'timestamp' in df.columns:
+        df.set_index('timestamp', inplace=True)
+    if 'timestamp' in df_btc.columns:
+        df_btc.set_index('timestamp', inplace=True)
     df_btc_close = df_btc[['close']].rename(columns={'close': 'btc_close'})
 
     combined = df.join(df_btc_close, how='inner')

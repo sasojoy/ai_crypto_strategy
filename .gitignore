@@ -4,3 +4,10 @@ data/*.csv
 data/*.parquet
 download_data.py
 final_audit_backtest.py
+
+
+__pycache__/
+.openhands/
+sessions/
+
+

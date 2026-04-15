@@ -4,10 +4,12 @@ import pandas as pd
 import numpy as np
 import os
 from datetime import datetime, timedelta
-from src.market import calculate_rsi, calculate_ema, calculate_atr
-from src.features import extract_features
+from src.indicators import calculate_rsi, calculate_ema, calculate_atr
+from src.features import calculate_features as extract_features
 from src.ml_model import CryptoMLModel
-from src.strategy.logic import DualTrackStrategy
+from src.core.engine import TradingAccount, MarketEnvironment
+from src.core.strategy import H16Strategy
+from src.core.audit_manager import AuditManager
 
 def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=30):
     exchange = ccxt.binance()
@@ -26,120 +28,137 @@ def fetch_backtest_data(symbol='BTC/USDT', timeframe='15m', days=30):
     df.set_index('timestamp', inplace=True)
     return df
 
-def run_backtest(symbol, df, btc_df, ml_model, initial_balance=2000):
-    strategy = DualTrackStrategy()
-    timeframe = strategy.get_timeframe(symbol)
-    trade_params = strategy.get_trade_params(symbol)
-    weight = strategy.get_weight(symbol)
+def run_unified_backtest(symbols, ml_model, account):
+    strategy = H16Strategy()
+    market = MarketEnvironment()
     
-    # Feature Extraction
-    features = extract_features(df, btc_df)
+    print("Fetching data for all symbols...")
+    btc_df = fetch_backtest_data('BTC/USDT', '15m', 30)
     
-    # Indicators for 1H Trend Filter
-    df_1h = df.resample('1h').last().ffill()
-    df_1h['ema50'] = calculate_ema(df_1h, 50)
+    symbol_data = {}
+    for symbol in symbols:
+        df = fetch_backtest_data(symbol, '15m', 30)
+        features = extract_features(df, btc_df)
+        df = df.loc[features.index]
+        df_1h = df.resample('1h').last().ffill()
+        symbol_data[symbol] = {
+            'df': df,
+            'features': features,
+            'df_1h': df_1h,
+            'in_position': False,
+            'entry_price': 0,
+            'entry_time': None,
+            'entry_index': 0,
+            'breakeven_active': False,
+            'pos_size': 0,
+            'tp_price': 0,
+            'sl_price': 0,
+            'last_trade_time': datetime(2000, 1, 1)
+        }
+
+    # Get all unique timestamps across all symbols and sort them
+    all_timestamps = sorted(pd.concat([data['df'].index.to_series() for data in symbol_data.values()]).unique())
     
-    # Align features with original df
-    df = df.loc[features.index]
+    print(f"Starting unified backtest across {len(all_timestamps)} timestamps...")
     
-    trades = []
-    in_position = False
-    entry_price = 0
-    balance = initial_balance
-    last_trade_time = datetime.min
-    
-    for i in range(200, len(df)):
-        current_time = df.index[i]
-        current_price = df['close'].iloc[i]
-        
-        if not in_position:
-            # 1. 4H Cooldown
-            if (current_time - last_trade_time).total_seconds() < 14400:
+    for current_time in all_timestamps:
+        for symbol in symbols:
+            data = symbol_data[symbol]
+            df = data['df']
+            
+            if current_time not in df.index:
                 continue
                 
-            # 2. 1H Trend Filter
-            current_1h_time = current_time.replace(minute=0, second=0, microsecond=0)
-            if current_1h_time not in df_1h.index or df['close'].iloc[i] <= df_1h.loc[current_1h_time, 'ema50']:
-                continue
+            current_price = df.at[current_time, 'close']
+            i = df.index.get_loc(current_time)
             
-            # 3. AI Score
-            X = features.iloc[i:i+1]
-            probs = ml_model.predict_proba(X)
-            ml_score = float(probs[0][1]) if hasattr(probs, "ndim") and probs.ndim == 2 else float(probs)
+            if i < 200: continue # Warmup
+
+            if not data['in_position']:
+                # 1. Cooldown Check (4h)
+                if (current_time - data['last_trade_time']).total_seconds() < 14400:
+                    continue
+                    
+                # 2. AI Score
+                X = data['features'].iloc[i:i+1]
+                probs = ml_model.predict_proba(X)
+                ml_score = float(probs[0][1]) if hasattr(probs, "ndim") and probs.ndim == 2 else float(probs)
+                
+                # 3. H16 Integrated Signal Logic
+                current_1h_time = current_time.replace(minute=0, second=0, microsecond=0)
+                df_1h_slice = data['df_1h'].loc[:current_1h_time].tail(100)
+                df_15m_slice = df.iloc[:i+1].tail(100)
+                
+                is_signal, reason = strategy.get_signal(symbol, ml_score, df_1h_slice, df_15m_slice)
+                
+                if is_signal:
+                    vol_level, vol_val = market.get_volatility_level(df_15m_slice)
+                    pos_size = strategy.calculate_size(account.balance, ml_score, vol_val)
+                    
+                    data['in_position'] = True
+                    data['entry_price'] = current_price
+                    data['entry_time'] = current_time
+                    data['entry_index'] = i
+                    data['breakeven_active'] = False
+                    data['pos_size'] = pos_size
+                    
+                    data['sl_price'] = current_price * 0.985
+                    data['tp_price'] = current_price * 1.03
             
-            threshold = strategy.get_threshold(symbol)
-            if ml_score >= threshold:
-                in_position = True
-                entry_price = current_price
-                entry_time = current_time
-                kelly = 1.5 if ml_score >= 0.90 else (1.0 if ml_score >= 0.80 else 0.5)
-                pos_size = balance * weight * kelly
-                
-                sl_price = entry_price * (1 - trade_params['sl_pct'])
-                tp_price = entry_price * (1 + trade_params['tp_pct'])
-        
-        elif in_position:
-            # Check TP or SL
-            if current_price >= tp_price or current_price <= sl_price:
-                exit_price = current_price
-                price_change = (exit_price - entry_price) / entry_price
-                
-                # Tiered Slippage & Fee (0.1% base fee + tiered slippage)
-                friction = 0.001 + trade_params['slippage_comp']
-                profit_amount = (pos_size * price_change) - (pos_size * friction)
-                balance += profit_amount
-                
-                trades.append({
-                    'entry_time': entry_time,
-                    'exit_time': current_time,
-                    'profit_pct': (profit_amount / pos_size) * 100,
-                    'balance': balance
-                })
-                in_position = False
-                last_trade_time = current_time
-                
-    if not trades:
-        return 0, 0, 0, 0, pd.DataFrame()
-    
-    trades_df = pd.DataFrame(trades)
-    total_trades = len(trades_df)
-    win_rate = (trades_df['profit_pct'] > 0).sum() / total_trades * 100
-    net_profit = balance - initial_balance
-    
-    # Calculate Max Drawdown
-    trades_df['cumulative_balance'] = trades_df['balance']
-    peak = trades_df['cumulative_balance'].cummax()
-    drawdown = (trades_df['cumulative_balance'] - peak) / peak
-    max_drawdown = drawdown.min() * 100
-    
-    return total_trades, win_rate, net_profit, max_drawdown, trades_df
+            elif data['in_position']:
+                df_15m_slice = df.iloc[:i+1].tail(100)
+                time_exit, breakeven_active, new_sl = strategy.get_exit_logic(
+                    data['entry_price'], current_price, i, data['entry_index'], df_15m_slice, data['breakeven_active']
+                )
+                data['breakeven_active'] = breakeven_active
+                if new_sl: data['sl_price'] = new_sl
+
+                if current_price >= data['tp_price'] or current_price <= data['sl_price'] or time_exit:
+                    reason = "TP/SL" if not time_exit else "Time Exit"
+                    account.execute_trade(symbol, data['entry_time'], current_time, data['entry_price'], current_price, data['pos_size'], reason)
+                    data['in_position'] = False
+                    data['last_trade_time'] = current_time
 
 if __name__ == "__main__":
-    symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'FET/USDT', 'NEAR/USDT']
-    initial_balance = 2000
+    # 1. Strategy Manifest Audit (MANDATORY FIRST STEP)
+    auditor = AuditManager(
+        strategy_path='src/core/strategy.py',
+        engine_path='src/core/engine.py'
+    )
+    auditor.print_manifest_table()
+
+    results_file = 'backtest_results.csv'
+    if os.path.exists(results_file):
+        os.remove(results_file)
+        print(f"已物理刪除舊的 {results_file}")
+
+    symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
+    initial_balance = 10000
+    account = TradingAccount(initial_balance)
     
     ml_model = CryptoMLModel()
     if not ml_model.load():
-        print("❌ Model not found. Please train the model first.")
-        exit(1)
+        print("❌ Model not found.")
+        exit()
+
+    run_unified_backtest(symbols, ml_model, account)
+
+    trades_df = account.get_equity_curve()
+    if not trades_df.empty:
+        trades_df.to_csv(results_file, index=False)
+        print(f"\n✅ 所有回測結果已存入 {results_file}")
         
-    print("Fetching BTC data for relative strength...")
-    btc_df = fetch_backtest_data('BTC/USDT', timeframe='15m', days=30)
-    
-    for symbol in symbols:
-        print(f"\n正在獲取 {symbol} 過去 30 天的數據...")
-        df = fetch_backtest_data(symbol=symbol, timeframe='15m', days=30)
-        print(f"獲取到 {len(df)} 條數據。")
+        # Summary
+        total_trades = len(trades_df)
+        win_rate = (trades_df['profit_pct'] > 0).sum() / total_trades * 100
+        net_profit = account.balance - initial_balance
         
-        total_trades, win_rate, net_profit, max_drawdown, trades_df = run_backtest(symbol, df, btc_df, ml_model, initial_balance=initial_balance)
-        
-        print(f"\n--- {symbol} 回測報告 (Iteration 116.0 Soul) ---")
+        print(f"\n--- H16 PREDATOR 統一錢包回測報告 ---")
         print(f"起始資金: ${initial_balance}")
-        print(f"總交易次數: {total_trades}")
-        print(f"勝率: {win_rate:.2f}%")
+        print(f"最終餘額: ${account.balance:.2f}")
         print(f"淨獲利: ${net_profit:.2f}")
-        print(f"最大回撤: {max_drawdown:.2f}%")
-        if not trades_df.empty:
-            print(f"最終餘額: ${trades_df['balance'].iloc[-1]:.2f}")
-            print("\n--- 交易明細 (前 5 筆) ---")
-            print(trades_df[['entry_time', 'exit_time', 'profit_pct', 'balance']].head())
+        print(f"總交易次數: {total_trades}")
+        print(f"總勝率: {win_rate:.2f}%")
+        
+        print("\n--- 物理證據 (head -n 15) ---")
+        os.system(f"head -n 15 {results_file}")
