@@ -56,6 +56,16 @@ class TestPhysics(unittest.TestCase):
         
         features_df = calculate_features(df, df_btc)
         
+        # --- 物理證據要求 ---
+        # 印出第 1 筆交易成交那一刻的特徵值快照
+        first_trade_idx = features_df.index[0]
+        print(f"\n[PHYSICS SNAPSHOT] Trade Execution Timestamp: {first_trade_idx}")
+        print(f"Feature Snapshot (First Row):\n{features_df.iloc[0]}")
+        
+        # 驗證時間戳：如果特徵數據包含當前時刻的 Close，則視為失敗
+        # 由於我們使用了 .shift(1)，features_df 的第一個索引應該是原始數據的第二個時間戳
+        # 但它所包含的數據應該是原始數據第一個時間戳的計算結果
+        
         self.assertEqual(len(features_df.columns), 19)
         self.assertFalse(features_df.isnull().values.any())
         

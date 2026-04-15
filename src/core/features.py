@@ -102,6 +102,10 @@ def calculate_features(df_input, df_btc_input):
     combined = combined.ffill().fillna(0)
     final_df = combined[Registry_Lock.MASTER_FEATURES]
     
+    # --- KILL LOOK-AHEAD BIAS ---
+    # Ensure current decision (t) only uses closed data (t-1)
+    final_df = final_df.shift(1).dropna()
+    
     # Lock verification
     Registry_Lock.verify(final_df)
     
