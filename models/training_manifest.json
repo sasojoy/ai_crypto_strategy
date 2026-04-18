@@ -1,58 +1,44 @@
 [
     {
-        "train_start": "2023-01-01 01:00:00",
-        "train_end": "2023-01-31 01:00:00",
-        "embargo_gap": "0 days 12:00:00",
-        "test_start": "2023-01-31 13:00:00",
-        "win_rate": 0.44642857142857145,
-        "expectancy": -0.0013178702647046918
+        "train_end_idx": 720,
+        "test_start_idx": 732,
+        "win_rate": 0.43452380952380953,
+        "expectancy": -0.003815592297036548
     },
     {
-        "train_start": "2023-01-08 01:00:00",
-        "train_end": "2023-02-07 01:00:00",
-        "embargo_gap": "0 days 12:00:00",
-        "test_start": "2023-02-07 13:00:00",
-        "win_rate": 0.4523809523809524,
-        "expectancy": -0.002264164221218389
+        "train_end_idx": 888,
+        "test_start_idx": 900,
+        "win_rate": 0.43452380952380953,
+        "expectancy": -0.0036592825235359913
     },
     {
-        "train_start": "2023-01-15 01:00:00",
-        "train_end": "2023-02-14 01:00:00",
-        "embargo_gap": "0 days 12:00:00",
-        "test_start": "2023-02-14 13:00:00",
-        "win_rate": 0.4523809523809524,
-        "expectancy": -0.0018851343304418177
+        "train_end_idx": 1056,
+        "test_start_idx": 1068,
+        "win_rate": 0.38095238095238093,
+        "expectancy": -0.005241502181672823
     },
     {
-        "train_start": "2023-01-22 01:00:00",
-        "train_end": "2023-02-21 01:00:00",
-        "embargo_gap": "0 days 12:00:00",
-        "test_start": "2023-02-21 13:00:00",
-        "win_rate": 0.44642857142857145,
-        "expectancy": -0.004723589683334395
+        "train_end_idx": 1224,
+        "test_start_idx": 1236,
+        "win_rate": 0.47619047619047616,
+        "expectancy": -0.002912113531429697
     },
     {
-        "train_start": "2023-01-29 01:00:00",
-        "train_end": "2023-02-28 01:00:00",
-        "embargo_gap": "0 days 12:00:00",
-        "test_start": "2023-02-28 13:00:00",
-        "win_rate": 0.4642857142857143,
-        "expectancy": -0.0037049463474763756
+        "train_end_idx": 1392,
+        "test_start_idx": 1404,
+        "win_rate": 0.39880952380952384,
+        "expectancy": -0.004695523233783501
     },
     {
-        "train_start": "2023-02-05 01:00:00",
-        "train_end": "2023-03-07 01:00:00",
-        "embargo_gap": "0 days 12:00:00",
-        "test_start": "2023-03-07 13:00:00",
-        "win_rate": 0.5,
-        "expectancy": -0.001387789459637036
+        "train_end_idx": 1560,
+        "test_start_idx": 1572,
+        "win_rate": 0.40476190476190477,
+        "expectancy": -0.001160751040052639
     },
     {
-        "train_start": "2023-02-12 01:00:00",
-        "train_end": "2023-03-14 01:00:00",
-        "embargo_gap": "0 days 12:00:00",
-        "test_start": "2023-03-14 13:00:00",
-        "win_rate": 0.49404761904761907,
-        "expectancy": -0.0015257695304742784
+        "train_end_idx": 1728,
+        "test_start_idx": 1740,
+        "win_rate": 0.43452380952380953,
+        "expectancy": -0.004953312454903186
     }
 ]

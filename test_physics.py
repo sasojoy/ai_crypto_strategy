@@ -4,8 +4,8 @@ import unittest
 import pandas as pd
 import numpy as np
 import yaml
-from src.core.engine import Engine
-from src.core.features import calculate_features, Registry_Lock
+from backtest.engine import Engine
+from data.features import calculate_features, Registry_Lock
 
 class TestPhysics(unittest.TestCase):
     def setUp(self):
@@ -72,7 +72,7 @@ class TestPhysics(unittest.TestCase):
         """
         驗證策略對齊邏輯與信號輸出。
         """
-        from src.core.strategy import H16Strategy
+        from strategy.strategy import H16Strategy
         strategy = H16Strategy()
         
         # 模擬已平移特徵
@@ -96,7 +96,7 @@ class TestPhysics(unittest.TestCase):
 
     def test_trainer_embargo(self):
         """
-        驗證訓練器的 Embargo 機制與 XGBoost 歸位。
+        驗證訓練器的 Embargo 機制 (基於整數索引)。
         """
         from optimize.trainer import H16Trainer
         trainer = H16Trainer(train_window_days=30, test_window_days=7, n_forward=12)
@@ -123,15 +123,12 @@ class TestPhysics(unittest.TestCase):
         if trainer.manifest:
             first_window = trainer.manifest[0]
             print(f"\n[TRAINER EMBARGO PROOF] Window 1:")
-            print(f"Train End: {first_window['train_end']}")
-            print(f"Embargo Gap: {first_window['embargo_gap']}")
-            print(f"Test Start: {first_window['test_start']}")
+            print(f"Train End Index: {first_window['train_end_idx']}")
+            print(f"Test Start Index: {first_window['test_start_idx']}")
             
-            # 物理斷言：test_start 必須等於 train_end + n_forward
-            train_end_dt = pd.to_datetime(first_window['train_end'])
-            test_start_dt = pd.to_datetime(first_window['test_start'])
-            self.assertEqual(test_start_dt, train_end_dt + pd.Timedelta(hours=12))
-            print("✅ Embargo Physical Assertion Passed.")
+            # 物理斷言：test_start_idx 必須等於 train_end_idx + n_forward
+            self.assertEqual(first_window['test_start_idx'], first_window['train_end_idx'] + 12)
+            print("✅ Integer-based Embargo Physical Assertion Passed.")
 
 if __name__ == '__main__':
     unittest.main()

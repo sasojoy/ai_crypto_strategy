@@ -29,33 +29,33 @@ class H16Trainer:
     def walk_forward_train(self, data):
         """
         走動式驗證 (Walk-forward Validation)
-        實施「Embargo」物理隔離，杜絕標籤重疊洩漏。
+        實施「Embargo」物理隔離，基於整數索引 (iloc) 確保絕對物理順序。
         """
-        timestamps = data.index.unique().sort_values()
-        start_time = timestamps[0]
-        end_time = timestamps[-1]
+        n_samples = len(data)
         
-        current_train_start = start_time
+        # 假設數據是 1h 間隔，將天數轉換為 K 線根數
+        train_size = self.train_window_days * 24
+        test_size = self.test_window_days * 24
+        
+        current_train_start_idx = 0
         best_model = None
         
         while True:
-            current_train_end = current_train_start + pd.Timedelta(days=self.train_window_days)
+            train_end_idx = current_train_start_idx + train_size
             
-            # --- STRICT EMBARGO ---
-            # 物理真空帶：test_start 必須跳過 n_forward 根 K 線
-            embargo_period = pd.Timedelta(hours=self.n_forward)
-            current_test_start = current_train_end + embargo_period
-            current_test_end = current_test_start + pd.Timedelta(days=self.test_window_days)
+            # --- 真正的物理隔離 (基於 K 線根數，無涉絕對時間) ---
+            test_start_idx = train_end_idx + self.n_forward
+            test_end_idx = test_start_idx + test_size
             
-            if current_test_end > end_time:
+            if test_end_idx > n_samples:
                 break
             
-            # --- TIME SLICING WITH PHYSICAL ISOLATION ---
-            train_set = data[(data.index >= current_train_start) & (data.index < current_train_end)]
-            test_set = data[(data.index >= current_test_start) & (data.index < current_test_end)]
+            # --- 切割 (使用 iloc 確保絕對物理順序) ---
+            train_set = data.iloc[current_train_start_idx : train_end_idx]
+            test_set = data.iloc[test_start_idx : test_end_idx]
             
             if len(train_set) < 100 or len(test_set) < 20:
-                current_train_start += pd.Timedelta(days=self.test_window_days)
+                current_train_start_idx += test_size
                 continue
 
             # --- XGBOOST ARCHITECTURE 2.0 ---
@@ -89,15 +89,14 @@ class H16Trainer:
             win_rate = (preds == test_set['target']).mean()
             
             window_info = {
-                "train_end": str(current_train_end),
-                "embargo_gap": str(embargo_period),
-                "test_start": str(current_test_start),
+                "train_end_idx": int(train_end_idx),
+                "test_start_idx": int(test_start_idx),
                 "win_rate": float(win_rate),
                 "expectancy": float(long_expectancy + short_expectancy)
             }
             self.manifest.append(window_info)
             best_model = model
-            current_train_start += pd.Timedelta(days=self.test_window_days)
+            current_train_start_idx += test_size
 
         if best_model:
             os.makedirs('models', exist_ok=True)
