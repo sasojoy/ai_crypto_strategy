@@ -105,6 +105,9 @@ def calculate_features(df_input, df_btc_input):
     # --- KILL LOOK-AHEAD BIAS ---
     # Ensure current decision (t) only uses closed data (t-1)
     final_df = final_df.shift(1).dropna()
+    # --- WHITE-BOX REPORT & STRONG ASSERTION ---
+    assert final_df.shape[1] == 19, f"🚨 [FEATURE VIOLATION] Expected 19 features, got {final_df.shape[1]}"
+
     
     # Lock verification
     Registry_Lock.verify(final_df)

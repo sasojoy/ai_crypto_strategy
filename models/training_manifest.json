@@ -2,43 +2,43 @@
     {
         "train_end_idx": 720,
         "test_start_idx": 732,
-        "win_rate": 0.43452380952380953,
-        "expectancy": -0.003815592297036548
+        "win_rate": 0.3630952380952381,
+        "expectancy": -0.008582147952866824
     },
     {
         "train_end_idx": 888,
         "test_start_idx": 900,
-        "win_rate": 0.43452380952380953,
-        "expectancy": -0.0036592825235359913
+        "win_rate": 0.42857142857142855,
+        "expectancy": -0.003161152394346455
     },
     {
         "train_end_idx": 1056,
         "test_start_idx": 1068,
-        "win_rate": 0.38095238095238093,
-        "expectancy": -0.005241502181672823
+        "win_rate": 0.5178571428571429,
+        "expectancy": 0.0024434574458229662
     },
     {
         "train_end_idx": 1224,
         "test_start_idx": 1236,
-        "win_rate": 0.47619047619047616,
-        "expectancy": -0.002912113531429697
+        "win_rate": 0.49404761904761907,
+        "expectancy": -0.002761005677581249
     },
     {
         "train_end_idx": 1392,
         "test_start_idx": 1404,
-        "win_rate": 0.39880952380952384,
-        "expectancy": -0.004695523233783501
+        "win_rate": 0.5119047619047619,
+        "expectancy": -0.0020004288905790066
     },
     {
         "train_end_idx": 1560,
         "test_start_idx": 1572,
-        "win_rate": 0.40476190476190477,
-        "expectancy": -0.001160751040052639
+        "win_rate": 0.47023809523809523,
+        "expectancy": -0.00344370645027211
     },
     {
         "train_end_idx": 1728,
         "test_start_idx": 1740,
-        "win_rate": 0.43452380952380953,
-        "expectancy": -0.004953312454903186
+        "win_rate": 0.44642857142857145,
+        "expectancy": -0.0033717972367900985
     }
 ]

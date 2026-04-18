@@ -31,6 +31,9 @@ class H16Trainer:
         走動式驗證 (Walk-forward Validation)
         實施「Embargo」物理隔離，基於整數索引 (iloc) 確保絕對物理順序。
         """
+        # --- DRIFT DEFENSE ---
+        # 防止 NaN 導致整數索引偏移，確保 Embargo 真空帶是物理上的 n_forward 根 K 線
+        data.dropna(inplace=True)
         n_samples = len(data)
         
         # 假設數據是 1h 間隔，將天數轉換為 K 線根數

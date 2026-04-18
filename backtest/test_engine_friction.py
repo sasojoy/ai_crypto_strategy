@@ -11,31 +11,30 @@ class TestEngineFriction(unittest.TestCase):
 
     def test_friction_precision(self):
         """
-        物理常數單元測試：模擬 2000 USDT 倉位。
-        如果總摩擦力不是精準的 3.6 USDT，則測試失敗。
+        參數化測試：驗證 1000, 2000, 5000 USDT 倉位。
         """
-        qty_usdt = 2000
+        test_cases = [
+            {"qty": 1000, "expected_friction": 1.8},
+            {"qty": 2000, "expected_friction": 3.6},
+            {"qty": 5000, "expected_friction": 9.0},
+        ]
+        
         entry_price = 100
         exit_price = 105 # 獲利 5%
         
-        # 計算多單 PnL
-        # Profit = (Qty * Delta Price) - (Qty * 0.0018)
-        # Friction = 2000 * 0.0018 = 3.6
-        
-        expected_friction = qty_usdt * 0.0018
-        self.assertEqual(expected_friction, 3.6)
-        
-        # 透過引擎計算
-        pnl = self.engine.calculate_pnl(qty_usdt, entry_price, exit_price, 'long')
-        
-        # 原始利潤 = 2000 * (105-100)/100 = 100
-        # 扣除摩擦力後 = 100 - 3.6 = 96.4
-        self.assertAlmostEqual(pnl, 96.4)
-        
-        print(f"\n[FRICTION TEST] Qty: {qty_usdt} USDT")
-        print(f"Expected Friction: {expected_friction} USDT")
-        print(f"Calculated PnL: {pnl} USDT")
-        print("✅ 3.6 USDT Friction Assertion Passed.")
+        for case in test_cases:
+            qty = case["qty"]
+            expected_f = case["expected_friction"]
+            
+            # 透過引擎計算
+            pnl = self.engine.calculate_pnl(qty, entry_price, exit_price, 'long')
+            
+            # 原始利潤 = qty * 0.05
+            raw_profit = qty * 0.05
+            expected_pnl = raw_profit - expected_f
+            
+            self.assertAlmostEqual(pnl, expected_pnl, places=8)
+            print(f"✅ [FRICTION TEST] Qty: {qty} USDT | Expected Friction: {expected_f} | PnL: {pnl}")
 
 if __name__ == '__main__':
     unittest.main()
