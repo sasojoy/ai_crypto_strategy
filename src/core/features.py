@@ -12,13 +12,17 @@ class Registry_Lock:
         'volatility_24h', 'relative_strength_btc', 'btc_volatility_24h',
         'dist_ema200', 'dist_ema20', 'bb_width', 'bb_percent_b',
         'stoch_k', 'stoch_d', 'squeeze_index', 'macd_div',
-        'dist_sr_low', 'dist_sr_high', 'price_momentum'
+        'dist_sr_low', 'dist_sr_high', 'price_momentum',
+        # New Features
+        'bb_width_roc', 'rsi_long', 'macd_slope', 'vol_buy_ratio',
+        'ema_trend_1h', 'ema_trend_4h'
     ]
 
     @classmethod
     def verify(cls, df):
-        # Ensure exactly 19 features
-        assert len(cls.MASTER_FEATURES) == 19, f"Registry_Lock Error: Expected 19 features, got {len(cls.MASTER_FEATURES)}"
+        # Ensure exactly 25 features (19 + 6 new)
+        expected_count = 25
+        assert len(cls.MASTER_FEATURES) == expected_count, f"Registry_Lock Error: Expected {expected_count} features, got {len(cls.MASTER_FEATURES)}"
         
         # Ensure all master features are present in the dataframe
         for feat in cls.MASTER_FEATURES:
@@ -30,7 +34,7 @@ class Registry_Lock:
         # Ensure no extra features in the output
         # We only check the columns that are supposed to be features
         feature_df = df[cls.MASTER_FEATURES]
-        assert feature_df.shape[1] == 19, f"Registry_Lock Error: Feature count mismatch. Expected 19, got {feature_df.shape[1]}"
+        assert feature_df.shape[1] == expected_count, f"Registry_Lock Error: Feature count mismatch. Expected {expected_count}, got {feature_df.shape[1]}"
         
         return True
 
@@ -100,6 +104,32 @@ def calculate_features(df_input, df_btc_input):
     # 9. 交易量變動
     combined['vol_change_24h'] = combined['volume'].pct_change(24)
 
+    # --- NEW FEATURES (Priority 1) ---
+    # 10. 波動率變化率
+    combined['bb_width_roc'] = combined['bb_width'].pct_change(5)
+    
+    # 11. 多時間週期 RSI
+    combined['rsi_long'] = ta.rsi(combined['close'], length=28)
+    
+    # 12. MACD 柱狀圖斜率
+    combined['macd_slope'] = combined['macd_hist'].diff(3)
+    
+    # 13. 成交量分佈特徵 (簡化版：買盤比率)
+    # 假設收盤價高於開盤價為買盤主導
+    combined['vol_buy_ratio'] = np.where(combined['close'] > combined['open'], combined['volume'], 0)
+    combined['vol_buy_ratio'] = combined['vol_buy_ratio'].rolling(20).sum() / combined['volume'].rolling(20).sum()
+
+    # 14. 跨時間框架共振 (1h, 4h)
+    # 1h EMA Trend (4 * 15m)
+    ema20_1h = ta.ema(combined['close'], length=20*4)
+    ema50_1h = ta.ema(combined['close'], length=50*4)
+    combined['ema_trend_1h'] = (ema20_1h - ema50_1h) / ema50_1h
+    
+    # 4h EMA Trend (16 * 15m)
+    ema20_4h = ta.ema(combined['close'], length=20*16)
+    ema50_4h = ta.ema(combined['close'], length=50*16)
+    combined['ema_trend_4h'] = (ema20_4h - ema50_4h) / ema50_4h
+
     # Apply Registry_Lock MASTER_FEATURES
     for col in Registry_Lock.MASTER_FEATURES:
         if col not in combined.columns: combined[col] = 0.0
@@ -109,6 +139,7 @@ def calculate_features(df_input, df_btc_input):
     
     # --- KILL LOOK-AHEAD BIAS ---
     # Ensure current decision (t) only uses closed data (t-1)
+    # 這裡的 shift(1) 確保了所有特徵（包括跨時間框架特徵）都只使用已收盤的數據
     final_df = final_df.shift(1).dropna()
     
     # Lock verification

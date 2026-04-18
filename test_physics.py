@@ -37,21 +37,21 @@ class TestPhysics(unittest.TestCase):
 
     def test_features_integrity(self):
         """
-        19 個特徵有一個為 NaN，禁止回報成功。
+        25 個特徵有一個為 NaN，禁止回報成功。
         """
-        # Create dummy data
-        dates = pd.date_range('2023-01-01', periods=300, freq='h')
+        # Create dummy data - Increased to 1000 periods to satisfy 4h EMA requirements
+        dates = pd.date_range('2023-01-01', periods=1000, freq='h')
         df = pd.DataFrame({
             'timestamp': dates,
-            'open': np.random.randn(300) + 100,
-            'high': np.random.randn(300) + 102,
-            'low': np.random.randn(300) + 98,
-            'close': np.random.randn(300) + 100,
-            'volume': np.random.rand(300) * 1000
+            'open': np.random.randn(1000) + 100,
+            'high': np.random.randn(1000) + 102,
+            'low': np.random.randn(1000) + 98,
+            'close': np.random.randn(1000) + 100,
+            'volume': np.random.rand(1000) * 1000
         })
         df_btc = pd.DataFrame({
             'timestamp': dates,
-            'close': np.random.randn(300) + 30000
+            'close': np.random.randn(1000) + 30000
         })
         
         features_df = calculate_features(df, df_btc)
@@ -62,7 +62,7 @@ class TestPhysics(unittest.TestCase):
         print(f"\n[PHYSICS SNAPSHOT] Trade Execution Timestamp: {first_trade_idx}")
         print(f"Feature Snapshot (First Row):\n{features_df.iloc[0]}")
         
-        self.assertEqual(len(features_df.columns), 19)
+        self.assertEqual(len(features_df.columns), 25)
         self.assertFalse(features_df.isnull().values.any())
         
         # Verify Registry_Lock
@@ -77,7 +77,7 @@ class TestPhysics(unittest.TestCase):
         
         # 模擬已平移特徵
         dates = pd.date_range('2023-01-01', periods=10, freq='h')
-        mock_features = pd.DataFrame(np.random.randn(10, 19), 
+        mock_features = pd.DataFrame(np.random.randn(10, 25), 
                                    index=dates, 
                                    columns=Registry_Lock.MASTER_FEATURES)
         
