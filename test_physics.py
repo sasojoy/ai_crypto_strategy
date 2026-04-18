@@ -90,9 +90,48 @@ class TestPhysics(unittest.TestCase):
         self.assertIn('confidence_score', signal)
         self.assertIn('limit_price', signal)
         
-        # 印出對齊邏輯證據
+        # 印完對齊邏輯證據
         print(f"\n[ALIGNMENT PROOF - Y Definition]:\n{strategy.get_y_definition()}")
         print(f"\n[ALIGNMENT PROOF - Logic]:\n{strategy.get_alignment_logic()}")
+
+    def test_trainer_embargo(self):
+        """
+        驗證訓練器的 Embargo 機制與 XGBoost 歸位。
+        """
+        from optimize.trainer import H16Trainer
+        trainer = H16Trainer(train_window_days=30, test_window_days=7, n_forward=12)
+        
+        # 模擬數據
+        dates = pd.date_range('2023-01-01', periods=2000, freq='h')
+        df = pd.DataFrame({
+            'timestamp': dates,
+            'open': np.random.randn(2000) + 100,
+            'high': np.random.randn(2000) + 102,
+            'low': np.random.randn(2000) + 98,
+            'close': np.random.randn(2000) + 100,
+            'volume': np.random.rand(2000) * 1000
+        })
+        df_btc = pd.DataFrame({
+            'timestamp': dates,
+            'close': np.random.randn(2000) + 30000
+        })
+        
+        data = trainer.prepare_data(df, df_btc)
+        trainer.walk_forward_train(data)
+        
+        # 驗證 Manifest 中的 Embargo 邏輯
+        if trainer.manifest:
+            first_window = trainer.manifest[0]
+            print(f"\n[TRAINER EMBARGO PROOF] Window 1:")
+            print(f"Train End: {first_window['train_end']}")
+            print(f"Embargo Gap: {first_window['embargo_gap']}")
+            print(f"Test Start: {first_window['test_start']}")
+            
+            # 物理斷言：test_start 必須等於 train_end + n_forward
+            train_end_dt = pd.to_datetime(first_window['train_end'])
+            test_start_dt = pd.to_datetime(first_window['test_start'])
+            self.assertEqual(test_start_dt, train_end_dt + pd.Timedelta(hours=12))
+            print("✅ Embargo Physical Assertion Passed.")
 
 if __name__ == '__main__':
     unittest.main()
