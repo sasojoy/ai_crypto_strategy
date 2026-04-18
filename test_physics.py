@@ -4,8 +4,8 @@ import unittest
 import pandas as pd
 import numpy as np
 import yaml
-from backtest.engine import Engine
-from data.features import calculate_features, Registry_Lock
+from src.core.engine import Engine
+from src.core.features import calculate_features, Registry_Lock
 
 class TestPhysics(unittest.TestCase):
     def setUp(self):
@@ -83,7 +83,7 @@ class TestPhysics(unittest.TestCase):
         
         # 測試信號輸出
         # 由於沒有真實模型，這裡會觸發 Warning 並返回 Neutral
-        signal = strategy.predict_signal(mock_features)
+        signal = strategy.predict_signal(mock_features, current_price=50000.0, atr=100.0)
         print(f"\n[STRATEGY SIGNAL] {signal}")
         
         self.assertIn(signal['signal_type'], ["Neutral", "Long", "Short"])

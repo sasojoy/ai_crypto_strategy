@@ -4,9 +4,10 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
+from src.core.features import Registry_Lock
 
 class H16Strategy:
-    def __init__(self, model_path='/workspace/ai_crypto_strategy/models/lgbm_model.joblib'):
+    def __init__(self, model_path='/workspace/ai_crypto_strategy/models/h16_v2_wf.joblib'):
         self.model_path = model_path
         self.model = self._load_model()
 
@@ -18,41 +19,45 @@ class H16Strategy:
             print(f"Warning: Model not found at {self.model_path}")
             return None
 
-    def predict_signal(self, final_df):
+    def predict_signal(self, final_df, current_price, atr=None):
         """
         接收 final_df（已平移特徵，即 t 時刻看到的數據是 t-1 的收盤結果）。
-        輸出信號包含：signal_type, confidence_score, limit_price。
+        輸出信號包含：signal_type, confidence_score, limit_price, stop_loss。
         """
         if self.model is None or final_df.empty:
-            return {"signal_type": "Neutral", "confidence_score": 0.0, "limit_price": 0.0}
+            return {"signal_type": "Neutral", "confidence_score": 0.0, "limit_price": 0.0, "stop_loss": 0.0}
 
         # 獲取最新的一行特徵 (t 時刻看到的 t-1 數據)
         latest_features = final_df.iloc[-1:]
         
-        # 模型預測
-        # 假設模型輸出機率
-        probs = self.model.predict_proba(latest_features)[0]
-        confidence_score = float(np.max(probs))
-        prediction = int(np.argmax(probs))
+        # 模型預測 (XGBRegressor)
+        pred_return = float(self.model.predict(latest_features)[0])
 
-        # 假設 1 為 Long, 0 為 Neutral/Short (根據具體模型訓練定義)
-        # 這裡為了演示，假設模型預測的是 1: Long, 2: Short, 0: Neutral
-        signal_map = {0: "Neutral", 1: "Long", 2: "Short"}
-        signal_type = signal_map.get(prediction, "Neutral")
+        # 極簡決策邏輯：
+        # 當預測未來 12 根 K 線報酬 > 0.2% 時，發出做多信號 (Signal = 1)
+        # < -0.2% 時做空 (Signal = -1)
+        if pred_return > 0.002:
+            signal_type = "Long"
+        elif pred_return < -0.002:
+            signal_type = "Short"
+        else:
+            signal_type = "Neutral"
 
-        # 獲取當前價格 (t 時刻的價格，用於建議 limit_price)
-        # 注意：final_df 不包含原始價格，通常需要從原始數據獲取
-        # 這裡假設我們能獲取到最新的收盤價作為參考
-        # 由於 final_df 是 shift(1) 過的，我們需要原始數據的最新價格
+        # 動態停損：強制掛上 2 倍 ATR 的動態停損邏輯
+        stop_loss = 0.0
+        if atr is not None:
+            if signal_type == "Long":
+                stop_loss = current_price - 2 * atr
+            elif signal_type == "Short":
+                stop_loss = current_price + 2 * atr
         
-        # 建議 limit_price：這裡簡單使用 t-1 的收盤價（即 latest_features 之前的原始數據）
-        # 在實際系統中，這會從實時行情獲取
-        limit_price = 0.0 # 佔位符，實際應由外部傳入或從行情獲取
+        
 
         return {
             "signal_type": signal_type,
-            "confidence_score": confidence_score,
-            "limit_price": limit_price,
+            "confidence_score": abs(pred_return),
+            "limit_price": current_price,
+            "stop_loss": stop_loss,
             "timestamp": latest_features.index[0]
         }
 
