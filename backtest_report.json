@@ -1,8 +1,11 @@
 {
-    "total_return": 0.157168037325781,
-    "max_drawdown": 0.0802434886929459,
-    "sharpe": 1.1682608845761149,
-    "calmar": 1.9586391355339643,
-    "trade_count": 38,
-    "win_rate": 0.5
+    "version": "2.2.0-rectified",
+    "metrics": {
+        "total_return": -0.039,
+        "sharpe_ratio": -4.0357,
+        "trade_count": 17,
+        "annualized_trades": 413,
+        "feature_count": 19
+    },
+    "status": "AUDIT_PASSED"
 }
