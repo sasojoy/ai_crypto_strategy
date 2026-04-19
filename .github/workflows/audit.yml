@@ -20,18 +20,21 @@ jobs:
           GDRIVE_JSON: ${{ secrets.GDRIVE_CREDENTIALS }}
           FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
         run: |
-          # 建立 Rclone 設定檔
           mkdir -p ~/.config/rclone
-          echo "[gdrive]
+          # 使用 cat << 'EOF' 確保 JSON 內容中的引號與特殊字元不被 Shell 解析
+          cat << 'EOF' > ~/.config/rclone/rclone.conf
+          [gdrive]
           type = drive
           scope = drive
-          service_account_contents = $GDRIVE_JSON" > ~/.config/rclone/rclone.conf
+          service_account_contents = $GDRIVE_JSON
+          EOF
           
-          # 上傳至指定資料夾
-          rclone copy audit_package.zip gdrive: --drive-root-folder-id "$FOLDER_ID" --drive-use-trash=false
+          # 將 $GDRIVE_JSON 變數內容正確注入到設定檔中
+          # 使用 sed 或直接在 cat 裡處理變數以避開 echo 的限制
+          sed -i "s|\$GDRIVE_JSON|$GDRIVE_JSON|g" ~/.config/rclone/rclone.conf
           
-          # 在 Google Drive 遠端重命名 (加入分支與 commit id 以防覆蓋)
-          rclone move gdrive:audit_package.zip gdrive: --drive-root-folder-id "$FOLDER_ID" \
-            --root-drive-id "" --drive-use-trash=false \
-            --files-from <(echo "audit_package.zip") \
-            --transform "audit_${{ github.ref_name }}_${{ github.sha }}.zip" || true
+          # 執行上傳並重新命名為唯一檔名
+          # 直接上傳並指定遠端檔名：rclone copyto [來源] [目標]
+          rclone copyto audit_package.zip "gdrive:audit_${{ github.ref_name }}_${{ github.sha }}.zip" \
+            --drive-root-folder-id "$FOLDER_ID" \
+            --drive-use-trash=false
