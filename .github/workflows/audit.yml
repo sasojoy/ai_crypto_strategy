@@ -9,19 +9,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Archive for Audit
-        run: zip -r audit_package.zip src/ scripts/ results.json -x "*.git*"
+      - name: Archive Entire Repo
+        run: |
+          zip -r audit_package.zip . -x "*.git*" -x "audit_package.zip"
 
       - name: Install Rclone
         run: sudo apt-get install -y rclone
 
       - name: Upload to Google Drive
         env:
-          # 使用你的 Refresh Token 重新建構 Rclone 認證字串
           RCLONE_CONFIG_MYDRIVE_TYPE: drive
           RCLONE_CONFIG_MYDRIVE_SCOPE: drive
-          # 這裡我們只給 refresh_token，rclone 會自動去更新 access_token
-          RCLONE_CONFIG_MYDRIVE_TOKEN: '{"token_type":"Bearer","refresh_token":"${{ secrets.GDRIVE_REFRESH_TOKEN }}"}'
+          RCLONE_CONFIG_MYDRIVE_TOKEN: '{"refresh_token":"${{ secrets.GDRIVE_REFRESH_TOKEN }}"}'
           FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
         run: |
           rclone copyto audit_package.zip "mydrive:audit_${{ github.ref_name }}_${{ github.sha }}.zip" \
