@@ -62,7 +62,8 @@ class TestPhysics(unittest.TestCase):
         print(f"\n[PHYSICS SNAPSHOT] Trade Execution Timestamp: {first_trade_idx}")
         print(f"Feature Snapshot (First Row):\n{features_df.iloc[0]}")
         
-        self.assertEqual(len(features_df.columns), 25)
+        # --- 物理常數第一條：特徵數量必須精準為 19 ---
+        self.assertEqual(len(features_df.columns), 19)
         self.assertFalse(features_df.isnull().values.any())
         
         # Verify Registry_Lock
@@ -77,7 +78,7 @@ class TestPhysics(unittest.TestCase):
         
         # 模擬已平移特徵
         dates = pd.date_range('2023-01-01', periods=10, freq='h')
-        mock_features = pd.DataFrame(np.random.randn(10, 25), 
+        mock_features = pd.DataFrame(np.random.randn(10, 19), 
                                    index=dates, 
                                    columns=Registry_Lock.MASTER_FEATURES)
         

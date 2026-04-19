@@ -32,10 +32,11 @@ class H16Trainer:
         def objective(trial):
             params = {
                 'n_estimators': 100,
-                'max_depth': trial.suggest_int('max_depth', 3, 10),
-                'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.2, log=True),
-                'subsample': trial.suggest_float('subsample', 0.6, 1.0),
-                'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+                # --- 審計整改：限制深度防止過擬合 ---
+                'max_depth': trial.suggest_int('max_depth', 3, 5),
+                'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.1, log=True),
+                'subsample': trial.suggest_float('subsample', 0.6, 0.9),
+                'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 0.9),
                 'objective': 'reg:squarederror',
                 'random_state': 42,
                 'tree_method': 'hist',
@@ -48,17 +49,23 @@ class H16Trainer:
             preds = model.predict(val_set[Registry_Lock.MASTER_FEATURES])
             
             # 計算模擬收益 (簡化版) 用於優化 Sharpe
-            # 假設信號強度 > 0.002 做多， < -0.002 做空
             signals = np.where(preds > 0.002, 1, np.where(preds < -0.002, -1, 0))
-            # 實際收益 = 信號 * 實際變動 - 摩擦力
-            # 注意：這裡的 target 是未來 n_forward 的累積收益
-            # 為了簡化，我們直接用 target 作為單步收益的代理
+            trade_count = np.sum(np.abs(signals))
+            
             step_returns = signals * val_set['target'] - np.abs(signals) * self.friction
             
             if np.std(step_returns) == 0:
                 return -10.0
             
             sharpe = np.mean(step_returns) / np.std(step_returns) * np.sqrt(35040 / self.n_forward)
+            
+            # --- 審計整改：加入交易頻率懲罰項 ---
+            # 預期在 Validation 區間（約 15 天）應有一定數量的交易
+            # 如果換算成年度交易次數低於 800 次，給予負分
+            annualized_trade_count = trade_count * (35040 / len(val_set))
+            if annualized_trade_count < 800:
+                return -20.0
+                
             return sharpe
 
         study = optuna.create_study(direction='maximize')

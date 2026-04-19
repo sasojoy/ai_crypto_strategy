@@ -1,20 +1,50 @@
-name: On-Premise Validation & Deploy
+name: On-Premise Validation, Audit & Deploy
+
 on:
   push:
-    branches: [ main ]
+    # 移除限制，讓所有分支的 push 都會觸發
+    branches: [ "**" ] 
+
 jobs:
+  # 任務 1: 程式碼品質與語法檢查 (所有分支都會跑)
   quality_gate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
       - name: Syntax Check
         run: python3 -m py_compile src/market.py
 
-  deploy:
+  # 任務 2: 同步到 Google Drive 給審計官 (所有分支都會跑)
+  audit_sync:
     needs: quality_gate
     runs-on: ubuntu-latest
     steps:
-      - uses: appleboy/ssh-action@v1.0.3
+      - uses: actions/checkout@v4
+      - name: Archive for Audit
+        run: |
+          # 打包 src, scripts 與關鍵的 results.json
+          zip -r audit_package.zip src/ scripts/ results.json -x "*.git*"
+      - name: Upload to Google Drive
+        uses: aditya611/gdrive-upload@v1.1.0
+        with:
+          credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
+          filename: "audit_${{ github.ref_name }}_${{ github.sha }}.zip"
+          folderId: ${{ secrets.GDRIVE_FOLDER_ID }}
+          overwrite: "false"
+
+  # 任務 3: 部署到生產環境 (只有 main 分支才會執行)
+  deploy:
+    needs: quality_gate
+    # 關鍵：這裡加入條件判斷，只有當分支是 main 時才執行此 Job
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH Deploy to Production
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -33,7 +63,7 @@ jobs:
             source venv/bin/activate
             pip install --no-cache-dir -r requirements.txt
             
-            # 使用 -m 模組化方式啟動，這是最標準的做法
+            # 啟動 H16_PREDATOR_PRO
             pm2 flush
             pm2 start src/market.py --name "H16_PREDATOR_PRO" --interpreter ./venv/bin/python
             pm2 save
