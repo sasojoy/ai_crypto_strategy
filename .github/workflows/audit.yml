@@ -12,23 +12,26 @@ jobs:
       - name: Archive for Audit
         run: zip -r audit_package.zip src/ scripts/ results.json -x "*.git*"
 
-      - id: 'auth'
-        uses: 'google-github-actions/auth@v2'
-        with:
-          credentials_json: '${{ secrets.GDRIVE_CREDENTIALS }}'
+      - name: Install Rclone
+        run: sudo apt-get install -y rclone
 
-      - name: 'Upload to Google Drive'
-        uses: 'google-github-actions/upload-cloud-storage@v2'
-        # 注意：如果一定要同步到 Google Drive 而非 GCS
-        # 且第三方 Action 不穩定，建議改用簡單的 curl 或穩定套件：
-        continue-on-error: true
+      - name: Setup Rclone and Upload
+        env:
+          GDRIVE_JSON: ${{ secrets.GDRIVE_CREDENTIALS }}
+          FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
         run: |
-          # 這裡推薦改用這個目前最活躍的套件：
-          # 或是直接使用此穩定版本
+          # 建立 Rclone 設定檔
+          mkdir -p ~/.config/rclone
+          echo "[gdrive]
+          type = drive
+          scope = drive
+          service_account_contents = $GDRIVE_JSON" > ~/.config/rclone/rclone.conf
           
-      - name: 'Alternative Upload'
-        uses: Tofunmi-f/gdrive-upload@v1.0.3
-        with:
-          credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
-          filename: "audit_${{ github.ref_name }}_${{ github.sha }}.zip"
-          folderId: ${{ secrets.GDRIVE_FOLDER_ID }}
+          # 上傳至指定資料夾
+          rclone copy audit_package.zip gdrive: --drive-root-folder-id "$FOLDER_ID" --drive-use-trash=false
+          
+          # 在 Google Drive 遠端重命名 (加入分支與 commit id 以防覆蓋)
+          rclone move gdrive:audit_package.zip gdrive: --drive-root-folder-id "$FOLDER_ID" \
+            --root-drive-id "" --drive-use-trash=false \
+            --files-from <(echo "audit_package.zip") \
+            --transform "audit_${{ github.ref_name }}_${{ github.sha }}.zip" || true
