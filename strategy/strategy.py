@@ -38,11 +38,11 @@ class H16Strategy:
         ema_trend_4h = float(latest_features['ema_trend_4h'].iloc[0])
 
         # 決策邏輯：
-        # 當預測未來 12 根 K 線報酬 > 0.2% 且 4h 趨勢向上時，發出做多信號
-        # 當預測未來 12 根 K 線報酬 < -0.2% 且 4h 趨勢向下時，發出做空信號
-        if pred_return > 0.002 and ema_trend_4h > 0:
+        # 當預測未來 12 根 K 線報酬 > 0.05% 且 4h 趨勢向上時，發出做多信號
+        # 當預測未來 12 根 K 線報酬 < -0.05% 且 4h 趨勢向下時，發出做空信號
+        if pred_return > 0.0005 and ema_trend_4h > 0:
             signal_type = "Long"
-        elif pred_return < -0.002 and ema_trend_4h < 0:
+        elif pred_return < -0.0005 and ema_trend_4h < 0:
             signal_type = "Short"
         else:
             signal_type = "Neutral"

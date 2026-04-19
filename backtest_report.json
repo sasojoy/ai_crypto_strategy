@@ -1,10 +1,10 @@
 {
     "version": "2.2.0-rectified",
     "metrics": {
-        "total_return": -0.1365,
-        "sharpe_ratio": -6.6691,
-        "trade_count": 60,
-        "annualized_trades": 1460,
+        "total_return": -15.348,
+        "sharpe_ratio": -4.4527,
+        "trade_count": 13461,
+        "annualized_trades": 13648,
         "feature_count": 19
     },
     "status": "AUDIT_PASSED"
