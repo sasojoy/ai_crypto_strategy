@@ -9,20 +9,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Archive Entire Repo
-        run: |
-          zip -r audit_package.zip . -x "*.git*" -x "audit_package.zip"
-
       - name: Install Rclone
         run: sudo apt-get install -y rclone
 
-      - name: Upload to Google Drive
+      - name: Sync Folder to Google Drive
         env:
           RCLONE_CONFIG_MYDRIVE_TYPE: drive
           RCLONE_CONFIG_MYDRIVE_SCOPE: drive
           RCLONE_CONFIG_MYDRIVE_TOKEN: '{"refresh_token":"${{ secrets.GDRIVE_REFRESH_TOKEN }}"}'
           FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
         run: |
-          rclone copyto audit_package.zip "mydrive:audit_${{ github.ref_name }}_${{ github.sha }}.zip" \
+          # 使用 rclone copy 直接同步整個目錄
+          # 目標路徑會加上分支名與 commit sha 以區分不同版本
+          rclone copy . "mydrive:audit_${{ github.ref_name }}_${{ github.sha }}" \
             --drive-root-folder-id "$FOLDER_ID" \
-            --drive-use-trash=false
+            --exclude ".git/**" \
+            --drive-use-trash=false \
+            --verbose
