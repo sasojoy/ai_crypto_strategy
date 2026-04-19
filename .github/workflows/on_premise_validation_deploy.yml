@@ -2,11 +2,9 @@ name: On-Premise Validation, Audit & Deploy
 
 on:
   push:
-    # 移除限制，讓所有分支的 push 都會觸發
     branches: [ "**" ] 
 
 jobs:
-  # 任務 1: 程式碼品質與語法檢查 (所有分支都會跑)
   quality_gate:
     runs-on: ubuntu-latest
     steps:
@@ -18,15 +16,14 @@ jobs:
       - name: Syntax Check
         run: python3 -m py_compile src/market.py
 
-  # 任務 2: 同步到 Google Drive 給審計官 (所有分支都會跑)
   audit_sync:
     needs: quality_gate
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Archive for Audit
         run: |
-          # 打包 src, scripts 與關鍵的 results.json
           zip -r audit_package.zip src/ scripts/ results.json -x "*.git*"
       - name: Upload to Google Drive
         uses: aditya611/gdrive-upload@v1.1.0
@@ -36,11 +33,9 @@ jobs:
           folderId: ${{ secrets.GDRIVE_FOLDER_ID }}
           overwrite: "false"
 
-  # 任務 3: 部署到生產環境 (只有 main 分支才會執行)
   deploy:
     needs: quality_gate
-    # 關鍵：這裡加入條件判斷，只有當分支是 main 時才執行此 Job
-    if: github.ref == 'refs/heads/main'
+    if: success() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: SSH Deploy to Production
@@ -53,17 +48,14 @@ jobs:
             cd ~/ai_crypto_strategy
             git fetch --all && git reset --hard origin/main
             
-            # 徹底清理並重置
             pm2 delete all || true
             pm2 kill || true
             rm -rf venv
             
-            # 重建環境
             python3.12 -m venv venv
             source venv/bin/activate
             pip install --no-cache-dir -r requirements.txt
             
-            # 啟動 H16_PREDATOR_PRO
             pm2 flush
             pm2 start src/market.py --name "H16_PREDATOR_PRO" --interpreter ./venv/bin/python
             pm2 save
