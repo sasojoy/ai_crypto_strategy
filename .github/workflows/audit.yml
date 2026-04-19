@@ -17,13 +17,18 @@ jobs:
 
       - name: Upload to Google Drive
         env:
-          # Rclone 萬用環境變數格式：RCLONE_CONFIG_遠端名稱_設定項
-          RCLONE_CONFIG_MYDRIVE_TYPE: drive
-          RCLONE_CONFIG_MYDRIVE_SCOPE: drive
-          RCLONE_CONFIG_MYDRIVE_SERVICE_ACCOUNT_CONTENTS: ${{ secrets.GDRIVE_CREDENTIALS }}
-          FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+          GDRIVE_JSON: ${{ secrets.GDRIVE_CREDENTIALS }}
+          GDRIVE_FOLDER: ${{ secrets.FOLDER_ID }}
         run: |
-          # 直接上傳並重新命名
-          rclone copyto audit_package.zip "mydrive:audit_${{ github.ref_name }}_${{ github.sha }}.zip" \
-            --drive-root-folder-id "$FOLDER_ID" \
+          # 1. 將密鑰寫入臨時檔案，避開 Shell 解析 JSON 的各種地雷
+          echo "$GDRIVE_JSON" > sa.json
+          
+          # 2. 使用環境變數設定臨時 Remote (名為 gdrive)
+          export RCLONE_CONFIG_GDRIVE_TYPE=drive
+          export RCLONE_CONFIG_GDRIVE_SCOPE=drive
+          export RCLONE_CONFIG_GDRIVE_SERVICE_ACCOUNT_FILE=$(pwd)/sa.json
+          
+          # 3. 直接上傳並重新命名
+          rclone copyto audit_package.zip "gdrive:audit_${{ github.ref_name }}_${{ github.sha }}.zip" \
+            --drive-root-folder-id "$GDRIVE_FOLDER" \
             --drive-use-trash=false
