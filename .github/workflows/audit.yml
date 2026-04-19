@@ -1,0 +1,17 @@
+name: Audit Sync
+on:
+  push:
+    branches: [ "**" ]
+jobs:
+  audit_sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive and Upload
+        run: zip -r audit_package.zip src/ scripts/ results.json -x "*.git*"
+      - uses: Jokan/google-drive-upload-action@v1.1.0
+        with:
+          credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
+          filename: "audit_${{ github.ref_name }}_${{ github.sha }}.zip"
+          folderId: ${{ secrets.GDRIVE_FOLDER_ID }}
+          overwrite: "false"
