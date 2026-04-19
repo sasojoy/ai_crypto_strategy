@@ -1,5 +1,3 @@
-
-
 import pandas as pd
 import numpy as np
 import joblib
@@ -10,6 +8,9 @@ class H16Strategy:
     def __init__(self, model_path='/workspace/ai_crypto_strategy/models/h16_v2_wf.joblib'):
         self.model_path = model_path
         self.model = self._load_model()
+        # 方案一：滾動分位數動態閾值 (Rolling Quantile)
+        self.window = 2000
+        self.quantile_val = 0.95
 
     def _load_model(self):
         if os.path.exists(self.model_path):
@@ -21,48 +22,52 @@ class H16Strategy:
 
     def predict_signal(self, final_df, current_price, atr=None):
         """
-        接收 final_df（已平移特徵，即 t 時刻看到的數據是 t-1 的收盤結果）。
-        輸出信號包含：signal_type, confidence_score, limit_price, stop_loss。
+        接收 final_df，全面改用滾動分位數動態閾值。
         """
         if self.model is None or final_df.empty:
             return {"signal_type": "Neutral", "confidence_score": 0.0, "limit_price": 0.0, "stop_loss": 0.0}
 
-        # 獲取最新的一行特徵 (t 時刻看到的 t-1 數據)
-        latest_features = final_df.iloc[-1:]
+        # 為了計算滾動分位數，我們需要最近 window 期的預測值
+        lookback_df = final_df.tail(self.window + 1)
+        all_preds = self.model.predict(lookback_df[Registry_Lock.MASTER_FEATURES])
         
-        # 模型預測 (XGBRegressor)
-        pred_return = float(self.model.predict(latest_features)[0])
-        
-        # --- REGIME FILTER (Priority 3) ---
-        # 獲取 4h EMA 趨勢濾網特徵
-        ema_trend_4h = float(latest_features['ema_trend_4h'].iloc[0])
+        current_pred = float(all_preds[-1])
+        past_preds = all_preds[:-1] if len(all_preds) > 1 else all_preds
 
-        # 決策邏輯：
-        # 當預測未來 12 根 K 線報酬 > 0.05% 且 4h 趨勢向上時，發出做多信號
-        # 當預測未來 12 根 K 線報酬 < -0.05% 且 4h 趨勢向下時，發出做空信號
-        if pred_return > 0.0005 and ema_trend_4h > 0:
+        # 計算動態閾值
+        if len(past_preds) >= 100: # 至少要有一定數據才計算分位數
+            upper_threshold = np.quantile(past_preds, self.quantile_val)
+            lower_threshold = np.quantile(past_preds, 1 - self.quantile_val)
+        else:
+            # 數據不足時回退到極其保守的靜態門檻
+            upper_threshold = 0.005
+            lower_threshold = -0.005
+
+        # 獲取 4h EMA 趨勢濾網
+        ema_trend_4h = float(lookback_df['ema_trend_4h'].iloc[-1])
+
+        # 決策邏輯：預測值必須擊穿 95% 分位數且趨勢共振
+        if current_pred > upper_threshold and ema_trend_4h > 0:
             signal_type = "Long"
-        elif pred_return < -0.0005 and ema_trend_4h < 0:
+        elif current_pred < lower_threshold and ema_trend_4h < 0:
             signal_type = "Short"
         else:
             signal_type = "Neutral"
 
-        # 動態停損：強制掛上 2 倍 ATR 的動態停損邏輯
+        # 動態停損
         stop_loss = 0.0
         if atr is not None:
             if signal_type == "Long":
                 stop_loss = current_price - 2 * atr
             elif signal_type == "Short":
                 stop_loss = current_price + 2 * atr
-        
-        
 
         return {
             "signal_type": signal_type,
-            "confidence_score": abs(pred_return),
+            "confidence_score": current_pred,
             "limit_price": current_price,
             "stop_loss": stop_loss,
-            "timestamp": latest_features.index[0]
+            "timestamp": lookback_df.index[-1]
         }
 
     def get_y_definition(self):
@@ -104,4 +109,3 @@ class H16Strategy:
         # y contains label for '... 10:00:00' -> '... 22:00:00' (t -> t+12)
         """
         return alignment_code
-

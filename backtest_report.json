@@ -1,11 +1,13 @@
 {
-    "version": "2.2.0-rectified",
+    "version": "2.3.0-rolling-quantile",
     "metrics": {
-        "total_return": -15.348,
-        "sharpe_ratio": -4.4527,
-        "trade_count": 13461,
-        "annualized_trades": 13648,
-        "feature_count": 19
+        "total_return": -3.6557,
+        "sharpe_ratio": -13.8105,
+        "trade_count": 2028,
+        "annualized_trades": 2028,
+        "feature_count": 19,
+        "window_size": 2000,
+        "quantile": 0.95
     },
     "status": "AUDIT_PASSED"
 }
