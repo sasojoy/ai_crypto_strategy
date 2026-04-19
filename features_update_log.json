@@ -1,0 +1,15 @@
+
+{
+    "update_timestamp": "2026-04-19T12:42:00Z",
+    "added_features": [
+        "volume_delta",
+        "atr_expansion"
+    ],
+    "removed_features": [
+        "relative_strength_btc",
+        "btc_volatility_24h"
+    ],
+    "feature_count_constant": 19,
+    "reasoning": "Removed low-importance features (relative_strength_btc, btc_volatility_24h) based on XGBoost feature_importances_ to make room for high-alpha features (Volume Delta, ATR Expansion Rate) while maintaining the 19-feature physical constant.",
+    "status": "SUCCESS"
+}

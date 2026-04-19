@@ -9,19 +9,17 @@ import numpy as np
 class Registry_Lock:
     MASTER_FEATURES = [
         'rsi', 'macd_hist', 'adx', 'atr_pct', 'vol_change_24h',
-        'volatility_24h', 'relative_strength_btc', 'btc_volatility_24h',
-        'dist_ema200', 'dist_ema20', 'bb_width', 'bb_percent_b',
-        'stoch_k', 'stoch_d', 'squeeze_index', 'macd_div',
-        'dist_sr_low', 'dist_sr_high', 'price_momentum',
-        # New Features
-        'bb_width_roc', 'rsi_long', 'macd_slope', 'vol_buy_ratio',
-        'ema_trend_1h', 'ema_trend_4h'
+        'volatility_24h', 'dist_ema200', 'dist_ema20', 'bb_width', 
+        'bb_percent_b', 'price_momentum', 'bb_width_roc', 'rsi_long', 
+        'macd_slope', 'vol_buy_ratio', 'ema_trend_1h', 'ema_trend_4h',
+        # --- 汰弱留強：引入新特徵 ---
+        'volume_delta', 'atr_expansion'
     ]
 
     @classmethod
     def verify(cls, df):
-        # Ensure exactly 25 features (19 + 6 new)
-        expected_count = 25
+        # --- 物理常數第一條：特徵數量必須精準為 19 ---
+        expected_count = 19
         assert len(cls.MASTER_FEATURES) == expected_count, f"Registry_Lock Error: Expected {expected_count} features, got {len(cls.MASTER_FEATURES)}"
         
         # Ensure all master features are present in the dataframe
@@ -119,16 +117,28 @@ def calculate_features(df_input, df_btc_input):
     combined['vol_buy_ratio'] = np.where(combined['close'] > combined['open'], combined['volume'], 0)
     combined['vol_buy_ratio'] = combined['vol_buy_ratio'].rolling(20).sum() / combined['volume'].rolling(20).sum()
 
-    # 14. 跨時間框架共振 (1h, 4h)
-    # 1h EMA Trend (4 * 15m)
-    ema20_1h = ta.ema(combined['close'], length=20*4)
-    ema50_1h = ta.ema(combined['close'], length=50*4)
-    combined['ema_trend_1h'] = (ema20_1h - ema50_1h) / ema50_1h
+    # 14. Volume Delta (成交量變化量)
+    combined['volume_delta'] = combined['volume'].diff()
+
+    # 15. ATR 擴張率 (ATR Expansion Rate)
+    combined['atr_expansion'] = atr_df.pct_change(5) if atr_df is not None else 0
+
+    # 16. 跨時間框架共振 (1h, 4h) - 修正時空洩漏 (Time Machine Leak)
+    # 必須先在該級別完成 .shift(1)，才能填充回 15m 級別
     
-    # 4h EMA Trend (16 * 15m)
-    ema20_4h = ta.ema(combined['close'], length=20*16)
-    ema50_4h = ta.ema(combined['close'], length=50*16)
-    combined['ema_trend_4h'] = (ema20_4h - ema50_4h) / ema50_4h
+    # 1h 級別
+    df_1h = combined['close'].resample('h').last()
+    ema20_1h = ta.ema(df_1h, length=20).shift(1)
+    ema50_1h = ta.ema(df_1h, length=50).shift(1)
+    ema_trend_1h_series = (ema20_1h - ema50_1h) / ema50_1h
+    combined['ema_trend_1h'] = pd.Series(combined.index.map(ema_trend_1h_series), index=combined.index).ffill()
+    
+    # 4h 級別
+    df_4h = combined['close'].resample('4h').last()
+    ema20_4h = ta.ema(df_4h, length=20).shift(1)
+    ema50_4h = ta.ema(df_4h, length=50).shift(1)
+    ema_trend_4h_series = (ema20_4h - ema50_4h) / ema50_4h
+    combined['ema_trend_4h'] = pd.Series(combined.index.map(ema_trend_4h_series), index=combined.index).ffill()
 
     # Apply Registry_Lock MASTER_FEATURES
     for col in Registry_Lock.MASTER_FEATURES:
