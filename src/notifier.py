@@ -5,8 +5,8 @@ import datetime
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-# Iteration 116.0: Version Alignment
-STRATEGY_VERSION = "🚀 【Iteration 116.0 Soul | Dual-Track & AI Alignment】"
+# Kept in sync with src/market.py and CHANGELOG.md per DEVOPS_RULES.md
+STRATEGY_VERSION = "[v600.46]"
 
 load_dotenv()
 

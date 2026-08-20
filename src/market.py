@@ -24,7 +24,7 @@ from src.notifier import send_telegram_msg, send_rich_heartbeat
 from src.features import calculate_features as extract_features
 from src.ml_model import CryptoMLModel
 
-STRATEGY_VERSION = "[H16_PREDATOR_V133.9_PRO]"
+STRATEGY_VERSION = "[v600.46]"
 REQUIRED_FEATURES = [
     'rsi', 'macd_hist', 'adx', 'atr_pct', 'vol_change_24h', 
     'volatility_24h', 'relative_strength_btc', 'btc_volatility_24h', 
