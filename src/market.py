@@ -42,7 +42,10 @@ def fetch_1h_data(symbol, limit=500):
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         return df
-    except: return pd.DataFrame()
+    except Exception:
+        print(f"💥 [Error] fetch_1h_data({symbol}) Failed:")
+        traceback.print_exc()
+        return pd.DataFrame()
 
 def run_strategy(ml_model):
     symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT']
