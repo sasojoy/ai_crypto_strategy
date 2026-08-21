@@ -12,10 +12,13 @@ Everything after that (the `v600.x` series in `CHANGELOG.md`) evolved
 `config.yaml`. Nothing in `src/` ever imported from this tree.
 
 Moved here instead of deleted so the history and design are still available
-for reference. Note: `scripts/trace_optimizer.py`, `optimizer_v2/v3/v4_robust.py`,
-`oos_stealth_validator.py`, `oos_validator.py`, `friction_test.py`,
-`models/trainer.py`, and `execution/live_dry_run.py` still import from the
-original paths and will now fail — they were already tied to this
-abandoned architecture and hardcoded to a GCE path
-(`/workspace/ai_crypto_strategy/...`), so they were not runnable as-is either
-way.
+for reference. `scripts/optimizer.py`, `optimizer_v2/v3/v4_robust.py`,
+`trace_optimizer.py`, `oos_stealth_validator.py`, `oos_validator.py`,
+`friction_test.py`, and `final_audit_runner.py` all imported from this tree
+and were archived alongside it into `scripts/` here — they were already
+hardcoded to a GCE path (`/workspace/ai_crypto_strategy/...`), so they were
+not runnable as-is on this machine either way.
+
+`models/trainer.py` and `execution/live_dry_run.py` also import from this
+tree but were left in place — they weren't purely 2.0-architecture code, so
+removing them needs a closer look first.

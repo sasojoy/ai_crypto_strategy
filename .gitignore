@@ -6,6 +6,11 @@ data/*.parquet
 models/*.joblib
 logs/*
 !logs/.gitkeep
+*.log
+backtest_result*.png
+backtest_results_*.csv
+audit_results.txt
+pm2_status.txt
 .venv/
 venv/
 ENV/
