@@ -20,7 +20,7 @@ os.environ['SSL_CERT_FILE'] = certifi.where()
 os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 load_dotenv()
 
-from src.notifier import send_telegram_msg, send_rich_heartbeat
+from src.notifier import send_telegram_msg
 from src.features import calculate_features as extract_features
 from src.ml_model import CryptoMLModel
 
