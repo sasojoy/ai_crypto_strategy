@@ -1,6 +1,56 @@
 {
-  "vol_ratio_top_tercile_cutoff": 2.7148966104040024,
-  "n_triggers_used": 5905,
+  "vol_ratio_top_tercile_cutoff_by_symbol": {
+    "BTC/USDT": 3.168082201443046,
+    "ETH/USDT": 2.920147359099691,
+    "SOL/USDT": 2.5118956414407,
+    "NEAR/USDT": 2.3871976303290174,
+    "AVAX/USDT": 2.34390532959175
+  },
+  "n_triggers_used_by_symbol": {
+    "BTC/USDT": 1288,
+    "ETH/USDT": 1334,
+    "SOL/USDT": 1128,
+    "NEAR/USDT": 1057,
+    "AVAX/USDT": 1098
+  },
+  "correlation_matrix": {
+    "BTC/USDT": {
+      "BTC/USDT": 1.0,
+      "ETH/USDT": 0.8081059291426267,
+      "SOL/USDT": 0.5888549576337558,
+      "NEAR/USDT": 0.569275163792615,
+      "AVAX/USDT": 0.6044274032420254
+    },
+    "ETH/USDT": {
+      "BTC/USDT": 0.8081059291426267,
+      "ETH/USDT": 1.0,
+      "SOL/USDT": 0.6472828106939057,
+      "NEAR/USDT": 0.6118432243453313,
+      "AVAX/USDT": 0.6372577549171909
+    },
+    "SOL/USDT": {
+      "BTC/USDT": 0.5888549576337558,
+      "ETH/USDT": 0.6472828106939057,
+      "SOL/USDT": 1.0,
+      "NEAR/USDT": 0.5525620137107143,
+      "AVAX/USDT": 0.6079089551850424
+    },
+    "NEAR/USDT": {
+      "BTC/USDT": 0.569275163792615,
+      "ETH/USDT": 0.6118432243453313,
+      "SOL/USDT": 0.5525620137107143,
+      "NEAR/USDT": 1.0,
+      "AVAX/USDT": 0.5965015206095713
+    },
+    "AVAX/USDT": {
+      "BTC/USDT": 0.6044274032420254,
+      "ETH/USDT": 0.6372577549171909,
+      "SOL/USDT": 0.6079089551850424,
+      "NEAR/USDT": 0.5965015206095713,
+      "AVAX/USDT": 1.0
+    }
+  },
+  "portfolio_risk_budget": 3.0,
   "calibrated_from_data_through": "2026-09-08 01:00:00",
-  "calibrated_at": "2026-09-08 19:54:16.893986"
+  "calibrated_at": "2026-09-08 22:15:42.038817"
 }

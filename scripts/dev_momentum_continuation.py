@@ -44,6 +44,30 @@ ran; picking a different, better-looking cell out of that grid now (e.g.
 project's methodology exists to avoid, so it is deliberately NOT done.
 Not yet sent to holdout as of this lock -- that is a separate, later
 decision.
+
+=== CORRECTION (2026-09-08 code audit) ===
+The tercile was originally computed with a single POOLED `pd.qcut` over
+all 5 symbols' vol_ratio together. Audit found this violates the spec's
+own stated intent ("each symbol's own top tercile"): BTC's vol_ratio
+distribution runs structurally higher than the altcoins', so a pooled
+cutoff cleared 44-45% of BTC's own triggers but only ~24-28% of the
+altcoins' -- BTC was being screened far more leniently than the others,
+not held to the same "top third" bar. Fixed to compute the tercile
+PER SYMBOL (`groupby('symbol').transform(qcut)`). Verified on the dev
+window: this is a net improvement, not a wash -- overall PF 1.21->1.22,
+compounded +4616%->+6320%, quarterly stability 18/24->19/24 quarters
+PF>1, long-side and concentration profiles unchanged -- and it resolves
+a real contradiction: under the pooled cutoff BTC was dev-window's ONLY
+net-losing symbol (-10.86%), which conflicted with the actual holdout
+run (RESEARCH_FINDINGS.md "第二十四次測試") where BTC was the single
+BEST-performing symbol. Under the per-symbol fix, BTC flips to net
+POSITIVE (+32.71%) in the dev window too, consistent with the holdout.
+Classified as an implementation-bug fix (correcting the code to match
+the always-stated design intent), not a new candidate, so the EXISTING
+holdout pass verdict is carried forward rather than re-spending the
+one-shot holdout on a fresh run -- see RESEARCH_FINDINGS.md for the
+caveat this carries (the holdout was technically measured on the
+pre-fix trade population, not this corrected one).
 """
 import os
 import sys
@@ -115,7 +139,12 @@ def main():
     print(f"  COMBINED: n={st_all['n']} win_rate={st_all['win_rate']:.1f}% PF={st_all['pf']:.2f} compounded={st_all['compounded']:+.2f}%")
 
     print(f"\n{'='*60}\nDoes volume level strengthen the continuation bet?\n{'='*60}")
-    trades['vol_tercile'] = pd.qcut(trades['vol_ratio'], 3, labels=['low', 'mid', 'high'])
+    # PER-SYMBOL tercile (2026-09-08 fix) -- see "CORRECTION" note in this file's docstring.
+    # A pooled qcut across all symbols let BTC clear the cutoff far more leniently than
+    # the altcoins (its vol_ratio distribution runs structurally higher), which was not
+    # the intended "each symbol's own top third" semantics.
+    trades['vol_tercile'] = trades.groupby('symbol')['vol_ratio'].transform(
+        lambda x: pd.qcut(x, 3, labels=['low', 'mid', 'high']))
     for signal in ['oversold', 'overbought', 'both']:
         sub = trades if signal == 'both' else trades[trades['signal'] == signal]
         print(f"\n  -- {signal.upper()} --")

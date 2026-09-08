@@ -41,6 +41,7 @@ touch the live trading pipeline in src/market.py.
 import os
 import sys
 import json
+import itertools
 
 import ccxt
 import numpy as np
@@ -60,7 +61,10 @@ from dev_volume_confirm import (
 from dev_momentum_continuation import flip
 from src.notifier import send_telegram_msg
 
-MAX_CONCURRENT = 5  # risk-control cap, see DEPLOYMENT_RISK_ASSESSMENT.md
+MAX_CONCURRENT = 5  # kept as an absolute backstop even under the risk-budget cap below
+RISK_BUDGET = 3.0  # correlation-aware portfolio-risk cap, replaces the flat headcount cap
+                    # (see DEPLOYMENT_RISK_ASSESSMENT.md / scripts/dev_momentum_portfolio_risk.py:
+                    # ~97% of the flat cap's average return, ~20-24% lower max drawdown on the dev window)
 LOOKBACK_DAYS = 45   # enough bars for RSI/ATR/vol_ma20 warm-up plus a 7-day max hold
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -69,6 +73,22 @@ TRADES_LOG_PATH = os.path.join(THIS_DIR, 'state', 'momentum_trades_log.csv')
 THRESHOLDS_PATH = os.path.join(THIS_DIR, 'thresholds.json')
 
 exchange = ccxt.binance({'enableRateLimit': True, 'options': {'defaultType': 'future'}})
+
+
+def portfolio_risk(open_legs, corr):
+    """open_legs: list of (symbol, direction_str) tuples ('long'/'short')
+    for CURRENTLY open positions plus the candidate being evaluated.
+    Portfolio risk = sqrt(sum_i sum_j e_i e_j corr(sym_i, sym_j)) where
+    e=+1 long/-1 short -- same-direction correlated legs cost MORE than
+    one count each, opposite-direction correlated legs (partial hedges)
+    cost less."""
+    if not open_legs:
+        return 0.0
+    signed = [(sym, 1 if d == 'long' else -1) for sym, d in open_legs]
+    variance = 0.0
+    for (s1, e1), (s2, e2) in itertools.product(signed, repeat=2):
+        variance += e1 * e2 * corr[s1][s2]
+    return np.sqrt(max(variance, 0.0))
 
 
 def load_thresholds():
@@ -111,7 +131,23 @@ def fetch_recent_1h(symbol):
         since = batch[-1][0] + 1
     df = pd.DataFrame(all_ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-    return df.drop_duplicates(subset='timestamp').sort_values('timestamp').reset_index(drop=True)
+    df = df.drop_duplicates(subset='timestamp').sort_values('timestamp').reset_index(drop=True)
+    return drop_incomplete_last_bar(df)
+
+
+def drop_incomplete_last_bar(df):
+    """fetch_ohlcv's last row is often the currently-forming, not-yet-
+    closed candle (its 'close' isn't final and its volume is a fraction
+    of a normal bar's -- confirmed by inspection: a bar fetched 13 seconds
+    into its hour showed ~65 volume vs ~5000-17000 for closed hours).
+    Computing RSI/ATR/volume-ratio or detecting a trigger on it would use
+    numbers that are still changing. Drop any row whose 1H period hasn't
+    fully elapsed yet."""
+    if df.empty:
+        return df
+    now = pd.Timestamp.now('UTC').tz_localize(None)
+    closed = df['timestamp'] + pd.Timedelta(hours=1) <= now
+    return df[closed].reset_index(drop=True)
 
 
 def update_open_position(pos, df):
@@ -154,7 +190,8 @@ def _close(pos, exit_price, reason, exit_time):
 
 def main():
     thresholds = load_thresholds()
-    cutoff = thresholds['vol_ratio_top_tercile_cutoff']
+    cutoffs = thresholds['vol_ratio_top_tercile_cutoff_by_symbol']  # per-symbol, 2026-09-08 fix -- see calibrate_momentum_threshold.py
+    corr = thresholds['correlation_matrix']
     state = load_state()
 
     still_open = []
@@ -194,6 +231,7 @@ def main():
                   f"will act on triggers from the next run onward.")
             continue
 
+        cutoff = cutoffs[s]
         triggers = find_triggers(df)
         for i, reversion_direction in triggers:
             ts = df['timestamp'].iloc[i]
@@ -209,8 +247,10 @@ def main():
             sl_price = entry_price - SL_ATR_MULT * atr if direction == 'long' else entry_price + SL_ATR_MULT * atr
             tp_price = entry_price + TP_ATR_MULT * atr if direction == 'long' else entry_price - TP_ATR_MULT * atr
 
-            if len(state['open_positions']) >= MAX_CONCURRENT:
-                msg = (f"⏭️ 【訊號略過，同時持倉已達上限{MAX_CONCURRENT}筆】{s} "
+            open_legs = [(p['symbol'], p['direction']) for p in state['open_positions']]
+            trial_risk = portfolio_risk(open_legs + [(s, direction)], corr)
+            if len(state['open_positions']) >= MAX_CONCURRENT or trial_risk > RISK_BUDGET:
+                msg = (f"⏭️ 【訊號略過，相關性風險預算已滿（{trial_risk:.2f} > {RISK_BUDGET}）】{s} "
                        f"{'oversold' if reversion_direction=='long' else 'overbought'} -> {direction.upper()} "
                        f"@ {ts}  vol_ratio={df['vol_ratio'].iloc[i]:.2f}")
                 print(msg)
@@ -224,7 +264,7 @@ def main():
                    f"時間: {ts}  進場價: {entry_price:.4f}\n"
                    f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
                    f"量能比: {df['vol_ratio'].iloc[i]:.2f}（門檻{cutoff:.2f}）\n"
-                   f"目前同時持倉: {len(state['open_positions'])}/{MAX_CONCURRENT}")
+                   f"目前同時持倉: {len(state['open_positions'])}  相關性風險: {trial_risk:.2f}/{RISK_BUDGET}")
             print(msg)
             send_telegram_msg(msg)
 

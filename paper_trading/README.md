@@ -8,7 +8,7 @@ Two standalone, read-only monitors for the two research-validated candidates (se
 ## Setup
 
 1. **Telegram (optional but recommended):** create a `.env` file at the project root (copy `config/.env.example`) with `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. Without it, both monitors still run and log to the console / CSV files, they just won't message you.
-2. **Calibration (momentum monitor only):** `momentum_monitor.py` needs `thresholds.json` (the volume-ratio top-tercile cutoff). It's already generated from data through today; re-run `calibrate_momentum_threshold.py` every few months to keep it current as the volume distribution drifts.
+2. **Calibration (momentum monitor only):** `momentum_monitor.py`/`momentum_monitor_v2.py` need `thresholds.json` -- a PER-SYMBOL volume-ratio top-tercile cutoff for each of the 5 symbols (2026-09-08 fix: a single pooled cutoff was found to screen BTC far more leniently than the altcoins, since BTC's volume-ratio distribution runs structurally higher -- see `RESEARCH_FINDINGS.md`), plus the 5x5 daily-return correlation matrix used by the risk-budget position cap below. It's already generated from data through today; re-run `calibrate_momentum_threshold.py` every few months to keep both current as the market structure drifts.
 3. First run of each monitor establishes a baseline (no backlog of historical signals is treated as "new" — see the scripts' docstrings) and won't open any paper positions or fire toggle notifications; from the second run onward it reacts to genuinely new signals.
 
 ## Scheduling (Windows Task Scheduler)
@@ -37,8 +37,12 @@ Not registered automatically — run this yourself (or ask to have it done) once
 - `momentum_state.json` / `funding_state.json` — current open paper positions / on-off status and cumulative paper P&L. Safe to delete to reset (loses paper track record).
 - `momentum_trades_log.csv` / `funding_events_log.csv` — append-only history of every simulated close / regime toggle.
 
+## Position sizing / risk cap
+
+Momentum monitor sizing is fixed-notional (2% of a fixed reference capital per trade) per the correction in `scripts/dev_momentum_fixed_notional.py` — not the original backtest's compounding number. New signals are gated by a correlation-aware portfolio-risk budget (`RISK_BUDGET = 3.0`, see `scripts/dev_momentum_portfolio_risk.py`) instead of a flat headcount cap: same-direction positions in correlated symbols (the 5 symbols' daily returns run 0.55-0.80 correlated) count for more than one slot each, opposite-direction ("hedging") positions count for less. A flat `MAX_CONCURRENT(_GROUPS) = 5` is still kept as an absolute backstop underneath the risk budget.
+
 ## Known limitations (carried over from `DEPLOYMENT_RISK_ASSESSMENT.md`)
 
-- Momentum monitor sizing is fixed-notional (2% of a fixed reference capital per trade, concurrency-capped at 5) per the correction in `scripts/dev_momentum_fixed_notional.py` — not the original backtest's compounding number.
 - Neither monitor simulates margin/liquidation, execution slippage, or exchange/counterparty risk — see the risk assessment for what real deployment still needs to account for.
 - Funding monitor's paper P&L doesn't include the resimulated fixed-notional sizing work — it directly sums the raw funding-rate percentages exactly as `dev_funding_carry.py`'s conditional() variant does.
+- BTC exclusion was considered (dev-window backtests showed it as a drag) but shelved: it contradicted the actual holdout run, where BTC was the single best-performing symbol. That contradiction turned out to be explained by the per-symbol tercile fix above, not a reason to exclude BTC — see `RESEARCH_FINDINGS.md`'s 2026-09-08 audit section for the full account.
