@@ -1,9 +1,8 @@
 """
-PAPER-TRADING MONITOR v2 -- EXPERIMENTAL. Builds on the git-committed v1
-baseline (momentum_monitor.py, commit "CHECKPOINT: Paper-trading monitors
-v1") with two additions the user explicitly asked to try in paper mode,
-NEITHER of which has been backtested or validated anywhere in this
-research line:
+PAPER-TRADING MONITOR v2 -- EXPERIMENTAL, DEV-WINDOW BACKTESTED BUT NOT
+HOLDOUT-VALIDATED. Builds on the git-committed v1 baseline
+(momentum_monitor.py, commit "CHECKPOINT: Paper-trading monitors v1")
+with two additions the user explicitly asked to try:
 
 1. MINUTE-LEVEL SL/TP POLLING: v1 only checked stop/target hits once an
    hour (against 1H bar highs/lows), which cannot react faster than an
@@ -14,20 +13,33 @@ research line:
    though still not the same as a real conditional order (this script
    still has to be running to catch it; see DEPLOYMENT_RISK_ASSESSMENT.md
    on why a real deployment should use exchange-native stop orders, not
-   rely on a polling script, for actual capital protection).
+   rely on a polling script, for actual capital protection). This part
+   is a pure engineering improvement, not a strategy assumption -- there
+   is nothing to backtest here.
 
-2. TREND-FOLLOWING PYRAMIDING (加倉) -- EXPERIMENTAL, UNVALIDATED: once a
-   position's unrealized move reaches +1x the ORIGINAL entry ATR in the
-   favorable direction, add ONE more fixed-notional (2%-risk) unit at the
-   current price, with its own SL/TP computed from the same original ATR.
-   Both legs share the original position's overall 7-day max-hold
-   deadline. At most one add per position (kept simple and bounded for
-   this first experimental version). This mechanism does NOT exist in
-   the locked spec (dev_momentum_continuation.py / RESEARCH_FINDINGS.md
-   "第二十三/二十四次測試") and has never been backtested -- it is being
-   tried live-forward in paper mode specifically because there is no
-   dev/holdout data to test it against without inventing one. Track its
-   P&L SEPARATELY from the no-pyramid v1 baseline so the two can be
+2. TREND-FOLLOWING PYRAMIDING (加倉) -- EXPERIMENTAL: once a position's
+   unrealized move reaches +1x the ORIGINAL entry ATR in the favorable
+   direction, add ONE more fixed-notional (2%-risk) unit at the current
+   price, with its own SL/TP computed from the same original ATR. Both
+   legs share the original position's overall 7-day max-hold deadline.
+   At most one add per position (kept simple and bounded for this first
+   experimental version). This mechanism does NOT exist in the locked,
+   holdout-validated spec (dev_momentum_continuation.py /
+   RESEARCH_FINDINGS.md "第二十三/二十四次測試"). UPDATE (2026-09-08,
+   same session as this file's creation): it HAS since been backtested
+   on the dev window (scripts/dev_momentum_pyramid_backtest.py: combined
+   +133.97%/yr vs the no-pyramid baseline's +72.08%/yr, positive every
+   year 2020-2025) with follow-up robustness checks (quarterly stability
+   19/24 profitable quarters, long/short split, BTC-exclusion check) that
+   came back reassuring -- no new instability was introduced beyond what
+   the already-validated base spec already has (long side robust, short
+   side weaker, same as the locked spec). What it has NOT had is a
+   HOLDOUT run -- that would need a separate, explicit decision with the
+   user before spending the one-shot holdout on a mechanism this new (see
+   RESEARCH_FINDINGS.md's "實驗性延伸" section for the full writeup). Do
+   not describe this as "never backtested" -- it has dev-window backtest
+   support, just not out-of-sample holdout confirmation. Track its P&L
+   SEPARATELY from the no-pyramid v1 baseline so the two can be
    compared honestly once enough paper history accumulates.
 
 Entry-signal detection (RSI(14) oversold/overbought cross + volume
