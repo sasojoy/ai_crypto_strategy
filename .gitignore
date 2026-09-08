@@ -17,3 +17,5 @@ ENV/
 .vscode/
 .idea/
 .env
+data/backtest_cache/
+paper_trading/state/
