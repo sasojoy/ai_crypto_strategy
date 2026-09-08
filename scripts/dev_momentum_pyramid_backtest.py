@@ -25,6 +25,20 @@ is a coarser approximation than the live version's 1-minute checks, so
 the live paper-trading track record and this backtest's numbers are not
 expected to match exactly -- flagged here rather than glossed over.
 
+CORRECTION (2026-09-09): build_candidates() used to compute the top-
+tercile vol_ratio cutoff POOLED across all 5 symbols -- the same bug the
+2026-09-08 code review already fixed in dev_momentum_continuation.py /
+calibrate_momentum_threshold.py / the live monitors, but this script was
+created for the pyramid experiment and was missed by that pass. The
+pooled cutoff let BTC clear the bar far more often than the altcoins
+(its vol_ratio runs structurally higher), which is why this script's
+original run showed BTC as the sole net-losing symbol (-57.6%) --
+matching the very BTC dev/holdout contradiction RESEARCH_FINDINGS.md's
+code-review section traces to this exact bug. Fixed to compute the
+cutoff separately per symbol, same as everywhere else. Re-run after the
+fix: combined +142.96%/yr (was +133.97%/yr), BTC now the smallest net-
+positive contributor (+24.2%, was -57.6%) instead of the only loser.
+
 Not part of the deployed app; safe to delete after use.
 """
 import os
@@ -167,8 +181,12 @@ def build_candidates():
             raw.append({'symbol': s, 'idx': i, 'direction': flip(reversion_direction),
                         'entry_time': df['timestamp'].iloc[i], 'vol_ratio': df['vol_ratio'].iloc[i]})
     cand = pd.DataFrame(raw)
-    cutoff = cand['vol_ratio'].quantile(2 / 3)
-    cand = cand[cand['vol_ratio'] >= cutoff].sort_values('entry_time').reset_index(drop=True)
+    # Per-symbol top-tercile cutoff, not pooled across all 5 -- pooled lets BTC's
+    # structurally-higher vol_ratio distribution clear the bar more often than the
+    # altcoins (see CORRECTION note above).
+    cutoffs = cand.groupby('symbol')['vol_ratio'].quantile(2 / 3)
+    cand['cutoff'] = cand['symbol'].map(cutoffs)
+    cand = cand[cand['vol_ratio'] >= cand['cutoff']].drop(columns='cutoff').sort_values('entry_time').reset_index(drop=True)
     return cand, frames
 
 
