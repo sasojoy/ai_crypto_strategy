@@ -3,39 +3,61 @@
 Two standalone, read-only monitors for the two research-validated candidates (see `RESEARCH_FINDINGS.md`, `DEPLOYMENT_RISK_ASSESSMENT.md`). **Neither ever places a real order** — they only fetch public market data and simulate trades on paper, logging results and sending Telegram notifications so you can decide whether to replicate a signal manually with real capital.
 
 - `momentum_monitor.py` — RSI(14) oversold/overbought momentum-continuation + volume-tercile confirmation (locked spec, `dev_momentum_continuation.py`).
+- `momentum_monitor_v2.py` — same locked entry/exit rules, plus two EXPERIMENTAL, never-holdout-validated additions: 1-minute SL/TP polling and a trend-following pyramid add. Its own separate state files, doesn't affect v1's track record.
 - `funding_monitor.py` — delta-neutral funding-rate carry, conditional variant (locked spec, `dev_funding_carry.py`), BTC + ETH only per the deployment risk assessment's recommendation.
 
-## Setup
+## Bootstrapping this on a NEW machine (e.g. to run 24/7 somewhere other than where this was developed)
 
-1. **Telegram (optional but recommended):** create a `.env` file at the project root (copy `config/.env.example`) with `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. Without it, both monitors still run and log to the console / CSV files, they just won't message you.
-2. **Calibration (momentum monitor only):** `momentum_monitor.py`/`momentum_monitor_v2.py` need `thresholds.json` -- a PER-SYMBOL volume-ratio top-tercile cutoff for each of the 5 symbols (2026-09-08 fix: a single pooled cutoff was found to screen BTC far more leniently than the altcoins, since BTC's volume-ratio distribution runs structurally higher -- see `RESEARCH_FINDINGS.md`), plus the 5x5 daily-return correlation matrix used by the risk-budget position cap below. It's already generated from data through today; re-run `calibrate_momentum_threshold.py` every few months to keep both current as the market structure drifts.
-3. First run of each monitor establishes a baseline (no backlog of historical signals is treated as "new" — see the scripts' docstrings) and won't open any paper positions or fire toggle notifications; from the second run onward it reacts to genuinely new signals.
+This code lives on the `paper-trading-monitors` git branch, not `main`. On the new machine:
+
+```powershell
+git clone https://github.com/sasojoy/ai_crypto_strategy.git
+cd ai_crypto_strategy
+git checkout paper-trading-monitors
+
+python -m venv venv
+venv\Scripts\pip install -r requirements.txt
+```
+
+Then, before running anything:
+1. **Create a `.env` file at the repo root** (same folder as `requirements.txt`, NOT inside `paper_trading/`) with `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. This file is intentionally not in git (it's a credential); copy it over from wherever it already exists (the machine this was developed on), don't retype it from memory, and never commit it. Without it, both monitors still run and log to the console / CSV files, they just won't message you.
+2. Run each monitor once by hand from inside `paper_trading/` (`..\venv\Scripts\python.exe momentum_monitor.py`, then `momentum_monitor_v2.py`, then `funding_monitor.py`) to confirm they complete with no errors and print "Run complete". The very first run on a fresh machine has no prior state, so each will print a "first run, baseline set" message and won't open any paper positions yet or send a Telegram message — that's expected, not a bug; state accumulates fresh on this machine from here on (it's not shared with any other machine already running these).
+3. Only after that, register the scheduled tasks -- see "Scheduling" below.
+
+## Calibration
+
+`momentum_monitor.py`/`momentum_monitor_v2.py` need `thresholds.json` (already committed, generated from data through 2026-09-08) -- a PER-SYMBOL volume-ratio top-tercile cutoff for each of the 5 symbols (a single pooled cutoff was found to screen BTC far more leniently than the altcoins, since BTC's volume-ratio distribution runs structurally higher -- see `RESEARCH_FINDINGS.md`'s 2026-09-08 audit section), plus the 5x5 daily-return correlation matrix used by the risk-budget position cap below. Re-run `calibrate_momentum_threshold.py` every few months to keep both current as the market structure drifts (needs `data/backtest_cache/*_1h_full.csv`, which isn't in git -- regenerate it with `scripts/fetch_holdout_data.py` first if this machine doesn't already have it cached).
 
 ## Scheduling (Windows Task Scheduler)
 
-`momentum_monitor.py` should run roughly hourly (matches the 1H bar granularity). `funding_monitor.py` should run roughly every 8 hours (matches the funding settlement cadence), though running it hourly too is harmless — it just finds nothing new most of the time.
+`momentum_monitor.py` should run roughly hourly (matches the 1H bar granularity). `momentum_monitor_v2.py` should run every 1-5 minutes (its whole point is faster SL/TP reaction). `funding_monitor.py` should run roughly every 8 hours (matches the funding settlement cadence), though running it hourly too is harmless — it just finds nothing new most of the time.
 
-Example (PowerShell, run once to register the tasks):
+Example (PowerShell, run once per machine to register the tasks -- adjust `$repo` to wherever you actually cloned this):
 
 ```powershell
-$python = "C:\Users\User\Documents\ai_crypto_strategy\venv\Scripts\python.exe"
 $repo = "C:\Users\User\Documents\ai_crypto_strategy\paper_trading"
+$python = (Resolve-Path "$repo\..\venv\Scripts\python.exe").Path
 
-$actionMomentum = New-ScheduledTaskAction -Execute $python -Argument "momentum_monitor.py" -WorkingDirectory $repo
-$triggerMomentum = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 3650)
-Register-ScheduledTask -TaskName "PaperTrading-MomentumMonitor" -Action $actionMomentum -Trigger $triggerMomentum
+$a1 = New-ScheduledTaskAction -Execute $python -Argument "momentum_monitor.py" -WorkingDirectory $repo
+$t1 = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 3650)
+Register-ScheduledTask -TaskName "PaperTrading-MomentumV1" -Action $a1 -Trigger $t1
 
-$actionFunding = New-ScheduledTaskAction -Execute $python -Argument "funding_monitor.py" -WorkingDirectory $repo
-$triggerFunding = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 8) -RepetitionDuration (New-TimeSpan -Days 3650)
-Register-ScheduledTask -TaskName "PaperTrading-FundingMonitor" -Action $actionFunding -Trigger $triggerFunding
+$a2 = New-ScheduledTaskAction -Execute $python -Argument "momentum_monitor_v2.py" -WorkingDirectory $repo
+$t2 = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 3650)
+Register-ScheduledTask -TaskName "PaperTrading-MomentumV2" -Action $a2 -Trigger $t2
+
+$a3 = New-ScheduledTaskAction -Execute $python -Argument "funding_monitor.py" -WorkingDirectory $repo
+$t3 = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 3650)
+Register-ScheduledTask -TaskName "PaperTrading-Funding" -Action $a3 -Trigger $t3
 ```
 
-Not registered automatically — run this yourself (or ask to have it done) once you're ready for these to run unattended on a schedule.
+Not registered automatically — run this (or have it run) once the manual test runs above all completed cleanly.
 
-## State files (`state/`)
+## State files (`state/`, gitignored)
 
-- `momentum_state.json` / `funding_state.json` — current open paper positions / on-off status and cumulative paper P&L. Safe to delete to reset (loses paper track record).
-- `momentum_trades_log.csv` / `funding_events_log.csv` — append-only history of every simulated close / regime toggle.
+- `momentum_state.json` / `momentum_v2_state.json` / `funding_state.json` — current open paper positions / on-off status and cumulative paper P&L, one file per monitor (v1 and v2 track completely independent records). Safe to delete to reset (loses that monitor's paper track record).
+- `momentum_trades_log.csv` / `momentum_v2_trades_log.csv` / `funding_events_log.csv` — append-only history of every simulated close / regime toggle.
+- Not in git, so a freshly-cloned machine starts with empty state (see "Bootstrapping" above) -- it does not inherit any other machine's paper-trading history.
 
 ## Position sizing / risk cap
 
