@@ -83,6 +83,7 @@ from dev_volume_confirm import (
     BASE_RISK_PER_TRADE, ROUND_TRIP_FRICTION, MAX_HOLD_BARS,
 )
 from src.notifier import send_telegram_msg
+from src.tz import fmt_taipei
 
 MAX_CONCURRENT_GROUPS = 5
 RISK_BUDGET = 3.0
@@ -339,8 +340,8 @@ def _close_position(pos, exit_price, exit_time, reason, state):
     append_trade_log(log_row)
     msg = (f"📕 【模擬盤出場-v3】{pos['symbol']} {pos['direction'].upper()}\n"
            f"原因: {reason}  損益: {pnl:+.2f}%\n"
-           f"進場: {pos['entry_time']} @ {pos['entry_price']:.4f}\n"
-           f"出場: {exit_time} @ {exit_price:.4f}\n"
+           f"進場: {fmt_taipei(pos['entry_time'])} @ {pos['entry_price']:.4f}\n"
+           f"出場: {fmt_taipei(exit_time)} @ {exit_price:.4f}\n"
            f"累計模擬損益(v3): {state['cumulative_pnl_pct']:+.2f}%（{state['n_closed']}筆已平倉）")
     print(msg)
     send_telegram_msg(msg)
@@ -386,7 +387,7 @@ def main():
         trial_risk = portfolio_risk(open_legs + [(s, cand['direction'])], corr)
         if n_open >= MAX_CONCURRENT_GROUPS or trial_risk > RISK_BUDGET:
             msg = (f"⏭️ 【訊號略過(v3)，相關性風險預算已滿（{trial_risk:.2f} > {RISK_BUDGET}）】"
-                   f"{s} @ {cand['entry_time']} 推估量能比={cand['projected_vol_ratio']:.2f}")
+                   f"{s} @ {fmt_taipei(cand['entry_time'])} 推估量能比={cand['projected_vol_ratio']:.2f}")
             print(msg)
             send_telegram_msg(msg)
             continue
@@ -406,7 +407,7 @@ def main():
         state['positions'].append(new_pos)
         n_open += 1
         msg = (f"📗 【模擬盤進場-v3，提早進場】{s} {direction.upper()}\n"
-               f"時間: {cand['entry_time']}（小時第{cand['minutes_into_hour']}分鐘觸發）  進場價: {entry_price:.4f}\n"
+               f"時間: {fmt_taipei(cand['entry_time'])}（小時第{cand['minutes_into_hour']}分鐘觸發）  進場價: {entry_price:.4f}\n"
                f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
                f"即時推估量能比: {cand['projected_vol_ratio']:.2f}（收盤後會再次確認真實量能）\n"
                f"目前同時持倉組數: {n_open}  相關性風險: {trial_risk:.2f}/{RISK_BUDGET}")

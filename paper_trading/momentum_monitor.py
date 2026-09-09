@@ -60,6 +60,7 @@ from dev_volume_confirm import (
 )
 from dev_momentum_continuation import flip
 from src.notifier import send_telegram_msg
+from src.tz import fmt_taipei
 
 MAX_CONCURRENT = 5  # kept as an absolute backstop even under the risk-budget cap below
 RISK_BUDGET = 3.0  # correlation-aware portfolio-risk cap, replaces the flat headcount cap
@@ -204,8 +205,8 @@ def main():
             append_trade_log(closed)
             msg = (f"📕 【模擬盤出場】{closed['symbol']} {closed['direction'].upper()}\n"
                    f"原因: {closed['reason']}  損益: {closed['equity_pnl_pct']:+.2f}%（固定名目部位，2%風險/筆）\n"
-                   f"進場: {closed['entry_time']} @ {closed['entry_price']:.4f}\n"
-                   f"出場: {closed['exit_time']} @ {closed['exit_price']:.4f}\n"
+                   f"進場: {fmt_taipei(closed['entry_time'])} @ {closed['entry_price']:.4f}\n"
+                   f"出場: {fmt_taipei(closed['exit_time'])} @ {closed['exit_price']:.4f}\n"
                    f"累計模擬損益: {state['cumulative_pnl_pct']:+.2f}%（{state['n_closed']}筆已平倉）")
             print(msg)
             send_telegram_msg(msg)
@@ -252,7 +253,7 @@ def main():
             if len(state['open_positions']) >= MAX_CONCURRENT or trial_risk > RISK_BUDGET:
                 msg = (f"⏭️ 【訊號略過，相關性風險預算已滿（{trial_risk:.2f} > {RISK_BUDGET}）】{s} "
                        f"{'oversold' if reversion_direction=='long' else 'overbought'} -> {direction.upper()} "
-                       f"@ {ts}  vol_ratio={df['vol_ratio'].iloc[i]:.2f}")
+                       f"@ {fmt_taipei(ts)}  vol_ratio={df['vol_ratio'].iloc[i]:.2f}")
                 print(msg)
                 send_telegram_msg(msg)
                 continue
@@ -261,7 +262,7 @@ def main():
                        'sl_price': float(sl_price), 'tp_price': float(tp_price), 'vol_ratio': float(df['vol_ratio'].iloc[i])}
             state['open_positions'].append(new_pos)
             msg = (f"📗 【模擬盤進場】{s} {direction.upper()}（{'超賣' if reversion_direction=='long' else '超買'}動能延續）\n"
-                   f"時間: {ts}  進場價: {entry_price:.4f}\n"
+                   f"時間: {fmt_taipei(ts)}  進場價: {entry_price:.4f}\n"
                    f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
                    f"量能比: {df['vol_ratio'].iloc[i]:.2f}（門檻{cutoff:.2f}）\n"
                    f"目前同時持倉: {len(state['open_positions'])}  相關性風險: {trial_risk:.2f}/{RISK_BUDGET}")

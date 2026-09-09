@@ -79,6 +79,7 @@ from dev_volume_confirm import (
 )
 from dev_momentum_continuation import flip
 from src.notifier import send_telegram_msg
+from src.tz import fmt_taipei
 
 MAX_CONCURRENT_GROUPS = 5     # absolute backstop, kept even under the risk-budget cap below
 RISK_BUDGET = 3.0             # correlation-aware portfolio-risk cap replacing the flat headcount
@@ -287,8 +288,8 @@ def _report_close(pos, leg_name, leg, state):
     append_trade_log({'symbol': pos['symbol'], 'direction': pos['direction'], 'leg': leg_name, **leg})
     msg = (f"📕 【模擬盤出場-v2】{pos['symbol']} {pos['direction'].upper()} ({leg_name})\n"
            f"原因: {leg['reason']}  損益: {leg['equity_pnl_pct']:+.2f}%\n"
-           f"進場: {leg['entry_time']} @ {leg['entry_price']:.4f}\n"
-           f"出場: {leg['exit_time']} @ {leg['exit_price']:.4f}\n"
+           f"進場: {fmt_taipei(leg['entry_time'])} @ {leg['entry_price']:.4f}\n"
+           f"出場: {fmt_taipei(leg['exit_time'])} @ {leg['exit_price']:.4f}\n"
            f"累計模擬損益(v2): {state['cumulative_pnl_pct']:+.2f}%（{state['n_closed_legs']}腿已平倉）")
     print(msg)
     send_telegram_msg(msg)
@@ -344,7 +345,7 @@ def main():
             trial_risk = portfolio_risk(open_legs + [(s, direction)], corr)
             if n_open_groups >= MAX_CONCURRENT_GROUPS or trial_risk > RISK_BUDGET:
                 msg = (f"⏭️ 【訊號略過(v2)，相關性風險預算已滿（{trial_risk:.2f} > {RISK_BUDGET}）】"
-                       f"{s} @ {ts} vol_ratio={df['vol_ratio'].iloc[i]:.2f}")
+                       f"{s} @ {fmt_taipei(ts)} vol_ratio={df['vol_ratio'].iloc[i]:.2f}")
                 print(msg)
                 send_telegram_msg(msg)
                 continue
@@ -358,7 +359,7 @@ def main():
             state['positions'].append(new_pos)
             n_open_groups += 1
             msg = (f"📗 【模擬盤進場-v2】{s} {direction.upper()}（{'超賣' if reversion_direction=='long' else '超買'}動能延續，分鐘級防護+實驗性加倉）\n"
-                   f"時間: {ts}  進場價: {entry_price:.4f}\n"
+                   f"時間: {fmt_taipei(ts)}  進場價: {entry_price:.4f}\n"
                    f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
                    f"目前同時持倉組數: {n_open_groups}  相關性風險: {trial_risk:.2f}/{RISK_BUDGET}")
             print(msg)
