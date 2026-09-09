@@ -22,6 +22,23 @@ structurally higher) versus only ~24-28% for the altcoins, which isn't
 the intended "each symbol's own top third". See dev_momentum_continuation
 .py's "CORRECTION" docstring note for the full writeup.
 
+2026-09-09 addition: also calibrates a SECOND set of cutoffs
+(vol_ratio_top_tercile_cutoff_causal_by_symbol) for momentum_monitor_v3.py's
+real-time anticipatory-entry mechanism. v3 has to compare a still-forming
+hour's PROJECTED volume ratio against a 20-bar volume MA that EXCLUDES that
+hour's own volume (you can't know a not-yet-closed bar's volume as part of
+its own baseline -- that would be circular). The MAIN cutoff above was
+calibrated against an MA that INCLUDES each trigger bar's own volume (valid
+for v1/v2 since they only ever evaluate a bar after it's closed) -- reusing
+it for the excluding-MA ratio is an apples-to-oranges mismatch: a trigger
+bar's own volume is usually above-average (that's why it's a candidate),
+so excluding it shrinks the denominator and inflates the ratio by ~9% on
+average (up to 13% per symbol, found and fixed 2026-09-09 during the
+anticipatory-entry investigation -- see the artifact report from that
+session). The causal cutoff is calibrated the same way, on the same
+per-symbol trigger population, but with vol_ma20 excluding the current bar,
+so it's the correct apples-to-apples threshold for v3's real-time use.
+
 Also now calibrates the 5x5 daily-return correlation matrix used by the
 correlation-aware portfolio-risk position cap (replacing the flat
 "N concurrent positions" cap -- see scripts/dev_momentum_portfolio_risk.py
@@ -65,21 +82,29 @@ def compute_correlation_matrix():
 
 def main():
     per_symbol_ratios = {}
+    per_symbol_ratios_causal = {}
     latest_ts = None
     for s in SYMBOLS:
         df = load_1h_full(s)
         df['rsi'] = compute_rsi(df['close'])
         df['vol_ma20'] = df['volume'].rolling(20).mean()
         df['vol_ratio'] = df['volume'] / df['vol_ma20']
-        ratios = [df['vol_ratio'].iloc[i] for i, _ in find_triggers(df) if not np.isnan(df['vol_ratio'].iloc[i])]
+        df['vol_ma20_causal'] = df['volume'].rolling(20).mean().shift(1)
+        df['vol_ratio_causal'] = df['volume'] / df['vol_ma20_causal']
+        triggers = find_triggers(df)
+        ratios = [df['vol_ratio'].iloc[i] for i, _ in triggers if not np.isnan(df['vol_ratio'].iloc[i])]
+        ratios_causal = [df['vol_ratio_causal'].iloc[i] for i, _ in triggers if not np.isnan(df['vol_ratio_causal'].iloc[i])]
         per_symbol_ratios[s] = ratios
+        per_symbol_ratios_causal[s] = ratios_causal
         if latest_ts is None or df['timestamp'].iloc[-1] > latest_ts:
             latest_ts = df['timestamp'].iloc[-1]
 
     cutoffs = {s: float(pd.Series(r).quantile(2 / 3)) for s, r in per_symbol_ratios.items()}
+    cutoffs_causal = {s: float(pd.Series(r).quantile(2 / 3)) for s, r in per_symbol_ratios_causal.items()}
     corr = compute_correlation_matrix()
     result = {
         'vol_ratio_top_tercile_cutoff_by_symbol': cutoffs,
+        'vol_ratio_top_tercile_cutoff_causal_by_symbol': cutoffs_causal,
         'n_triggers_used_by_symbol': {s: len(r) for s, r in per_symbol_ratios.items()},
         'correlation_matrix': {s1: {s2: float(corr.loc[s1, s2]) for s2 in SYMBOLS} for s1 in SYMBOLS},
         'portfolio_risk_budget': 3.0,
@@ -89,7 +114,7 @@ def main():
     with open(OUT_PATH, 'w') as f:
         json.dump(result, f, indent=2)
     for s, c in cutoffs.items():
-        print(f"  {s}: cutoff={c:.4f}  (from {len(per_symbol_ratios[s])} historical triggers)")
+        print(f"  {s}: cutoff={c:.4f}  causal_cutoff={cutoffs_causal[s]:.4f}  (from {len(per_symbol_ratios[s])} historical triggers)")
     print("\nCorrelation matrix:")
     print(corr.round(3).to_string())
     print(f"\nData through {latest_ts}. Written to {OUT_PATH}")
