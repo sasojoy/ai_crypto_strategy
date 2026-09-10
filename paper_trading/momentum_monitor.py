@@ -219,7 +219,7 @@ def main():
             append_trade_log(closed)
             msg = (f"📕 【模擬盤出場】{closed['symbol']} {closed['direction'].upper()}\n"
                    f"原因: {closed['reason']}  損益: {closed['equity_pnl_pct']:+.2f}%（固定名目部位，2%風險/筆）\n"
-                   f"進場: {fmt_taipei(closed['entry_time'])} @ {closed['entry_price']:.4f}\n"
+                   f"進場: {fmt_taipei(pd.Timestamp(closed['entry_time']) + pd.Timedelta(hours=1))} @ {closed['entry_price']:.4f}\n"
                    f"出場: {fmt_taipei(closed['exit_time'])} @ {closed['exit_price']:.4f}\n"
                    f"累計模擬損益: {state['cumulative_pnl_pct']:+.2f}%（{state['n_closed']}筆已平倉）")
             print(msg)
@@ -276,8 +276,13 @@ def main():
                        'sl_price': float(sl_price), 'tp_price': float(tp_price), 'vol_ratio': float(df['vol_ratio'].iloc[i])}
             state['open_positions'].append(new_pos)
             risk_usd, qty, notional_usd = position_size_usd(entry_price, sl_price)
+            # entry_time is stored as ts (the trigger bar's OPEN timestamp) because that's the key
+            # update_open_position() matches against df['timestamp'] to find where to start scanning
+            # for SL/TP -- doesn't cause a look-ahead bug here since the scan explicitly starts at
+            # entry_idx+1 (the NEXT bar), but it does mean the stored/displayed time is an hour
+            # before entry_price (that bar's CLOSE) was actually known. Display the real moment.
             msg = (f"📗 【模擬盤進場】{s} {direction.upper()}（{'超賣' if reversion_direction=='long' else '超買'}動能延續）\n"
-                   f"時間: {fmt_taipei(ts)}  進場價: {entry_price:.4f}\n"
+                   f"時間: {fmt_taipei(ts + pd.Timedelta(hours=1))}  進場價: {entry_price:.4f}\n"
                    f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
                    f"風險金額: ${risk_usd:.2f}（模擬本金 ${REFERENCE_CAPITAL_USD:,} 的 {BASE_RISK_PER_TRADE*100:.0f}%）"
                    f"  建議部位: {qty:.4f}（名目 ${notional_usd:,.2f}）\n"

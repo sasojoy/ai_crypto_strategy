@@ -367,17 +367,24 @@ def main():
                 send_telegram_msg(msg)
                 continue
 
+            # ts is the trigger bar's OPEN timestamp (ccxt convention), but entry_price is that
+            # bar's CLOSE -- only known/actionable an hour later. entry_time/last_checked must
+            # record that real moment, not ts, or process_position()'s 1-minute SL/TP scan (which
+            # starts from last_checked) would re-check price action from BEFORE the position
+            # existed -- a look-ahead bug that produced bogus instant-SL fills in production
+            # (2026-09-10: BTC/ETH/SOL all showed entry_time == exit_time).
+            entry_moment = ts + pd.Timedelta(hours=1)
             new_pos = {
-                'symbol': s, 'direction': direction, 'entry_time': str(ts), 'adds_used': 0, 'add': None,
-                'last_checked': str(ts),
-                'original': {'entry_time': str(ts), 'entry_price': float(entry_price), 'atr': float(atr),
+                'symbol': s, 'direction': direction, 'entry_time': str(entry_moment), 'adds_used': 0, 'add': None,
+                'last_checked': str(entry_moment),
+                'original': {'entry_time': str(entry_moment), 'entry_price': float(entry_price), 'atr': float(atr),
                              'sl_price': float(sl_price), 'tp_price': float(tp_price), 'closed': False},
             }
             state['positions'].append(new_pos)
             n_open_groups += 1
             risk_usd, qty, notional_usd = position_size_usd(entry_price, sl_price)
             msg = (f"📗 【模擬盤進場-v2】{s} {direction.upper()}（{'超賣' if reversion_direction=='long' else '超買'}動能延續，分鐘級防護+實驗性加倉）\n"
-                   f"時間: {fmt_taipei(ts)}  進場價: {entry_price:.4f}\n"
+                   f"時間: {fmt_taipei(entry_moment)}  進場價: {entry_price:.4f}\n"
                    f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
                    f"風險金額: ${risk_usd:.2f}（模擬本金 ${REFERENCE_CAPITAL_USD:,} 的 {BASE_RISK_PER_TRADE*100:.0f}%）"
                    f"  建議部位: {qty:.4f}（名目 ${notional_usd:,.2f}）\n"
