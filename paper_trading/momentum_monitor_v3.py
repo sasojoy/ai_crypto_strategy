@@ -90,6 +90,20 @@ RISK_BUDGET = 3.0
 COOLDOWN_HOURS = 8
 ALPHA = 1 / 14  # Wilder RSI(14) smoothing factor
 
+REFERENCE_CAPITAL_USD = 1000  # illustrative paper-trading base for the dollar figures shown in
+                               # Telegram messages only -- P&L tracking itself stays entirely in
+                               # % terms (cumulative_pnl_pct), this doesn't feed back into it
+
+
+def position_size_usd(entry_price, sl_price):
+    """Dollar risk/quantity/notional for BASE_RISK_PER_TRADE of REFERENCE_CAPITAL_USD at this
+    entry/SL, mirroring the risk-based sizing leg_pnl_pct() already assumes. Display-only."""
+    risk_usd = REFERENCE_CAPITAL_USD * BASE_RISK_PER_TRADE
+    sl_dist = abs(entry_price - sl_price)
+    qty = risk_usd / sl_dist if sl_dist > 0 else 0.0
+    return risk_usd, qty, qty * entry_price
+
+
 LOOKBACK_DAYS = 45
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 STATE_PATH = os.path.join(THIS_DIR, 'state', 'momentum_v3_state.json')
@@ -406,9 +420,12 @@ def main():
         }
         state['positions'].append(new_pos)
         n_open += 1
+        risk_usd, qty, notional_usd = position_size_usd(entry_price, sl_price)
         msg = (f"📗 【模擬盤進場-v3，提早進場】{s} {direction.upper()}\n"
                f"時間: {fmt_taipei(cand['entry_time'])}（小時第{cand['minutes_into_hour']}分鐘觸發）  進場價: {entry_price:.4f}\n"
                f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
+               f"風險金額: ${risk_usd:.2f}（模擬本金 ${REFERENCE_CAPITAL_USD:,} 的 {BASE_RISK_PER_TRADE*100:.0f}%）"
+               f"  建議部位: {qty:.4f}（名目 ${notional_usd:,.2f}）\n"
                f"即時推估量能比: {cand['projected_vol_ratio']:.2f}（收盤後會再次確認真實量能）\n"
                f"目前同時持倉組數: {n_open}  相關性風險: {trial_risk:.2f}/{RISK_BUDGET}")
         print(msg)

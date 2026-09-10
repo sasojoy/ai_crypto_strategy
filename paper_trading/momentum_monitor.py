@@ -68,6 +68,20 @@ RISK_BUDGET = 3.0  # correlation-aware portfolio-risk cap, replaces the flat hea
                     # ~97% of the flat cap's average return, ~20-24% lower max drawdown on the dev window)
 LOOKBACK_DAYS = 45   # enough bars for RSI/ATR/vol_ma20 warm-up plus a 7-day max hold
 
+REFERENCE_CAPITAL_USD = 1000  # illustrative paper-trading base for the dollar figures shown in
+                               # Telegram messages only -- P&L tracking itself stays entirely in
+                               # % terms (cumulative_pnl_pct), this doesn't feed back into it
+
+
+def position_size_usd(entry_price, sl_price):
+    """Dollar risk/quantity/notional for BASE_RISK_PER_TRADE of REFERENCE_CAPITAL_USD at this
+    entry/SL, mirroring the risk-based sizing leg_pnl_pct() already assumes. Display-only."""
+    risk_usd = REFERENCE_CAPITAL_USD * BASE_RISK_PER_TRADE
+    sl_dist = abs(entry_price - sl_price)
+    qty = risk_usd / sl_dist if sl_dist > 0 else 0.0
+    return risk_usd, qty, qty * entry_price
+
+
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 STATE_PATH = os.path.join(THIS_DIR, 'state', 'momentum_state.json')
 TRADES_LOG_PATH = os.path.join(THIS_DIR, 'state', 'momentum_trades_log.csv')
@@ -261,9 +275,12 @@ def main():
             new_pos = {'symbol': s, 'direction': direction, 'entry_time': str(ts), 'entry_price': float(entry_price),
                        'sl_price': float(sl_price), 'tp_price': float(tp_price), 'vol_ratio': float(df['vol_ratio'].iloc[i])}
             state['open_positions'].append(new_pos)
+            risk_usd, qty, notional_usd = position_size_usd(entry_price, sl_price)
             msg = (f"📗 【模擬盤進場】{s} {direction.upper()}（{'超賣' if reversion_direction=='long' else '超買'}動能延續）\n"
                    f"時間: {fmt_taipei(ts)}  進場價: {entry_price:.4f}\n"
                    f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
+                   f"風險金額: ${risk_usd:.2f}（模擬本金 ${REFERENCE_CAPITAL_USD:,} 的 {BASE_RISK_PER_TRADE*100:.0f}%）"
+                   f"  建議部位: {qty:.4f}（名目 ${notional_usd:,.2f}）\n"
                    f"量能比: {df['vol_ratio'].iloc[i]:.2f}（門檻{cutoff:.2f}）\n"
                    f"目前同時持倉: {len(state['open_positions'])}  相關性風險: {trial_risk:.2f}/{RISK_BUDGET}")
             print(msg)

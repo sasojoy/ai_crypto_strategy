@@ -3,8 +3,11 @@ Hourly Telegram report: the 2 symbols currently closest to a v3 anticipatory
 entry trigger (RSI-cross threshold price), so you can eyeball how close the
 market is without watching all 5 symbols. Read-only -- reuses momentum_monitor_v3's
 threshold math and live-price fetch, never opens/closes any paper or real position,
-and doesn't touch any monitor's state files.
+and doesn't touch any monitor's state files (only reads them, to annotate whether
+a reported symbol is already held -- added 2026-09-09 after a NEAR report read
+like a fresh signal was imminent when v1/v2/v3 already had an open NEAR long).
 """
+import json
 import os
 import sys
 
@@ -13,6 +16,33 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import momentum_monitor_v3 as v3
+
+STATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'state')
+
+
+def load_open_positions():
+    """symbol -> list of (monitor_label, direction) for every open leg across
+    v1/v2/v3 right now, purely so the report can flag "you already hold this"
+    instead of reading like a brand-new signal is about to fire."""
+    positions = {}
+
+    def add(symbol, direction, label):
+        positions.setdefault(symbol, []).append((label, direction))
+
+    sources = [
+        ('momentum_state.json', 'open_positions', 'v1'),
+        ('momentum_v2_state.json', 'positions', 'v2'),
+        ('momentum_v3_state.json', 'positions', 'v3'),
+    ]
+    for filename, key, label in sources:
+        try:
+            with open(os.path.join(STATE_DIR, filename)) as f:
+                for p in json.load(f).get(key, []):
+                    add(p['symbol'], p['direction'], label)
+        except (FileNotFoundError, json.JSONDecodeError):
+            continue
+
+    return positions
 
 
 def compute_symbol_status(s, causal_cutoffs):
@@ -68,6 +98,7 @@ def compute_symbol_status(s, causal_cutoffs):
 def main():
     thresholds = v3.load_thresholds()
     causal_cutoffs = thresholds['vol_ratio_top_tercile_cutoff_causal_by_symbol']
+    open_positions = load_open_positions()
 
     rows = []
     for s in v3.SYMBOLS:
@@ -86,11 +117,18 @@ def main():
     for r in top2:
         dir_label = '做多' if r['nearer_dir'] == 'LONG' else '做空'
         vol_ok = "✅" if (not np.isnan(r['vol_ratio']) and r['vol_ratio'] >= r['vol_cutoff']) else "❌"
+        held = open_positions.get(r['symbol'])
+        if held:
+            held_str = "、".join(f"{label}({'多' if d == 'long' else '空'})" for label, d in held)
+            holding_line = f"\n  ⚠️ 目前已持倉: {held_str}"
+        else:
+            holding_line = "\n  目前無持倉"
         lines.append(
             f"\n{r['symbol']}  RSI={r['rsi']:.1f}  現價={r['live_price']:.4f}\n"
             f"最接近方向: {dir_label}  距門檻 {r['nearer_pct']:+.2f}%\n"
             f"  多: {r['thr_long']:.4f}({r['pct_long']:+.2f}%)  空: {r['thr_short']:.4f}({r['pct_short']:+.2f}%)\n"
             f"  量能比 {r['vol_ratio']:.2f}/{r['vol_cutoff']:.2f} {vol_ok}"
+            f"{holding_line}"
         )
     msg = "\n".join(lines)
     print(msg)

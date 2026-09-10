@@ -88,6 +88,20 @@ RISK_BUDGET = 3.0             # correlation-aware portfolio-risk cap replacing t
 PYRAMID_TRIGGER_ATR = 1.0     # add a unit once unrealized move reaches +1x original ATR
 MAX_ADDS_PER_POSITION = 1     # bounded, experimental -- raise only after reviewing paper results
 
+REFERENCE_CAPITAL_USD = 1000  # illustrative paper-trading base for the dollar figures shown in
+                               # Telegram messages only -- P&L tracking itself stays entirely in
+                               # % terms (cumulative_pnl_pct), this doesn't feed back into it
+
+
+def position_size_usd(entry_price, sl_price):
+    """Dollar risk/quantity/notional for BASE_RISK_PER_TRADE of REFERENCE_CAPITAL_USD at this
+    entry/SL, mirroring the risk-based sizing leg_pnl_pct() already assumes. Display-only."""
+    risk_usd = REFERENCE_CAPITAL_USD * BASE_RISK_PER_TRADE
+    sl_dist = abs(entry_price - sl_price)
+    qty = risk_usd / sl_dist if sl_dist > 0 else 0.0
+    return risk_usd, qty, qty * entry_price
+
+
 LOOKBACK_DAYS = 45
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 STATE_PATH = os.path.join(THIS_DIR, 'state', 'momentum_v2_state.json')
@@ -271,9 +285,12 @@ def process_position(pos, state):
                 pos['add'] = {'entry_time': str(ts), 'entry_price': float(add_price),
                               'sl_price': float(add_sl), 'tp_price': float(add_tp), 'closed': False}
                 pos['adds_used'] += 1
+                add_risk_usd, add_qty, add_notional_usd = position_size_usd(add_price, add_sl)
                 msg = (f"➕ 【實驗性加倉】{pos['symbol']} {pos['direction'].upper()}（順勢加碼，未經回測驗證）\n"
                        f"原始進場: {orig['entry_price']:.4f}  加倉價: {add_price:.4f}（獲利達+{PYRAMID_TRIGGER_ATR}xATR觸發）\n"
-                       f"加倉停損: {add_sl:.4f}  加倉停利: {add_tp:.4f}")
+                       f"加倉停損: {add_sl:.4f}  加倉停利: {add_tp:.4f}\n"
+                       f"加倉風險金額: ${add_risk_usd:.2f}（模擬本金 ${REFERENCE_CAPITAL_USD:,} 的 {BASE_RISK_PER_TRADE*100:.0f}%）"
+                       f"  建議部位: {add_qty:.4f}（名目 ${add_notional_usd:,.2f}）")
                 print(msg)
                 send_telegram_msg(msg)
 
@@ -358,9 +375,12 @@ def main():
             }
             state['positions'].append(new_pos)
             n_open_groups += 1
+            risk_usd, qty, notional_usd = position_size_usd(entry_price, sl_price)
             msg = (f"📗 【模擬盤進場-v2】{s} {direction.upper()}（{'超賣' if reversion_direction=='long' else '超買'}動能延續，分鐘級防護+實驗性加倉）\n"
                    f"時間: {fmt_taipei(ts)}  進場價: {entry_price:.4f}\n"
                    f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
+                   f"風險金額: ${risk_usd:.2f}（模擬本金 ${REFERENCE_CAPITAL_USD:,} 的 {BASE_RISK_PER_TRADE*100:.0f}%）"
+                   f"  建議部位: {qty:.4f}（名目 ${notional_usd:,.2f}）\n"
                    f"目前同時持倉組數: {n_open_groups}  相關性風險: {trial_risk:.2f}/{RISK_BUDGET}")
             print(msg)
             send_telegram_msg(msg)
