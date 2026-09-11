@@ -42,6 +42,7 @@ TASKS = {
     'PaperTrading-MomentumV1': 60,
     'PaperTrading-MomentumV2': 5,
     'PaperTrading-MomentumV3': 5,
+    'PaperTrading-MomentumV4': 60,
     'PaperTrading-Funding': 60,
     'PaperTrading-ThresholdReport': 60,
 }
@@ -109,7 +110,14 @@ def main():
 
         stale = False
         age_min = None
-        if last_run_iso:
+        # A task that has genuinely never fired yet (freshly registered) reports
+        # LastTaskResult == TASK_HAS_NOT_RUN and a sentinel LastRunTime (Task
+        # Scheduler's classic ~1899/1999 "never run" date, not null) -- treating
+        # that as a real timestamp would compute a bogus multi-decade "age" and
+        # wrongly fire the staleness alert/force-run. Skip staleness entirely here;
+        # it's an expected, harmless transient state that resolves at the first
+        # natural trigger.
+        if last_run_iso and result_code != TASK_HAS_NOT_RUN:
             last_run = datetime.fromisoformat(last_run_iso)
             age_min = (now - last_run).total_seconds() / 60.0
             stale = age_min > interval_min * STALE_MULTIPLIER

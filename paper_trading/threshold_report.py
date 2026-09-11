@@ -4,15 +4,15 @@ check and a full portfolio snapshot don't get conflated into one:
   1. The 2 symbols currently closest to a v3 anticipatory entry trigger
      (RSI-cross threshold price), so you can eyeball how close the market is
      without watching all 5 symbols.
-  2. A full holdings overview -- EVERY currently open leg across v1/v2/v3,
-     not just symbols near a threshold, with entry/SL/TP/current price for
-     each. Added 2026-09-11 because message 1 only ever surfaces a held
-     symbol if it also happens to be one of the 2 nearest to a NEW threshold
-     that hour -- a held symbol sitting quietly mid-range between its SL and
-     TP would never appear at all otherwise.
+  2. A full holdings overview -- EVERY currently open leg across
+     v1/v2/v3/v4, not just symbols near a threshold, with entry/SL/TP/
+     current price for each. Added 2026-09-11 because message 1 only ever
+     surfaces a held symbol if it also happens to be one of the 2 nearest
+     to a NEW threshold that hour -- a held symbol sitting quietly mid-
+     range between its SL and TP would never appear at all otherwise.
 Read-only throughout -- reuses momentum_monitor_v3's threshold math and
 live-price fetch, never opens/closes any paper or real position, and only
-READS (never writes) the other three monitors' state files.
+READS (never writes) the other monitors' state files.
 """
 import json
 import os
@@ -28,7 +28,7 @@ STATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'state')
 
 
 def load_all_legs():
-    """Every currently open leg across v1/v2/v3, flattened to one dict per
+    """Every currently open leg across v1/v2/v3/v4, flattened to one dict per
     leg (v2's pyramid add, if any, is its own separate leg alongside v2's
     original). Read-only."""
     legs = []
@@ -62,6 +62,13 @@ def load_all_legs():
         with open(os.path.join(STATE_DIR, 'momentum_v3_state.json')) as f:
             for p in json.load(f).get('positions', []):
                 add(p['symbol'], 'v3', None, p['direction'], p['entry_price'], p['sl_price'], p['tp_price'])
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    try:
+        with open(os.path.join(STATE_DIR, 'momentum_v4_state.json')) as f:
+            for p in json.load(f).get('open_positions', []):
+                add(p['symbol'], 'v4', None, p['direction'], p['entry_price'], p['sl_price'], p['tp_price'])
     except (FileNotFoundError, json.JSONDecodeError):
         pass
 
