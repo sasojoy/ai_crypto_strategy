@@ -1,11 +1,18 @@
 """
-Hourly Telegram report: the 2 symbols currently closest to a v3 anticipatory
-entry trigger (RSI-cross threshold price), so you can eyeball how close the
-market is without watching all 5 symbols. Read-only -- reuses momentum_monitor_v3's
-threshold math and live-price fetch, never opens/closes any paper or real position,
-and doesn't touch any monitor's state files (only reads them, to annotate whether
-a reported symbol is already held -- added 2026-09-09 after a NEAR report read
-like a fresh signal was imminent when v1/v2/v3 already had an open NEAR long).
+Hourly Telegram report, sent as TWO separate messages so a fast proximity
+check and a full portfolio snapshot don't get conflated into one:
+  1. The 2 symbols currently closest to a v3 anticipatory entry trigger
+     (RSI-cross threshold price), so you can eyeball how close the market is
+     without watching all 5 symbols.
+  2. A full holdings overview -- EVERY currently open leg across v1/v2/v3,
+     not just symbols near a threshold, with entry/SL/TP/current price for
+     each. Added 2026-09-11 because message 1 only ever surfaces a held
+     symbol if it also happens to be one of the 2 nearest to a NEW threshold
+     that hour -- a held symbol sitting quietly mid-range between its SL and
+     TP would never appear at all otherwise.
+Read-only throughout -- reuses momentum_monitor_v3's threshold math and
+live-price fetch, never opens/closes any paper or real position, and only
+READS (never writes) the other three monitors' state files.
 """
 import json
 import os
@@ -20,29 +27,68 @@ import momentum_monitor_v3 as v3
 STATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'state')
 
 
-def load_open_positions():
-    """symbol -> list of (monitor_label, direction) for every open leg across
-    v1/v2/v3 right now, purely so the report can flag "you already hold this"
-    instead of reading like a brand-new signal is about to fire."""
-    positions = {}
+def load_all_legs():
+    """Every currently open leg across v1/v2/v3, flattened to one dict per
+    leg (v2's pyramid add, if any, is its own separate leg alongside v2's
+    original). Read-only."""
+    legs = []
 
-    def add(symbol, direction, label):
-        positions.setdefault(symbol, []).append((label, direction))
+    def add(symbol, label, leg_name, direction, entry_price, sl_price, tp_price):
+        legs.append({
+            'symbol': symbol, 'label': label, 'leg': leg_name, 'direction': direction,
+            'entry_price': entry_price, 'sl_price': sl_price, 'tp_price': tp_price,
+        })
 
-    sources = [
-        ('momentum_state.json', 'open_positions', 'v1'),
-        ('momentum_v2_state.json', 'positions', 'v2'),
-        ('momentum_v3_state.json', 'positions', 'v3'),
-    ]
-    for filename, key, label in sources:
-        try:
-            with open(os.path.join(STATE_DIR, filename)) as f:
-                for p in json.load(f).get(key, []):
-                    add(p['symbol'], p['direction'], label)
-        except (FileNotFoundError, json.JSONDecodeError):
-            continue
+    try:
+        with open(os.path.join(STATE_DIR, 'momentum_state.json')) as f:
+            for p in json.load(f).get('open_positions', []):
+                add(p['symbol'], 'v1', None, p['direction'], p['entry_price'], p['sl_price'], p['tp_price'])
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
 
-    return positions
+    try:
+        with open(os.path.join(STATE_DIR, 'momentum_v2_state.json')) as f:
+            for p in json.load(f).get('positions', []):
+                orig = p['original']
+                if not orig['closed']:
+                    add(p['symbol'], 'v2', '原始', p['direction'], orig['entry_price'], orig['sl_price'], orig['tp_price'])
+                add_leg = p.get('add')
+                if add_leg and not add_leg['closed']:
+                    add(p['symbol'], 'v2', '加倉', p['direction'], add_leg['entry_price'], add_leg['sl_price'], add_leg['tp_price'])
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    try:
+        with open(os.path.join(STATE_DIR, 'momentum_v3_state.json')) as f:
+            for p in json.load(f).get('positions', []):
+                add(p['symbol'], 'v3', None, p['direction'], p['entry_price'], p['sl_price'], p['tp_price'])
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    return legs
+
+
+def build_holdings_message(legs, live_price_by_symbol):
+    if not legs:
+        return "\U0001F4C2 【持倉總覽】目前 v1/v2/v3 皆無持倉"
+
+    by_symbol = {}
+    for leg in legs:
+        by_symbol.setdefault(leg['symbol'], []).append(leg)
+
+    lines = ["\U0001F4C2 【持倉總覽】"]
+    for symbol, symbol_legs in by_symbol.items():
+        live_price = live_price_by_symbol.get(symbol)
+        price_str = f"  現價={live_price:.4f}" if live_price is not None else ""
+        lines.append(f"\n{symbol}{price_str}")
+        for leg in symbol_legs:
+            dir_label = '多' if leg['direction'] == 'long' else '空'
+            leg_label = leg['label'] + (f"({leg['leg']})" if leg['leg'] else "")
+            lines.append(
+                f"  {leg_label} {dir_label}  進場 {leg['entry_price']:.4f}"
+                f"  停損 {leg['sl_price']:.4f}  停利 {leg['tp_price']:.4f}"
+            )
+    return "\n".join(lines)
 
 
 def compute_symbol_status(s, causal_cutoffs):
@@ -98,7 +144,10 @@ def compute_symbol_status(s, causal_cutoffs):
 def main():
     thresholds = v3.load_thresholds()
     causal_cutoffs = thresholds['vol_ratio_top_tercile_cutoff_causal_by_symbol']
-    open_positions = load_open_positions()
+    legs = load_all_legs()
+    held_by_symbol = {}
+    for leg in legs:
+        held_by_symbol.setdefault(leg['symbol'], set()).add((leg['label'], leg['direction']))
 
     rows = []
     for s in v3.SYMBOLS:
@@ -110,16 +159,16 @@ def main():
         print("No symbols had enough data this run.")
         return
 
-    rows.sort(key=lambda r: abs(r['nearer_pct']))
-    top2 = rows[:2]
+    live_price_by_symbol = {r['symbol']: r['live_price'] for r in rows}
+    top2 = sorted(rows, key=lambda r: abs(r['nearer_pct']))[:2]
 
     lines = ["\U0001F4CA 【入場門檻快報】最接近觸發的兩個幣種"]
     for r in top2:
         dir_label = '做多' if r['nearer_dir'] == 'LONG' else '做空'
         vol_ok = "✅" if (not np.isnan(r['vol_ratio']) and r['vol_ratio'] >= r['vol_cutoff']) else "❌"
-        held = open_positions.get(r['symbol'])
+        held = held_by_symbol.get(r['symbol'])
         if held:
-            held_str = "、".join(f"{label}({'多' if d == 'long' else '空'})" for label, d in held)
+            held_str = "、".join(f"{label}({'多' if d == 'long' else '空'})" for label, d in sorted(held))
             holding_line = f"\n  ⚠️ 目前已持倉: {held_str}"
         else:
             holding_line = "\n  目前無持倉"
@@ -130,9 +179,13 @@ def main():
             f"  量能比 {r['vol_ratio']:.2f}/{r['vol_cutoff']:.2f} {vol_ok}"
             f"{holding_line}"
         )
-    msg = "\n".join(lines)
-    print(msg)
-    v3.send_telegram_msg(msg)
+    msg1 = "\n".join(lines)
+    print(msg1)
+    v3.send_telegram_msg(msg1)
+
+    msg2 = build_holdings_message(legs, live_price_by_symbol)
+    print(msg2)
+    v3.send_telegram_msg(msg2)
 
 
 if __name__ == "__main__":
