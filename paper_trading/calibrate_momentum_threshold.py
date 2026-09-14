@@ -61,6 +61,16 @@ vol_ratio linearly between [cutoff -> risk 1%] and [this p99 -> risk 3%],
 clamping outside that range, as a live approximation of the backtest's
 population-relative rank.
 
+2026-09-14 addition #2: also calibrates `adx_p1_within_tercile_by_symbol` /
+`adx_p99_within_tercile_by_symbol` for momentum_monitor_v6.py's ADX-scaled
+risk sizing (scripts/dev_momentum_adx_scaled_risk.py, "rank" mode --
+RESEARCH_FINDINGS.md "ADX連動風險"). Same live-approximation reasoning as
+the vol_ratio anchor above, but ADX has no natural floor/cutoff of its own
+to anchor to (unlike vol_ratio's tercile cutoff), so this calibrates BOTH
+ends from the historical top-tercile-qualifying population's ADX
+distribution: the 1st percentile (-> risk 1%) and 99th percentile (-> risk
+3%), again using robust percentiles rather than the raw min/max.
+
 Not part of the deployed app; run manually / on a schedule to refresh
 paper_trading/thresholds.json.
 """
@@ -75,6 +85,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'scripts'))
 
 from dev_volume_confirm import SYMBOLS, compute_rsi, find_triggers
+from dev_momentum_adx_trend_filter import compute_adx
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'backtest_cache')
 OUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'thresholds.json')
@@ -97,18 +108,26 @@ def compute_correlation_matrix():
 def main():
     per_symbol_ratios = {}
     per_symbol_ratios_causal = {}
+    per_symbol_adx = {}  # ADX values paired 1:1 with per_symbol_ratios (same trigger, same order)
     latest_ts = None
     for s in SYMBOLS:
         df = load_1h_full(s)
         df['rsi'] = compute_rsi(df['close'])
+        df['adx'] = compute_adx(df)
         df['vol_ma20'] = df['volume'].rolling(20).mean()
         df['vol_ratio'] = df['volume'] / df['vol_ma20']
         df['vol_ma20_causal'] = df['volume'].rolling(20).mean().shift(1)
         df['vol_ratio_causal'] = df['volume'] / df['vol_ma20_causal']
         triggers = find_triggers(df)
-        ratios = [df['vol_ratio'].iloc[i] for i, _ in triggers if not np.isnan(df['vol_ratio'].iloc[i])]
+        ratios, adx_vals = [], []
+        for i, _ in triggers:
+            if np.isnan(df['vol_ratio'].iloc[i]):
+                continue
+            ratios.append(df['vol_ratio'].iloc[i])
+            adx_vals.append(df['adx'].iloc[i])
         ratios_causal = [df['vol_ratio_causal'].iloc[i] for i, _ in triggers if not np.isnan(df['vol_ratio_causal'].iloc[i])]
         per_symbol_ratios[s] = ratios
+        per_symbol_adx[s] = adx_vals
         per_symbol_ratios_causal[s] = ratios_causal
         if latest_ts is None or df['timestamp'].iloc[-1] > latest_ts:
             latest_ts = df['timestamp'].iloc[-1]
@@ -118,15 +137,27 @@ def main():
     # p99 of vol_ratio WITHIN the top-tercile-qualifying subset only (>= cutoff), per symbol --
     # the risk-scaling upper anchor for momentum_monitor_v5.py.
     p99_within_tercile = {}
+    # p1/p99 of ADX within that SAME top-tercile-qualifying subset (paired by trigger, via the
+    # vol_ratio/adx lists built in lockstep above) -- the risk-scaling anchors for
+    # momentum_monitor_v6.py. ADX has no natural floor to anchor one end to (unlike vol_ratio's
+    # own cutoff), so both ends are calibrated from the data.
+    adx_p1_within_tercile = {}
+    adx_p99_within_tercile = {}
     for s, r in per_symbol_ratios.items():
         series = pd.Series(r)
-        top = series[series >= cutoffs[s]]
+        mask = series >= cutoffs[s]
+        top = series[mask]
         p99_within_tercile[s] = float(top.quantile(0.99)) if len(top) else cutoffs[s]
+        adx_top = pd.Series(per_symbol_adx[s])[mask.values].dropna()
+        adx_p1_within_tercile[s] = float(adx_top.quantile(0.01)) if len(adx_top) else 15.0
+        adx_p99_within_tercile[s] = float(adx_top.quantile(0.99)) if len(adx_top) else 35.0
     corr = compute_correlation_matrix()
     result = {
         'vol_ratio_top_tercile_cutoff_by_symbol': cutoffs,
         'vol_ratio_top_tercile_cutoff_causal_by_symbol': cutoffs_causal,
         'vol_ratio_p99_within_tercile_by_symbol': p99_within_tercile,
+        'adx_p1_within_tercile_by_symbol': adx_p1_within_tercile,
+        'adx_p99_within_tercile_by_symbol': adx_p99_within_tercile,
         'n_triggers_used_by_symbol': {s: len(r) for s, r in per_symbol_ratios.items()},
         'correlation_matrix': {s1: {s2: float(corr.loc[s1, s2]) for s2 in SYMBOLS} for s1 in SYMBOLS},
         'portfolio_risk_budget': 3.0,
@@ -137,6 +168,7 @@ def main():
         json.dump(result, f, indent=2)
     for s, c in cutoffs.items():
         print(f"  {s}: cutoff={c:.4f}  causal_cutoff={cutoffs_causal[s]:.4f}  p99_within_tercile={p99_within_tercile[s]:.4f}  "
+              f"adx_p1={adx_p1_within_tercile[s]:.2f}  adx_p99={adx_p99_within_tercile[s]:.2f}  "
               f"(from {len(per_symbol_ratios[s])} historical triggers)")
     print("\nCorrelation matrix:")
     print(corr.round(3).to_string())

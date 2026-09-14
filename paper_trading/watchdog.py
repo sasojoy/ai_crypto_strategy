@@ -44,6 +44,7 @@ TASKS = {
     'PaperTrading-MomentumV3': 5,
     'PaperTrading-MomentumV4': 60,
     'PaperTrading-MomentumV5': 60,
+    'PaperTrading-MomentumV6': 60,
     'PaperTrading-Funding': 60,
     'PaperTrading-ThresholdReport': 60,
 }
