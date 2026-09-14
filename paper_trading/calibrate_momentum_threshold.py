@@ -47,6 +47,20 @@ under the old pooled-tercile and the corrected per-symbol-tercile trade
 populations): a risk budget of ~3.0 keeps ~97% of the flat-cap's average
 return while cutting max drawdown by ~20-24%.
 
+2026-09-14 addition: also calibrates `vol_ratio_p99_within_tercile_by_symbol`
+for momentum_monitor_v5.py's volume-scaled risk sizing (see
+scripts/dev_momentum_vol_scaled_risk.py and RESEARCH_FINDINGS.md). The
+backtest scaled risk by each trade's percentile RANK of vol_ratio within
+its symbol's top-tercile-qualifying subset -- a live monitor can't rank
+against a still-unknown future population any more than it can compute a
+live tercile, so this fixes a second calibrated anchor (the 99th
+percentile of vol_ratio among that symbol's OWN top-tercile-qualifying
+historical triggers, not the raw max, to avoid one freak outlier pinning
+the whole scale) alongside the existing cutoff. v5 then maps a live trade's
+vol_ratio linearly between [cutoff -> risk 1%] and [this p99 -> risk 3%],
+clamping outside that range, as a live approximation of the backtest's
+population-relative rank.
+
 Not part of the deployed app; run manually / on a schedule to refresh
 paper_trading/thresholds.json.
 """
@@ -101,10 +115,18 @@ def main():
 
     cutoffs = {s: float(pd.Series(r).quantile(2 / 3)) for s, r in per_symbol_ratios.items()}
     cutoffs_causal = {s: float(pd.Series(r).quantile(2 / 3)) for s, r in per_symbol_ratios_causal.items()}
+    # p99 of vol_ratio WITHIN the top-tercile-qualifying subset only (>= cutoff), per symbol --
+    # the risk-scaling upper anchor for momentum_monitor_v5.py.
+    p99_within_tercile = {}
+    for s, r in per_symbol_ratios.items():
+        series = pd.Series(r)
+        top = series[series >= cutoffs[s]]
+        p99_within_tercile[s] = float(top.quantile(0.99)) if len(top) else cutoffs[s]
     corr = compute_correlation_matrix()
     result = {
         'vol_ratio_top_tercile_cutoff_by_symbol': cutoffs,
         'vol_ratio_top_tercile_cutoff_causal_by_symbol': cutoffs_causal,
+        'vol_ratio_p99_within_tercile_by_symbol': p99_within_tercile,
         'n_triggers_used_by_symbol': {s: len(r) for s, r in per_symbol_ratios.items()},
         'correlation_matrix': {s1: {s2: float(corr.loc[s1, s2]) for s2 in SYMBOLS} for s1 in SYMBOLS},
         'portfolio_risk_budget': 3.0,
@@ -114,7 +136,8 @@ def main():
     with open(OUT_PATH, 'w') as f:
         json.dump(result, f, indent=2)
     for s, c in cutoffs.items():
-        print(f"  {s}: cutoff={c:.4f}  causal_cutoff={cutoffs_causal[s]:.4f}  (from {len(per_symbol_ratios[s])} historical triggers)")
+        print(f"  {s}: cutoff={c:.4f}  causal_cutoff={cutoffs_causal[s]:.4f}  p99_within_tercile={p99_within_tercile[s]:.4f}  "
+              f"(from {len(per_symbol_ratios[s])} historical triggers)")
     print("\nCorrelation matrix:")
     print(corr.round(3).to_string())
     print(f"\nData through {latest_ts}. Written to {OUT_PATH}")

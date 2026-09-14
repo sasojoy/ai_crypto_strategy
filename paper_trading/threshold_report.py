@@ -5,7 +5,7 @@ check and a full portfolio snapshot don't get conflated into one:
      (RSI-cross threshold price), so you can eyeball how close the market is
      without watching all 5 symbols.
   2. A full holdings overview -- EVERY currently open leg across
-     v1/v2/v3/v4, not just symbols near a threshold, with entry/SL/TP/
+     v1/v2/v3/v4/v5, not just symbols near a threshold, with entry/SL/TP/
      current price for each. Added 2026-09-11 because message 1 only ever
      surfaces a held symbol if it also happens to be one of the 2 nearest
      to a NEW threshold that hour -- a held symbol sitting quietly mid-
@@ -28,7 +28,7 @@ STATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'state')
 
 
 def load_all_legs():
-    """Every currently open leg across v1/v2/v3/v4, flattened to one dict per
+    """Every currently open leg across v1/v2/v3/v4/v5, flattened to one dict per
     leg (v2's pyramid add, if any, is its own separate leg alongside v2's
     original). Read-only."""
     legs = []
@@ -72,12 +72,19 @@ def load_all_legs():
     except (FileNotFoundError, json.JSONDecodeError):
         pass
 
+    try:
+        with open(os.path.join(STATE_DIR, 'momentum_v5_state.json')) as f:
+            for p in json.load(f).get('open_positions', []):
+                add(p['symbol'], 'v5', None, p['direction'], p['entry_price'], p['sl_price'], p['tp_price'])
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
     return legs
 
 
 def build_holdings_message(legs, live_price_by_symbol):
     if not legs:
-        return "\U0001F4C2 【持倉總覽】目前 v1/v2/v3 皆無持倉"
+        return "\U0001F4C2 【持倉總覽】目前 v1/v2/v3/v4/v5 皆無持倉"
 
     by_symbol = {}
     for leg in legs:
