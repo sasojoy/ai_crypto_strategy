@@ -46,12 +46,21 @@ pre-calibrated from thresholds.json: `adx_p1_within_tercile_by_symbol`
 qualifying triggers (calibrate_momentum_threshold.py). Re-run that script
 periodically to keep both anchors current.
 
-Still only a SINGLE dev-window pass on ONE mechanism in isolation -- has
-NOT been sent to the 2026+ holdout window, and has NOT been tested
-combined with v4's wider-stop or v5's vol-ratio risk scaling (each is a
-separate, untested combination -- see v3's docstring for why this
-research line tests one mechanism at a time). Tracks its own independent
-P&L in state/momentum_v6_*, doesn't affect v1/v2/v3/v4/v5's track records.
+HOLDOUT-VALIDATED (2026-09-14, scripts/holdout_v6_adx_scaled_risk.py --
+RESEARCH_FINDINGS.md "v6 封存區驗證", this project's SECOND-ever use of the
+one-shot 2026+ holdout window, done at the user's explicit request): on
+222 out-of-sample holdout candidates, ADX-scaled risk (avg 2.02%, no
+material drift from the flat-2% baseline) scored PF 1.13 / compounded
++29.76% vs the same trades' flat-2% baseline PF 1.04 / +1.74% -- the
+dev-window improvement replicated out of sample, same direction, at least
+as large. Same thin-margin, mixed-by-symbol character as the original
+locked-spec holdout pass (BTC/NEAR net positive, ETH/AVAX net negative,
+SOL marginal) -- not a reason for outsized confidence, just confirmation
+the mechanism isn't a dev-window fluke. Has NOT been tested combined with
+v4's wider-stop or v5's vol-ratio risk scaling (each is a separate,
+untested combination -- see v3's docstring for why this research line
+tests one mechanism at a time). Tracks its own independent P&L in
+state/momentum_v6_*, doesn't affect v1/v2/v3/v4/v5's track records.
 
 Still entirely read-only / no trade-execution API keys, never places a
 real order, notifies via src/notifier.py's send_telegram_msg.
