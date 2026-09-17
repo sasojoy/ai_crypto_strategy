@@ -1,13 +1,32 @@
 """
-PAPER-TRADING MONITOR v3 -- EXPERIMENTAL, DEV-WINDOW BACKTESTED BUT NOT
-HOLDOUT-VALIDATED. Builds on the same locked RSI(14)+volume-tercile entry
-definition as v1/v2, but replaces "wait for the 1H bar to close" with a
+PAPER-TRADING MONITOR v3. Builds on the same locked RSI(14)+volume-tercile
+entry definition as v1/v2, but replaces "wait for the 1H bar to close" with a
 real-time ANTICIPATORY ENTRY mechanism: investigated and backtested across
 six iterations (two look-ahead bugs found and fixed, then a volume-cutoff
 calibration mismatch found and fixed on a user-requested re-audit) on the
 full 2020-2025 dev window using complete 1-minute OHLCV for all 5 symbols.
 See the "提早進場調查" artifact report from that session for the full
 methodology and results.
+
+HOLDOUT-VALIDATED (2026-09-17, `scripts/holdout_v3_anticipatory_entry.py`,
+this project's 3rd use of the one-shot holdout window): on the same 2026
+holdout window, a classic v1-style closed-bar baseline scored n=213,
+win_rate 37.6%, PF 1.05 -- this anticipatory mechanism scored n=741 (3.5x
+more entries, matching the dev-window ratio), win_rate 47.5%, PF 1.39, all
+5 symbols net positive (vs. the baseline's ETH/AVAX/SOL net negative). Unlike
+the dev-window finding (uplift mostly from more signals, not much per-trade
+edge), the holdout uplift came from BOTH more signals AND a genuinely
+better per-trade win rate/PF -- a stronger out-of-sample replication than
+the dev-window number alone suggested.
+
+A separate idea -- continuously re-projecting volume after entry and
+rejecting early instead of always waiting for the hour to close
+(`scripts/dev_momentum_v3_early_reject.py`, 2026-09-17) -- was tested and
+found dev-window neutral (the mechanism accurately predicts ~98.5% of
+eventual VOL_UNCONFIRMED outcomes before hour-close, but VOL_UNCONFIRMED
+exits already average a small profit, not a loss, so closing them earlier
+doesn't add edge). Not implemented; this file's confirmation checkpoint is
+unchanged.
 
 THE MECHANISM:
 1. At the start of each still-forming 1H bar, using the LAST CLOSED bar's
