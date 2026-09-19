@@ -60,6 +60,23 @@ Reports TWO things on the SAME holdout window:
 
 One-shot: not to be re-run with different parameters after seeing the
 result. Not part of the deployed app.
+
+=== CORRECTION / RE-RUN (2026-09-19) ===
+The first run of this script (2026-09-17, n=741/win_rate 47.5%/PF 1.39) is
+INVALID: it faithfully replicated momentum_monitor_v3.py's detect_entry()
+as it existed then, which lacked a guard against RSI having already
+crossed 70/30 in a PRIOR hour. When RSI stays above 70 (or below 30) for
+several hours straight -- exactly what happens during the strong sustained
+trends this strategy targets -- threshold_price() solves for a price on
+the WRONG side of the prior close, which any candle then touches almost
+trivially. Found live in production (a NEAR entry recorded @3.5211 while
+the market was actually trading ~3.70-3.75) and confirmed to affect
+209/754 (27.7%) of that first holdout run's own trade population. Fixed
+here (and in momentum_monitor_v3.py) by adding the same "fresh cross only"
+guard find_triggers() already applies on closed bars. This re-run, with
+the fix, is the user's EXPLICIT, deliberate re-do of the 3rd one-shot
+holdout use (the first run is treated as never having validly tested the
+intended mechanism, not as a separate 4th use).
 """
 import os
 import sys
@@ -261,15 +278,24 @@ def v3_anticipatory_trades(df, dfm, cutoff, cutoff_causal):
         if i1 - i0 < 1:
             continue
 
-        thr_long = threshold_price(close1h[H - 1], agv[H - 1], alv[H - 1], 70)
-        thr_short = threshold_price(close1h[H - 1], agv[H - 1], alv[H - 1], 30)
+        # Fresh-cross guard (2026-09-19 fix, mirrors momentum_monitor_v3.py's detect_entry()):
+        # only solve/consider a threshold on the side RSI hasn't already crossed. Without this,
+        # once RSI has been sustained above 70 (or below 30) for several hours in a row,
+        # threshold_price() solves for a price on the WRONG side of last_close, which any candle
+        # then satisfies almost trivially -- an audit of the original (unguarded) holdout run
+        # found 209/754 (27.7%) of entries were exactly this degenerate case.
+        last_rsi = 50.0 if alv[H - 1] == 0 else 100 - 100 / (1 + agv[H - 1] / alv[H - 1])
+        thr_long = threshold_price(close1h[H - 1], agv[H - 1], alv[H - 1], 70) if last_rsi <= 70 else None
+        thr_short = threshold_price(close1h[H - 1], agv[H - 1], alv[H - 1], 30) if last_rsi >= 30 else None
+        if thr_long is None and thr_short is None:
+            continue
 
         vol_h, high_h, low_h = vol1m[i0:i1], high1m[i0:i1], low1m[i0:i1]
         cumvol = np.cumsum(vol_h)
         minutes = np.arange(1, len(vol_h) + 1)
         projected_ratio = cumvol * (60.0 / minutes) / vma
-        long_touch = high_h >= thr_long
-        short_touch = low_h <= thr_short
+        long_touch = (high_h >= thr_long) if thr_long is not None else np.zeros(len(vol_h), dtype=bool)
+        short_touch = (low_h <= thr_short) if thr_short is not None else np.zeros(len(vol_h), dtype=bool)
         vol_ok = projected_ratio >= cutoff_causal
         qualifying = np.where(long_touch, vol_ok, np.where(short_touch, vol_ok, False))
         if not qualifying.any():
@@ -316,7 +342,10 @@ def v3_anticipatory_trades(df, dfm, cutoff, cutoff_causal):
         else:
             exit_time, exit_price, reason = nat_time, nat_price, nat_reason
         pnl = leg_pnl_pct(direction, entry_price, exit_price, sl_price)
-        trades.append(dict(equity_pnl_pct=pnl, reason=reason, timestamp=hour_start, symbol=None))
+        wrong_side_bug = (direction == 'long' and entry_price < close1h[H - 1]) or \
+                          (direction == 'short' and entry_price > close1h[H - 1])
+        trades.append(dict(equity_pnl_pct=pnl, reason=reason, timestamp=hour_start, symbol=None,
+                            wrong_side_bug=wrong_side_bug))
     return pd.DataFrame(trades)
 
 
@@ -366,6 +395,11 @@ def main():
     st_v3_add = additive_stats(v3_df)
     print(f"  n={st_v3_add['n']} win_rate={st_v3_add['win_rate']:.1f}% PF={st_v3_add['pf']:.2f} "
           f"total_pnl={st_v3_add['total_pnl']:+.2f}%  reasons={st_v3_add['reasons']}")
+
+    n_wrong_side = int(v3_df['wrong_side_bug'].sum())
+    print(f"\n[AUDIT 2026-09-19] entries with threshold on the WRONG SIDE of prior close "
+          f"(RSI already past 70/30 before this hour, detect_entry() lacked a fresh-cross guard "
+          f"at holdout-run time): {n_wrong_side}/{len(v3_df)} ({100*n_wrong_side/len(v3_df):.1f}%)")
 
     print(f"\nBy symbol (v3):")
     print(v3_df.groupby('symbol')['equity_pnl_pct'].agg(n='count', win_rate=lambda x: (x > 0).mean() * 100, total='sum').to_string())

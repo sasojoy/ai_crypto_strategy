@@ -1,117 +1,46 @@
 """
-PAPER-TRADING MONITOR v3. Builds on the same locked RSI(14)+volume-tercile
-entry definition as v1/v2, but replaces "wait for the 1H bar to close" with a
-real-time ANTICIPATORY ENTRY mechanism: investigated and backtested across
-six iterations (two look-ahead bugs found and fixed, then a volume-cutoff
-calibration mismatch found and fixed on a user-requested re-audit) on the
-full 2020-2025 dev window using complete 1-minute OHLCV for all 5 symbols.
-See the "提早進場調查" artifact report from that session for the full
-methodology and results.
+PAPER-TRADING MONITOR v7 -- COMBINES v3's real-time ANTICIPATORY ENTRY
+mechanism with v6's ADX-SCALED RISK sizing. Both are independently
+(thinly) holdout/dev-validated mechanisms that change ORTHOGONAL things
+(v3: entry timing: v6: per-trade risk%) and had never been tested together
+until the user asked for it (2026-09-19).
 
-HOLDOUT-VALIDATED, WEAK/MARGINAL (2026-09-17, corrected 2026-09-19,
-`scripts/holdout_v3_anticipatory_entry.py`, this project's 3rd use of the
-one-shot holdout window). The first run (2026-09-17: n=741, win_rate
-47.5%, PF 1.39) was INVALID -- 27.7% of that trade population was a
-degenerate mispricing bug (see BUG FIX note below), not the intended
-signal. Corrected and re-run 2026-09-19: on the same holdout window, a
-classic v1-style closed-bar baseline scored n=223/win_rate 35.9%/PF 0.98
-(itself roughly break-even in this window); this anticipatory mechanism
-scored n=565 (2.53x more entries)/win_rate 37.9%/PF 1.06 -- only a small
-edge over the baseline, not the large one the buggy first run implied.
-BTC and NEAR net NEGATIVE under v3 in this window (-27.17/-6.23) despite
-being net positive under the baseline (+20.29/+11.45) -- the opposite of
-what the invalid first run suggested. Treat v3 like v1/v6: thin, mixed-by-
-symbol edge, not a strong or uniform improvement -- do not weight it more
-heavily than the other holdout-validated variants just because it fires
-more signals.
+Dev-window test (scripts/dev_momentum_v3_plus_v6.py, RESEARCH_FINDINGS.md
+"v3+v6疊加測試"): on v3's own (fresh-cross-bug-FIXED) trigger population
+(n=4,381), applying v6's ADX percentile-rank risk scaling (1%-3%, same
+formula, average risk still exactly 2%) instead of v3's flat 2% gave
+PF 1.11->1.15, total(linear) +468.6%->+620.4%, quarters_PF>1 19/24->20/24,
+top-3-trade concentration 2.5%->2.8% (still healthy) -- and crucially, ALL
+5 SYMBOLS individually improved, including v3's own worst symbol (BTC:
+-59.3 -> -12.8). A clean, consistent, non-cliff-edge improvement, unlike
+the mixed/negative result from combining v6 with a tighter TP instead (see
+dev_momentum_tighter_tp_plus_v6.py) -- this is the ONE combination out of
+several tested on 2026-09-19 that actually earned deployment.
 
-BUG FIX (2026-09-19, found after the user noticed a live entry price
-didn't match the market): `detect_entry()` used to solve `threshold_price()`
-for BOTH the long (RSI=70) and short (RSI=30) sides on every hour,
-regardless of whether the LAST CLOSED bar's own RSI had already crossed
-that side. When RSI stays above 70 (or below 30) for several hours in a
-row -- exactly what happens in the strong sustained trends this strategy
-targets -- solving "what price makes RSI=70" from an already-overbought
-state yields a price on the WRONG side of the current close (e.g. a long
-threshold BELOW the market), which the very next candle then satisfies
-almost trivially. Confirmed live: a NEAR entry recorded @3.5211 while the
-market traded ~3.70-3.75, because NEAR's RSI had already been >70 for 5
-straight hours. Affected 12/32 (37.5%) of v3's live trades to date and
-209/754 (27.7%) of the first (invalid) holdout run. Fixed by adding a
-"fresh cross only" guard -- same discipline `find_triggers()` already
-applies on closed bars -- before solving either threshold.
+Everything else is v3 UNCHANGED: same touch-price + real-time
+volume-projection entry (see momentum_monitor_v3.py's own docstring/
+mechanism section for the full description, including its 2026-09-19
+fresh-cross-guard bug fix), same post-close VOL_UNCONFIRMED confirmation
+checkpoint, same SL=2.0xATR/TP=4.0xATR/168-bar-hold. The ONLY difference
+from v3 is that risk_frac is computed from that trade's ADX(14) (at the
+same last-closed bar used for its entry threshold) instead of being a flat
+BASE_RISK_PER_TRADE.
 
-A separate idea -- continuously re-projecting volume after entry and
-rejecting early instead of always waiting for the hour to close
-(`scripts/dev_momentum_v3_early_reject.py`, 2026-09-17, re-run 2026-09-19
-after the bug fix below) -- was tested and found dev-window neutral (the
-mechanism accurately predicts ~98% of eventual VOL_UNCONFIRMED outcomes
-before hour-close, but VOL_UNCONFIRMED exits already average a small
-profit, not a loss, so closing them earlier doesn't add edge). This
-conclusion held up after the fresh-cross bug fix (the trigger population
-shrank 28%, n=6,099->4,381, and the baseline's own win_rate/PF dropped
-substantially too -- 48.1%/1.45 -> 37.8%/1.11 -- but the early-reject
-comparison itself stayed noise-level in both versions). Not implemented;
-this file's confirmation checkpoint is unchanged.
+LIVE APPROXIMATION: reuses the SAME `adx_p1_within_tercile_by_symbol` /
+`adx_p99_within_tercile_by_symbol` anchors from thresholds.json that
+momentum_monitor_v6.py uses (calibrated on the CLASSIC closed-bar trigger
+population, not v3's own anticipatory-entry population) -- the dev-window
+test above calibrated its rank fresh within v3's own population, so this
+live version is an approximation of that, same spirit as v5/v6's existing
+"can't rank against an unknown future population live" approximation.
+Recalibrating a v3-specific anchor pair is a possible future refinement,
+not done here to avoid adding a third calibration path for a first
+deployment.
 
-NOTE: this project's ORIGINAL dev-window validation of v3 (2026-09-09:
-n=6,139, win_rate 48.7%, PF 1.51, +387.23%/yr) was almost certainly
-affected by the same fresh-cross bug from day one, not just the later
-holdout run -- the pre-fix reconstruction above (n=6,099, win_rate 48.1%)
-nearly exactly reproduces that original number, meaning the original
-validation script (never committed to git) and this file's code have
-always shared the same logic. v3's true, bug-free edge is best represented
-by the corrected holdout result above, not the original dev-window claim.
-
-THE MECHANISM:
-1. At the start of each still-forming 1H bar, using the LAST CLOSED bar's
-   Wilder RSI state (avg_gain/avg_loss) and close, solve for the two exact
-   closing prices that would make THIS hour's RSI cross 30 (oversold ->
-   short entry) or 70 (overbought -> long entry) -- this is a deterministic
-   function of already-known, closed-bar data, no lookahead.
-2. Poll 1-minute bars for the still-forming hour (this script runs every
-   5 minutes). The instant price touches one of those threshold prices,
-   check a REAL-TIME PROJECTED volume ratio: cumulative volume so far this
-   hour, scaled to a full hour (cum_vol * 60/minutes_elapsed), divided by
-   the trailing 20-bar volume MA of the 20 CLOSED bars before this hour
-   (excluding this hour's own volume, since it hasn't closed -- that MA
-   must NOT include the current bar, unlike v1/v2's post-close evaluation).
-   If that projected ratio clears the per-symbol CAUSAL cutoff
-   (thresholds.json's vol_ratio_top_tercile_cutoff_causal_by_symbol --
-   calibrated against the SAME excluding-current-bar MA convention; the
-   already-existing non-causal cutoff was calibrated against an including-
-   current-bar MA and is NOT the same yardstick, see calibrate_momentum
-   _threshold.py's 2026-09-09 addition note), enter immediately at the
-   threshold price.
-3. VOLUME-CONFIRMATION CHECKPOINT: once the entry hour actually closes (a
-   real, already-elapsed fact by the time it happens, not lookahead), this
-   script checks the REAL final volume ratio the same way v1/v2 already do
-   (including-current-bar MA, against the EXISTING non-causal cutoff -- the
-   correct apples-to-apples check for "would this have been a real signal
-   under the locked spec"). If it does NOT clear the bar, the position is
-   closed immediately at the current price (reason VOL_UNCONFIRMED) instead
-   of pretending the trade never happened -- unlike v1/v2, entries here are
-   provisional until this checkpoint. Backtested VOL_UNCONFIRMED rate: ~49%
-   of entries, but those close out at a small average PROFIT (+0.14%), not
-   a loss -- the mechanism's real cost is mostly opportunity/complexity, not
-   capital.
-4. If confirmed, the position continues under the same SL=2xATR/TP=4xATR/
-   7-day-max-hold rules as v1/v2, still polled every run via 1-minute bars
-   for the whole hold (finer than the dev-window backtest's post-entry-hour
-   1H-bar convention, which was a backtest-only computational shortcut, not
-   a claim that 1H is more correct).
-
-Backtested results (dev window, 2020-2025, after both correction rounds):
-n=6,139 legs, win_rate 48.7%, PF 1.51, +387.23%/yr (vs v1's dev-window
-baseline of +79.79%/yr) -- profitable in 23/24 quarters, all 5 symbols net
-positive, both directions net positive. The annualized uplift comes mostly
-from ~3.5x more signals firing (earlier + a looser real-time volume gate),
-not from a wildly better per-trade edge (+0.274% -> +0.379% average leg).
-
-Deliberately does NOT include v2's pyramid add-on -- combining two
-unvalidated experimental mechanisms at once would make it impossible to
-attribute results to either one. Tracks its own independent P&L in
-state/momentum_v3_*.
+DEV-WINDOW-VALIDATED ONLY, NOT HOLDOUT-VALIDATED. This is a brand new
+combination -- neither v3's nor v6's individual holdout passes cover it.
+Tracks its own independent P&L in state/momentum_v7_*, doesn't affect
+v1/v2/v3/v4/v5/v6's track records.
 
 Still entirely read-only / no trade-execution API keys, never places a
 real order, notifies via src/notifier.py's send_telegram_msg.
@@ -133,9 +62,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'scripts'))
 
 from dev_volume_confirm import (
-    SYMBOLS, compute_atr, SL_ATR_MULT, TP_ATR_MULT,
-    BASE_RISK_PER_TRADE, ROUND_TRIP_FRICTION, MAX_HOLD_BARS,
+    SYMBOLS, compute_atr, SL_ATR_MULT, TP_ATR_MULT, ROUND_TRIP_FRICTION, MAX_HOLD_BARS,
 )
+from dev_momentum_adx_trend_filter import compute_adx
 from src.notifier import send_telegram_msg
 from src.tz import fmt_taipei
 
@@ -144,15 +73,27 @@ RISK_BUDGET = 3.0
 COOLDOWN_HOURS = 8
 ALPHA = 1 / 14  # Wilder RSI(14) smoothing factor
 
+MIN_RISK = 0.01   # risk fraction at (or below) the adx_p1 anchor
+MAX_RISK = 0.03   # risk fraction at (or above) the adx_p99 anchor
+
 REFERENCE_CAPITAL_USD = 1000  # illustrative paper-trading base for the dollar figures shown in
                                # Telegram messages only -- P&L tracking itself stays entirely in
                                # % terms (cumulative_pnl_pct), this doesn't feed back into it
 
 
-def position_size_usd(entry_price, sl_price):
-    """Dollar risk/quantity/notional for BASE_RISK_PER_TRADE of REFERENCE_CAPITAL_USD at this
-    entry/SL, mirroring the risk-based sizing leg_pnl_pct() already assumes. Display-only."""
-    risk_usd = REFERENCE_CAPITAL_USD * BASE_RISK_PER_TRADE
+def adx_scaled_risk(adx_value, p1, p99):
+    """Same live approximation as momentum_monitor_v6.py: linearly maps
+    ADX(14) from [p1 -> MIN_RISK] to [p99 -> MAX_RISK], clamped outside
+    that range."""
+    if np.isnan(adx_value) or p99 <= p1:
+        return (MIN_RISK + MAX_RISK) / 2
+    rank = (adx_value - p1) / (p99 - p1)
+    rank = max(0.0, min(1.0, rank))
+    return MIN_RISK + rank * (MAX_RISK - MIN_RISK)
+
+
+def position_size_usd(entry_price, sl_price, risk_frac):
+    risk_usd = REFERENCE_CAPITAL_USD * risk_frac
     sl_dist = abs(entry_price - sl_price)
     qty = risk_usd / sl_dist if sl_dist > 0 else 0.0
     return risk_usd, qty, qty * entry_price
@@ -160,15 +101,15 @@ def position_size_usd(entry_price, sl_price):
 
 LOOKBACK_DAYS = 45
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-STATE_PATH = os.path.join(THIS_DIR, 'state', 'momentum_v3_state.json')
-TRADES_LOG_PATH = os.path.join(THIS_DIR, 'state', 'momentum_v3_trades_log.csv')
+STATE_PATH = os.path.join(THIS_DIR, 'state', 'momentum_v7_state.json')
+TRADES_LOG_PATH = os.path.join(THIS_DIR, 'state', 'momentum_v7_trades_log.csv')
 THRESHOLDS_PATH = os.path.join(THIS_DIR, 'thresholds.json')
 
 exchange = ccxt.binance({'enableRateLimit': True, 'options': {'defaultType': 'future'}})
 
 
 def portfolio_risk(open_legs, corr):
-    """Same correlation-aware portfolio-risk calc as v1/v2."""
+    """Same correlation-aware portfolio-risk calc as v1-v6."""
     if not open_legs:
         return 0.0
     signed = [(sym, 1 if d == 'long' else -1) for sym, d in open_legs]
@@ -219,9 +160,6 @@ def fetch_recent_1h(symbol):
 
 
 def drop_incomplete_last_1h_bar(df):
-    """Same as v1/v2: only ever compute RSI/ATR/volume-ratio against fully
-    CLOSED 1H bars. The still-forming hour is handled separately below via
-    1-minute bars, which is the whole point of v3."""
     if df.empty:
         return df
     now = pd.Timestamp.now('UTC').tz_localize(None)
@@ -247,19 +185,16 @@ def fetch_1m_since(symbol, since_ts):
     return df.drop_duplicates(subset='timestamp').sort_values('timestamp').reset_index(drop=True)
 
 
-def leg_pnl_pct(direction, entry_price, exit_price, sl_price):
+def leg_pnl_pct(direction, entry_price, exit_price, sl_price, risk_frac):
     if direction == 'long':
         pnl = (exit_price - entry_price) / entry_price - ROUND_TRIP_FRICTION
     else:
         pnl = (entry_price - exit_price) / entry_price - ROUND_TRIP_FRICTION
     sl_dist_pct = abs(entry_price - sl_price) / entry_price
-    return (pnl / sl_dist_pct) * BASE_RISK_PER_TRADE * 100 if sl_dist_pct > 0 else 0.0
+    return (pnl / sl_dist_pct) * risk_frac * 100 if sl_dist_pct > 0 else 0.0
 
 
 def compute_rsi_state(close):
-    """Same Wilder RSI as compute_rsi(), but also returns the avg_gain/
-    avg_loss state series needed to solve for the next bar's threshold
-    price."""
     delta = close.diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
@@ -269,10 +204,6 @@ def compute_rsi_state(close):
 
 
 def threshold_price(prev_close, avg_gain_prev, avg_loss_prev, target_rsi):
-    """Closing price that would make RSI(14) equal target_rsi exactly,
-    given the PRIOR closed bar's Wilder state. target_rsi=30 -> oversold
-    (short-entry threshold, price below prev_close). target_rsi=70 ->
-    overbought (long-entry threshold, price above prev_close)."""
     a = ALPHA
     if target_rsi == 30:
         ag_new = avg_gain_prev * (1 - a)
@@ -288,35 +219,24 @@ def threshold_price(prev_close, avg_gain_prev, avg_loss_prev, target_rsi):
 
 
 def detect_entry(symbol, df_closed, causal_cutoff):
-    """df_closed: recent fully-closed 1H bars for this symbol (already has
-    'atr'/'avg_gain'/'avg_loss' columns; RSI is derived from avg_gain/
-    avg_loss directly below, no separate 'rsi' column needed). Returns a
-    candidate dict if an anticipatory entry fires in the still-forming
-    hour, else None."""
-    if len(df_closed) < 21:  # need 20 bars for vol MA + 1 for RSI state
+    """Same as momentum_monitor_v3.py's detect_entry() (including the
+    2026-09-19 fresh-cross guard), plus capturing the last closed bar's
+    ADX(14) for risk sizing."""
+    if len(df_closed) < 21:
         return None
     last_close = df_closed['close'].iloc[-1]
     ag_prev = df_closed['avg_gain'].iloc[-1]
     al_prev = df_closed['avg_loss'].iloc[-1]
     atr_sizing = df_closed['atr'].iloc[-1]
+    adx_value = df_closed['adx'].iloc[-1]
     vol_ma20_causal = df_closed['volume'].iloc[-20:].mean()
     if np.isnan(ag_prev) or np.isnan(al_prev) or np.isnan(atr_sizing) or atr_sizing <= 0 or vol_ma20_causal <= 0:
         return None
-    # Matches compute_rsi()'s exact convention (avg_loss==0 -> RSI=50 via its fillna(50), not 100)
-    # so this guard agrees with find_triggers()'s own RSI on the same data.
     last_rsi = 50.0 if al_prev == 0 else 100 - 100 / (1 + ag_prev / al_prev)
 
-    # Only solve a threshold on the side RSI hasn't already crossed -- same "fresh cross only"
-    # guard find_triggers() applies on closed bars (rsi[i-1] on the correct side before rsi[i]
-    # crosses). Without this, once RSI drifts past 70 (or below 30) and STAYS there for several
-    # hours in a row -- exactly what happens during the strong sustained trends this strategy
-    # targets -- threshold_price() solves for a price on the WRONG side of last_close (e.g. a
-    # "long" threshold below the current price), which any candle then satisfies almost
-    # trivially. Found 2026-09-18 after a live NEAR entry recorded @3.5211 while the market was
-    # actually trading ~3.70-3.75 at that moment: last_rsi was already 76.96 (has been >70 for
-    # 5 straight hours), so thr_long solved to a price BELOW last_close instead of above it.
-    # Audit of the trade log at the time found 12/32 (37.5%) of v3's live entries so far were
-    # affected the same way.
+    # Fresh-cross guard -- see momentum_monitor_v3.py's detect_entry() for the full writeup
+    # (2026-09-19 bug fix: without this, a sustained overbought/oversold run solves a threshold
+    # on the WRONG side of last_close, which the next candle then satisfies almost trivially).
     thr_long = threshold_price(last_close, ag_prev, al_prev, 70) if last_rsi <= 70 else None
     thr_short = threshold_price(last_close, ag_prev, al_prev, 30) if last_rsi >= 30 else None
     if thr_long is None and thr_short is None:
@@ -339,7 +259,7 @@ def detect_entry(symbol, df_closed, causal_cutoff):
         if direction is not None and projected_ratio >= causal_cutoff:
             return {
                 'direction': direction, 'entry_price': float(entry_price),
-                'entry_time': bar.timestamp, 'atr': float(atr_sizing),
+                'entry_time': bar.timestamp, 'atr': float(atr_sizing), 'adx': float(adx_value),
                 'hour_start': hour_start, 'hour_end': hour_start + pd.Timedelta(hours=1),
                 'minutes_into_hour': i, 'projected_vol_ratio': float(projected_ratio),
             }
@@ -347,9 +267,8 @@ def detect_entry(symbol, df_closed, causal_cutoff):
 
 
 def process_position(pos, state, cutoffs):
-    """Walks 1-minute bars since last check: SL/TP first, then (once past
-    the entry-hour boundary) the volume-confirmation checkpoint, then keeps
-    polling minute-by-minute for the rest of the hold if confirmed."""
+    """Same as momentum_monitor_v3.py's process_position(), using this
+    position's own (ADX-derived, fixed-at-entry) risk_frac for P&L."""
     since_ts = pos.get('last_checked', pos['entry_time'])
     df = fetch_1m_since(pos['symbol'], since_ts)
     if df.empty:
@@ -385,7 +304,7 @@ def process_position(pos, state, cutoffs):
             confirmation_attempted_this_run = True
             confirmed = _check_volume_confirmed(pos, cutoffs)
             if confirmed is None:
-                pass  # the closing 1H bar for entry hour isn't published yet -- retry next run
+                pass
             elif not confirmed:
                 _close_position(pos, close, ts, 'VOL_UNCONFIRMED', state)
                 return pos, False
@@ -397,12 +316,6 @@ def process_position(pos, state, cutoffs):
 
 
 def _check_volume_confirmed(pos, cutoffs):
-    """Fetches recent closed 1H bars and checks whether the entry hour's
-    OWN final (including-current-bar) volume ratio clears the existing
-    non-causal cutoff -- the same convention v1/v2 already use, the correct
-    apples-to-apples check now that the hour has actually closed. Returns
-    True/False, or None if that hour's closed bar isn't in the exchange's
-    response yet (rare timing edge case -- retry next run)."""
     df = fetch_recent_1h(pos['symbol'])
     if df.empty:
         return None
@@ -418,17 +331,17 @@ def _check_volume_confirmed(pos, cutoffs):
 
 
 def _close_position(pos, exit_price, exit_time, reason, state):
-    pnl = leg_pnl_pct(pos['direction'], pos['entry_price'], exit_price, pos['sl_price'])
+    pnl = leg_pnl_pct(pos['direction'], pos['entry_price'], exit_price, pos['sl_price'], pos['risk_frac'])
     state['cumulative_pnl_pct'] += pnl
     state['n_closed'] += 1
     log_row = {**pos, 'exit_price': float(exit_price), 'exit_time': str(exit_time),
                'reason': reason, 'equity_pnl_pct': pnl}
     append_trade_log(log_row)
-    msg = (f"📕 【模擬盤出場-v3】{pos['symbol']} {pos['direction'].upper()}\n"
-           f"原因: {reason}  損益: {pnl:+.2f}%\n"
+    msg = (f"📕 【模擬盤出場-v7】{pos['symbol']} {pos['direction'].upper()}\n"
+           f"原因: {reason}  損益: {pnl:+.2f}%（本筆風險{pos['risk_frac']*100:.2f}%，依ADX動態調整）\n"
            f"進場: {fmt_taipei(pos['entry_time'])} @ {pos['entry_price']:.4f}\n"
            f"出場: {fmt_taipei(exit_time)} @ {exit_price:.4f}\n"
-           f"累計模擬損益(v3): {state['cumulative_pnl_pct']:+.2f}%（{state['n_closed']}筆已平倉）")
+           f"累計模擬損益(v7): {state['cumulative_pnl_pct']:+.2f}%（{state['n_closed']}筆已平倉）")
     print(msg)
     send_telegram_msg(msg)
 
@@ -437,6 +350,8 @@ def main():
     thresholds = load_thresholds()
     cutoffs = thresholds['vol_ratio_top_tercile_cutoff_by_symbol']
     causal_cutoffs = thresholds['vol_ratio_top_tercile_cutoff_causal_by_symbol']
+    adx_p1s = thresholds['adx_p1_within_tercile_by_symbol']
+    adx_p99s = thresholds['adx_p99_within_tercile_by_symbol']
     corr = thresholds['correlation_matrix']
     state = load_state()
 
@@ -462,6 +377,7 @@ def main():
         df['avg_gain'] = avg_gain
         df['avg_loss'] = avg_loss
         df['atr'] = compute_atr(df)
+        df['adx'] = compute_adx(df)
 
         cand = detect_entry(s, df, causal_cutoffs[s])
         if cand is None:
@@ -472,8 +388,9 @@ def main():
         open_legs = [(p['symbol'], p['direction']) for p in state['positions']]
         trial_risk = portfolio_risk(open_legs + [(s, cand['direction'])], corr)
         if n_open >= MAX_CONCURRENT_GROUPS or trial_risk > RISK_BUDGET:
-            msg = (f"⏭️ 【訊號略過(v3)，相關性風險預算已滿（{trial_risk:.2f} > {RISK_BUDGET}）】"
-                   f"{s} @ {fmt_taipei(cand['entry_time'])} 推估量能比={cand['projected_vol_ratio']:.2f}")
+            msg = (f"⏭️ 【訊號略過(v7)，相關性風險預算已滿（{trial_risk:.2f} > {RISK_BUDGET}）】"
+                   f"{s} @ {fmt_taipei(cand['entry_time'])} 推估量能比={cand['projected_vol_ratio']:.2f} "
+                   f"ADX={cand['adx']:.1f}")
             print(msg)
             send_telegram_msg(msg)
             continue
@@ -483,29 +400,31 @@ def main():
         entry_price = cand['entry_price']
         sl_price = entry_price - SL_ATR_MULT * atr if direction == 'long' else entry_price + SL_ATR_MULT * atr
         tp_price = entry_price + TP_ATR_MULT * atr if direction == 'long' else entry_price - TP_ATR_MULT * atr
+        risk_frac = adx_scaled_risk(cand['adx'], adx_p1s[s], adx_p99s[s])
 
         new_pos = {
             'symbol': s, 'direction': direction, 'entry_time': str(cand['entry_time']),
             'entry_price': entry_price, 'atr': atr, 'sl_price': float(sl_price), 'tp_price': float(tp_price),
             'hour_start': str(cand['hour_start']), 'hour_end': str(cand['hour_end']),
             'vol_confirmed': False, 'last_checked': str(cand['entry_time']),
+            'adx': cand['adx'], 'risk_frac': float(risk_frac),
         }
         state['positions'].append(new_pos)
         n_open += 1
-        risk_usd, qty, notional_usd = position_size_usd(entry_price, sl_price)
-        msg = (f"📗 【模擬盤進場-v3，提早進場】{s} {direction.upper()}\n"
+        risk_usd, qty, notional_usd = position_size_usd(entry_price, sl_price, risk_frac)
+        msg = (f"📗 【模擬盤進場-v7，提早進場+ADX連動風險】{s} {direction.upper()}\n"
                f"時間: {fmt_taipei(cand['entry_time'])}（小時第{cand['minutes_into_hour']}分鐘觸發）  進場價: {entry_price:.4f}\n"
                f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
-               f"風險金額: ${risk_usd:.2f}（模擬本金 ${REFERENCE_CAPITAL_USD:,} 的 {BASE_RISK_PER_TRADE*100:.0f}%）"
+               f"風險金額: ${risk_usd:.2f}（模擬本金 ${REFERENCE_CAPITAL_USD:,} 的 {risk_frac*100:.2f}%，依ADX動態調整於1~3%）"
                f"  建議部位: {qty:.4f}（名目 ${notional_usd:,.2f}）\n"
-               f"即時推估量能比: {cand['projected_vol_ratio']:.2f}（收盤後會再次確認真實量能）\n"
+               f"即時推估量能比: {cand['projected_vol_ratio']:.2f}（收盤後會再次確認真實量能）  ADX(14): {cand['adx']:.1f}\n"
                f"目前同時持倉組數: {n_open}  相關性風險: {trial_risk:.2f}/{RISK_BUDGET}")
         print(msg)
         send_telegram_msg(msg)
 
     save_state(state)
     print(f"\nRun complete. Open positions: {len(state['positions'])}. "
-          f"Cumulative paper P&L (v3): {state['cumulative_pnl_pct']:+.2f}% over {state['n_closed']} closed legs.")
+          f"Cumulative paper P&L (v7): {state['cumulative_pnl_pct']:+.2f}% over {state['n_closed']} closed legs.")
 
 
 if __name__ == "__main__":

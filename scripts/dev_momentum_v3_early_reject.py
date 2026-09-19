@@ -55,6 +55,16 @@ aggressive variant (reject as soon as the projection dips below the entry
 bar itself, no safety margin).
 
 Not part of the deployed app; safe to delete after use.
+
+=== CORRECTION / RE-RUN (2026-09-19) ===
+The first run of this script (2026-09-17) faithfully replicated
+momentum_monitor_v3.py's entry mechanism as it existed then, which lacked
+a guard against RSI having already crossed 70/30 in a prior hour -- see
+RESEARCH_FINDINGS.md's 2026-09-19 correction for the full writeup (found
+live in production, confirmed to affect a large fraction of both v3's live
+trades and the since-redone holdout run). Added the same "fresh cross
+only" guard here and re-ran to check whether the original NEUTRAL
+early-reject conclusion still holds on the corrected trigger population.
 """
 import os
 import sys
@@ -69,6 +79,7 @@ from dev_volume_confirm import (
     SYMBOLS, load_1h, compute_atr, compute_rsi, find_triggers,
     SL_ATR_MULT, TP_ATR_MULT, BASE_RISK_PER_TRADE, ROUND_TRIP_FRICTION, MAX_HOLD_BARS,
 )
+from dev_momentum_adx_trend_filter import compute_adx
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'backtest_cache')
 ALPHA = 1 / 14  # Wilder RSI(14) smoothing factor, same as momentum_monitor_v3.py
@@ -130,10 +141,11 @@ def leg_pnl_pct(direction, entry_price, exit_price, sl_price):
     return (pnl / sl_dist_pct) * BASE_RISK_PER_TRADE * 100 if sl_dist_pct > 0 else 0.0
 
 
-def simulate_symbol(symbol):
+def simulate_symbol(symbol, tp_mult=TP_ATR_MULT):
     df = load_1h(symbol)
     df['rsi'] = compute_rsi(df['close'])
     df['atr'] = compute_atr(df)
+    df['adx'] = compute_adx(df)
     ag, al = compute_rsi_state(df['close'])
     df['avg_gain'], df['avg_loss'] = ag, al
     df['vol_ma20'] = df['volume'].rolling(20).mean()
@@ -145,6 +157,7 @@ def simulate_symbol(symbol):
 
     dfm = load_1m_dev(symbol)
     ts1h = df['timestamp'].values
+    adx1h = df['adx'].values
     close1h, atr1h, agv, alv = df['close'].values, df['atr'].values, df['avg_gain'].values, df['avg_loss'].values
     vol_ma20_causal_1h, vol_ratio_1h = df['vol_ma20_causal'].values, df['vol_ratio'].values
 
@@ -172,16 +185,24 @@ def simulate_symbol(symbol):
             continue
         n_hours_checked += 1
 
-        thr_long = threshold_price(close1h[H - 1], agv[H - 1], alv[H - 1], 70)
-        thr_short = threshold_price(close1h[H - 1], agv[H - 1], alv[H - 1], 30)
+        # Fresh-cross guard (2026-09-19 fix, mirrors momentum_monitor_v3.py's detect_entry()):
+        # only solve/consider a threshold on the side RSI hasn't already crossed in a prior hour
+        # -- see RESEARCH_FINDINGS.md's 2026-09-19 correction for the full writeup (without this,
+        # a sustained overbought/oversold run solves a threshold on the WRONG side of last_close,
+        # which the next candle then satisfies almost trivially).
+        last_rsi = 50.0 if alv[H - 1] == 0 else 100 - 100 / (1 + agv[H - 1] / alv[H - 1])
+        thr_long = threshold_price(close1h[H - 1], agv[H - 1], alv[H - 1], 70) if last_rsi <= 70 else None
+        thr_short = threshold_price(close1h[H - 1], agv[H - 1], alv[H - 1], 30) if last_rsi >= 30 else None
+        if thr_long is None and thr_short is None:
+            continue
 
         vol_h = vol1m[i0:i1]
         high_h, low_h, close_h = high1m[i0:i1], low1m[i0:i1], close1m[i0:i1]
         cumvol = np.cumsum(vol_h)
         minutes = np.arange(1, len(vol_h) + 1)
         projected_ratio = cumvol * (60.0 / minutes) / vma
-        long_touch = high_h >= thr_long
-        short_touch = low_h <= thr_short
+        long_touch = (high_h >= thr_long) if thr_long is not None else np.zeros(len(vol_h), dtype=bool)
+        short_touch = (low_h <= thr_short) if thr_short is not None else np.zeros(len(vol_h), dtype=bool)
         vol_ok = projected_ratio >= cutoff_causal
         qualifying = np.where(long_touch, vol_ok, np.where(short_touch, vol_ok, False))
         if not qualifying.any():
@@ -192,7 +213,7 @@ def simulate_symbol(symbol):
         entry_idx = i0 + k_rel
         atr_sizing = atr1h[H - 1]
         sl_price = entry_price - SL_ATR_MULT * atr_sizing if direction == 'long' else entry_price + SL_ATR_MULT * atr_sizing
-        tp_price = entry_price + TP_ATR_MULT * atr_sizing if direction == 'long' else entry_price - TP_ATR_MULT * atr_sizing
+        tp_price = entry_price + tp_mult * atr_sizing if direction == 'long' else entry_price - tp_mult * atr_sizing
 
         # natural exit: SL/TP/TIMEOUT chase from entry, ignoring confirmation entirely
         end_idx = min(entry_idx + MAX_HOLD_MINUTES, n1m)
@@ -235,7 +256,7 @@ def simulate_symbol(symbol):
             sl_price=sl_price, tp_price=tp_price, hour_end=hour_end, hour_end_price=hour_end_price,
             confirmed=confirmed, nat_time=nat_time, nat_price=nat_price, nat_reason=nat_reason,
             chk_minutes=chk_minutes, chk_ratio=chk_ratio, chk_time=chk_time, chk_price=chk_price,
-            cutoff_causal=cutoff_causal,
+            cutoff_causal=cutoff_causal, adx_at_entry=adx1h[H - 1],
         ))
 
     return trades, dict(symbol=symbol, cutoff=cutoff, cutoff_causal=cutoff_causal, n_calib=n_calib,

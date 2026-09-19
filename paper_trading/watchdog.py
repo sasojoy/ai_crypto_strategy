@@ -1,5 +1,5 @@
 """
-Watchdog for the PaperTrading-* Windows Scheduled Tasks (momentum v1/v2/v3,
+Watchdog for the PaperTrading-* Windows Scheduled Tasks (momentum v1-v8,
 funding, threshold_report). Runs every 15 minutes. Read-only towards the
 monitors themselves (never opens/closes positions, never touches state.json
 trade data) -- it only inspects/repairs the Task Scheduler registrations.
@@ -19,6 +19,10 @@ Checks per task:
   4. Stuck 'Running' state well past its interval -- alerted only, never
      auto-killed (killing a script mid-write is a judgment call for a human,
      not something to automate).
+  5. A task in the 'Disabled' state (e.g. v2/v4/v5, paused 2026-09-19 in
+     favor of v7/v8) is skipped entirely -- no staleness alert, no
+     force-run. Its LastRunTime only gets older forever once disabled,
+     which would otherwise look identical to a silently-failed trigger.
 
 Only sends a Telegram message when it finds and/or heals something -- silent
 on a clean run, consistent with keeping notification volume low.
@@ -45,6 +49,8 @@ TASKS = {
     'PaperTrading-MomentumV4': 60,
     'PaperTrading-MomentumV5': 60,
     'PaperTrading-MomentumV6': 60,
+    'PaperTrading-MomentumV7': 5,
+    'PaperTrading-MomentumV8': 60,
     'PaperTrading-Funding': 60,
     'PaperTrading-ThresholdReport': 60,
 }
@@ -100,6 +106,9 @@ def main():
         if not info:
             reports.append(f"❓ {name}：排程工作不存在（可能被移除或改名）")
             continue
+
+        if info.get('State') == 'Disabled':
+            continue  # intentionally paused (e.g. v2/v4/v5 on 2026-09-19) -- not a failure
 
         healed = []
         if info.get('DisallowStartIfOnBatteries') or info.get('StopIfGoingOnBatteries'):
