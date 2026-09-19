@@ -2,13 +2,13 @@
 
 Standalone, read-only monitors built on the research-validated candidates (see `RESEARCH_FINDINGS.md`, `DEPLOYMENT_RISK_ASSESSMENT.md`). **None of them ever places a real order** — they only fetch public market data and simulate trades on paper (or, for `threshold_report.py`, just report status), logging results and sending Telegram notifications so you can decide whether to replicate a signal manually with real capital.
 
-**Nicknames (2026-09-19)**, so the version numbers don't have to be memorized — used in Telegram message titles and `threshold_report.py`'s holdings overview for the 3 currently-active monitors:
+**Nicknames (2026-09-19, revised same day after the first pass — 基準版/強化版/穩健版 — read as meaningless marketing labels rather than describing what each one actually does)**, so the version numbers don't have to be memorized — used in Telegram message titles and `threshold_report.py`'s holdings overview for the 3 currently-active monitors. Named after the ONE mechanical difference from v1 each one has, not a vague quality judgment:
 
-| Version | Nickname | What it is |
+| Version | Nickname | What it actually does |
 |---|---|---|
-| v1 | **基準版 (Baseline)** | The original locked spec, unchanged since the start — everything else is compared against it |
-| v7 | **強化版 (Enhanced)** | v3's early entry + v6's ADX-scaled risk combined — currently the most-recommended candidate |
-| v8 | **穩健版 (Steady)** | Tighter 1.5:1 reward:risk — higher win rate, steadier quarters, ~13% lower return |
+| v1 | **整點版** | Waits for the 1H bar to close, then enters — flat 2% risk per trade. The original locked spec, unchanged since the start; everything else is compared against it |
+| v7 | **提早進場+重倉版** | Enters the INSTANT price touches the trigger within the still-forming hour (doesn't wait for the bar to close) AND sizes each trade 1%-3% by how strong the trend (ADX) is — the stronger the trend, the bigger the position |
+| v8 | **快停利版** | Same timing as v1 (waits for the bar to close), but the take-profit target is closer (1.5:1 reward:risk instead of 2:1) — wins more often, each win is smaller |
 
 v2/v3/v4/v5/v6 are currently paused (see "Scheduling" below) and don't have nicknames assigned; if any is re-enabled, give it one at that point.
 
