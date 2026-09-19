@@ -337,7 +337,7 @@ def _close_position(pos, exit_price, exit_time, reason, state):
     log_row = {**pos, 'exit_price': float(exit_price), 'exit_time': str(exit_time),
                'reason': reason, 'equity_pnl_pct': pnl}
     append_trade_log(log_row)
-    msg = (f"📕 【模擬盤出場-v7】{pos['symbol']} {pos['direction'].upper()}\n"
+    msg = (f"📕 【模擬盤出場-v7強化版】{pos['symbol']} {pos['direction'].upper()}\n"
            f"原因: {reason}  損益: {pnl:+.2f}%（本筆風險{pos['risk_frac']*100:.2f}%，依ADX動態調整）\n"
            f"進場: {fmt_taipei(pos['entry_time'])} @ {pos['entry_price']:.4f}\n"
            f"出場: {fmt_taipei(exit_time)} @ {exit_price:.4f}\n"
@@ -388,7 +388,7 @@ def main():
         open_legs = [(p['symbol'], p['direction']) for p in state['positions']]
         trial_risk = portfolio_risk(open_legs + [(s, cand['direction'])], corr)
         if n_open >= MAX_CONCURRENT_GROUPS or trial_risk > RISK_BUDGET:
-            msg = (f"⏭️ 【訊號略過(v7)，相關性風險預算已滿（{trial_risk:.2f} > {RISK_BUDGET}）】"
+            msg = (f"⏭️ 【訊號略過-v7強化版，相關性風險預算已滿（{trial_risk:.2f} > {RISK_BUDGET}）】"
                    f"{s} @ {fmt_taipei(cand['entry_time'])} 推估量能比={cand['projected_vol_ratio']:.2f} "
                    f"ADX={cand['adx']:.1f}")
             print(msg)
@@ -412,7 +412,7 @@ def main():
         state['positions'].append(new_pos)
         n_open += 1
         risk_usd, qty, notional_usd = position_size_usd(entry_price, sl_price, risk_frac)
-        msg = (f"📗 【模擬盤進場-v7，提早進場+ADX連動風險】{s} {direction.upper()}\n"
+        msg = (f"📗 【模擬盤進場-v7強化版，提早進場+ADX連動風險】{s} {direction.upper()}\n"
                f"時間: {fmt_taipei(cand['entry_time'])}（小時第{cand['minutes_into_hour']}分鐘觸發）  進場價: {entry_price:.4f}\n"
                f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
                f"風險金額: ${risk_usd:.2f}（模擬本金 ${REFERENCE_CAPITAL_USD:,} 的 {risk_frac*100:.2f}%，依ADX動態調整於1~3%）"

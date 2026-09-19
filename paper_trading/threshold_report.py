@@ -42,7 +42,7 @@ def load_all_legs():
     try:
         with open(os.path.join(STATE_DIR, 'momentum_state.json')) as f:
             for p in json.load(f).get('open_positions', []):
-                add(p['symbol'], 'v1', None, p['direction'], p['entry_price'], p['sl_price'], p['tp_price'])
+                add(p['symbol'], 'v1基準版', None, p['direction'], p['entry_price'], p['sl_price'], p['tp_price'])
     except (FileNotFoundError, json.JSONDecodeError):
         pass
 
@@ -89,14 +89,14 @@ def load_all_legs():
     try:
         with open(os.path.join(STATE_DIR, 'momentum_v7_state.json')) as f:
             for p in json.load(f).get('positions', []):
-                add(p['symbol'], 'v7', None, p['direction'], p['entry_price'], p['sl_price'], p['tp_price'])
+                add(p['symbol'], 'v7強化版', None, p['direction'], p['entry_price'], p['sl_price'], p['tp_price'])
     except (FileNotFoundError, json.JSONDecodeError):
         pass
 
     try:
         with open(os.path.join(STATE_DIR, 'momentum_v8_state.json')) as f:
             for p in json.load(f).get('open_positions', []):
-                add(p['symbol'], 'v8', None, p['direction'], p['entry_price'], p['sl_price'], p['tp_price'])
+                add(p['symbol'], 'v8穩健版', None, p['direction'], p['entry_price'], p['sl_price'], p['tp_price'])
     except (FileNotFoundError, json.JSONDecodeError):
         pass
 

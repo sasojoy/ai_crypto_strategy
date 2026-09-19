@@ -217,7 +217,7 @@ def main():
             state['cumulative_pnl_pct'] += closed['equity_pnl_pct']
             state['n_closed'] += 1
             append_trade_log(closed)
-            msg = (f"📕 【模擬盤出場】{closed['symbol']} {closed['direction'].upper()}\n"
+            msg = (f"📕 【模擬盤出場-v1基準版】{closed['symbol']} {closed['direction'].upper()}\n"
                    f"原因: {closed['reason']}  損益: {closed['equity_pnl_pct']:+.2f}%（固定名目部位，2%風險/筆）\n"
                    f"進場: {fmt_taipei(pd.Timestamp(closed['entry_time']) + pd.Timedelta(hours=1))} @ {closed['entry_price']:.4f}\n"
                    f"出場: {fmt_taipei(closed['exit_time'])} @ {closed['exit_price']:.4f}\n"
@@ -265,7 +265,7 @@ def main():
             open_legs = [(p['symbol'], p['direction']) for p in state['open_positions']]
             trial_risk = portfolio_risk(open_legs + [(s, direction)], corr)
             if len(state['open_positions']) >= MAX_CONCURRENT or trial_risk > RISK_BUDGET:
-                msg = (f"⏭️ 【訊號略過，相關性風險預算已滿（{trial_risk:.2f} > {RISK_BUDGET}）】{s} "
+                msg = (f"⏭️ 【訊號略過-v1基準版，相關性風險預算已滿（{trial_risk:.2f} > {RISK_BUDGET}）】{s} "
                        f"{'oversold' if reversion_direction=='long' else 'overbought'} -> {direction.upper()} "
                        f"@ {fmt_taipei(ts)}  vol_ratio={df['vol_ratio'].iloc[i]:.2f}")
                 print(msg)
@@ -281,7 +281,7 @@ def main():
             # for SL/TP -- doesn't cause a look-ahead bug here since the scan explicitly starts at
             # entry_idx+1 (the NEXT bar), but it does mean the stored/displayed time is an hour
             # before entry_price (that bar's CLOSE) was actually known. Display the real moment.
-            msg = (f"📗 【模擬盤進場】{s} {direction.upper()}（{'超賣' if reversion_direction=='long' else '超買'}動能延續）\n"
+            msg = (f"📗 【模擬盤進場-v1基準版】{s} {direction.upper()}（{'超賣' if reversion_direction=='long' else '超買'}動能延續）\n"
                    f"時間: {fmt_taipei(ts + pd.Timedelta(hours=1))}  進場價: {entry_price:.4f}\n"
                    f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
                    f"風險金額: ${risk_usd:.2f}（模擬本金 ${REFERENCE_CAPITAL_USD:,} 的 {BASE_RISK_PER_TRADE*100:.0f}%）"
