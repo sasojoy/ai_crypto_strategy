@@ -53,6 +53,10 @@ TASKS = {
     'PaperTrading-MomentumV8': 60,
     'PaperTrading-Funding': 60,
     'PaperTrading-ThresholdReport': 60,
+    'LiveTrading-V7Testnet': 5,  # 2026-09-21: real (testnet) order-execution loop -- a stalled
+                                 # run here means open positions aren't being monitored for
+                                 # SL/TP reconciliation, so this one matters even more than the
+                                 # paper monitors do.
 }
 STALE_MULTIPLIER = 2.5
 TASK_HAS_NOT_RUN = 267011  # 0x41303, SCHED_S_TASK_HAS_NOT_RUN -- not an error

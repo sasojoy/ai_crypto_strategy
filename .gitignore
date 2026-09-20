@@ -19,3 +19,4 @@ ENV/
 .env
 data/backtest_cache/
 paper_trading/state/
+live_trading/state/
