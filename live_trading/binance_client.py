@@ -51,12 +51,45 @@ def set_leverage(exchange, symbol, leverage):
     exchange.set_leverage(leverage, market['id'])
 
 
-def open_position_with_sl_tp(exchange, symbol, direction, qty, sl_price, tp_price):
-    """Places a MARKET entry, then a STOP_MARKET and a TAKE_PROFIT_MARKET
-    order (explicit quantity + reduceOnly=True, not closePosition -- see
-    the CRITICAL FINDING note below for why that distinction doesn't
-    actually matter for where the order ends up, but matters a lot for
-    margin/quantity clarity).
+def place_market_entry(exchange, symbol, direction, qty):
+    """Just the entry leg -- split out from placing SL/TP (2026-09-21)
+    because a market order's own create_order response's 'average'/
+    'price' fields are ALWAYS null on Binance Futures (confirmed by
+    direct testing -- Binance's raw response always has `"price": "0.00"`
+    for a MARKET order, only ever set for LIMIT orders); the true fill
+    price only exists in the resulting trade record. A caller that needs
+    the real fill price (to size/place SL/TP relative to what actually
+    happened, not the pre-fill theoretical price) MUST call
+    get_actual_fill_price() afterwards -- see that function's docstring
+    for why this matters (found via a real ~2% entry-price discrepancy on
+    testnet, not a hypothetical)."""
+    entry_side = 'buy' if direction == 'long' else 'sell'
+    return exchange.create_order(symbol, 'market', entry_side, qty)
+
+
+def get_actual_fill_price(exchange, symbol, order_id):
+    """The REAL average fill price for order_id, read from the trade
+    record (fetch_my_trades), not the order response (see
+    place_market_entry()'s docstring -- market order responses never
+    carry it). Found necessary 2026-09-21 after a live SOL/USDT entry's
+    recorded price (from the theoretical signal price, the buggy old
+    fallback) came out ~2% away from the real fill (115.82) -- over a
+    5-minute poll interval, price can move enough for this to matter for
+    both the recorded entry price AND for where SL/TP actually end up
+    relative to the true cost basis."""
+    matching = [t for t in exchange.fetch_my_trades(symbol, limit=10) if str(t['order']) == str(order_id)]
+    if not matching:
+        return None
+    total_qty = sum(float(t['amount']) for t in matching)
+    return sum(float(t['price']) * float(t['amount']) for t in matching) / total_qty
+
+
+def place_sl_tp(exchange, symbol, direction, qty, sl_price, tp_price):
+    """Places a STOP_MARKET and a TAKE_PROFIT_MARKET order (explicit
+    quantity + reduceOnly=True, not closePosition -- see the CRITICAL
+    FINDING note below for why that distinction doesn't actually matter
+    for where the order ends up, but matters a lot for margin/quantity
+    clarity).
 
     CRITICAL FINDING (2026-09-20, discovered on testnet before ever
     wiring real signals to this): on this ccxt version (4.5.78), Binance
@@ -71,15 +104,11 @@ def open_position_with_sl_tp(exchange, symbol, direction, qty, sl_price, tp_pric
     cancel_all_conditional_orders() below for these, always -- never the
     plain fetch_open_orders()/cancel_all_orders() for SL/TP.
 
-    Returns the three order responses. The CALLER is responsible for
-    cancelling whichever of SL/TP did NOT fire once the position is
-    confirmed flat (Binance does not auto-cancel one when the other
-    fills, since they're two independent conditional orders)."""
-    entry_side = 'buy' if direction == 'long' else 'sell'
+    Returns {'sl': order, 'tp': order}. The CALLER is responsible for
+    cancelling whichever did NOT fire once the position is confirmed flat
+    (Binance does not auto-cancel one when the other fills, since they're
+    two independent conditional orders)."""
     exit_side = 'sell' if direction == 'long' else 'buy'
-
-    entry_order = exchange.create_order(symbol, 'market', entry_side, qty)
-
     sl_order = exchange.create_order(
         symbol, 'STOP_MARKET', exit_side, qty, None,
         params={'stopPrice': sl_price, 'reduceOnly': True},
@@ -88,7 +117,18 @@ def open_position_with_sl_tp(exchange, symbol, direction, qty, sl_price, tp_pric
         symbol, 'TAKE_PROFIT_MARKET', exit_side, qty, None,
         params={'stopPrice': tp_price, 'reduceOnly': True},
     )
-    return {'entry': entry_order, 'sl': sl_order, 'tp': tp_order}
+    return {'sl': sl_order, 'tp': tp_order}
+
+
+def open_position_with_sl_tp(exchange, symbol, direction, qty, sl_price, tp_price):
+    """Convenience wrapper combining place_market_entry() + place_sl_tp()
+    for callers that don't need the real fill price in between (e.g. the
+    manual smoke test, where sl_price/tp_price are already arbitrary).
+    live_v7.py does NOT use this -- it needs get_actual_fill_price() in
+    between, see that function's docstring."""
+    entry_order = place_market_entry(exchange, symbol, direction, qty)
+    sl_tp = place_sl_tp(exchange, symbol, direction, qty, sl_price, tp_price)
+    return {'entry': entry_order, 'sl': sl_tp['sl'], 'tp': sl_tp['tp']}
 
 
 def close_position_market(exchange, symbol, direction, qty):

@@ -55,8 +55,8 @@ from src.notifier import send_telegram_msg
 from src.tz import fmt_taipei
 
 from binance_client import (
-    make_exchange, set_leverage, open_position_with_sl_tp, close_position_market,
-    cancel_all_conditional_orders, get_open_position, TRADING_MODE,
+    make_exchange, set_leverage, place_market_entry, get_actual_fill_price, place_sl_tp,
+    close_position_market, cancel_all_conditional_orders, get_open_position, TRADING_MODE,
 )
 
 FIXED_LEVERAGE = 3          # conservative, fixed (not dynamically raised to fit bigger trades)
@@ -65,6 +65,7 @@ MODE_TAG = f"[{TRADING_MODE.upper()}-v7]"
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 STATE_PATH = os.path.join(THIS_DIR, 'state', 'live_v7_state.json')
+TRADES_LOG_PATH = os.path.join(THIS_DIR, 'state', 'live_v7_trades_log.csv')
 
 
 def load_state():
@@ -78,6 +79,16 @@ def save_state(state):
     os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
     with open(STATE_PATH, 'w') as f:
         json.dump(state, f, indent=2, default=str)
+
+
+def append_trade_log(row):
+    """Durable local record of every closed trade -- Telegram messages
+    and console output both scroll away/aren't queryable later, and this
+    is meant to be run unattended ('認真當實戰'), so a real audit trail
+    matters here even more than for the paper monitors (which already do
+    this). Same convention as paper_trading/*_trades_log.csv."""
+    os.makedirs(os.path.dirname(TRADES_LOG_PATH), exist_ok=True)
+    pd.DataFrame([row]).to_csv(TRADES_LOG_PATH, mode='a', header=not os.path.exists(TRADES_LOG_PATH), index=False)
 
 
 def infer_exit_price_and_reason(testnet_ex, pos):
@@ -121,6 +132,8 @@ def process_live_position(testnet_ex, pos, cutoffs):
         exit_price, reason = infer_exit_price_and_reason(testnet_ex, pos)
         cancel_all_conditional_orders(testnet_ex, pos['symbol'])  # clean up whichever of SL/TP didn't fire
         pnl = leg_pnl_pct(pos['direction'], pos['entry_price'], exit_price, pos['sl_price'], pos['risk_frac'])
+        append_trade_log({**pos, 'exit_price': exit_price, 'exit_time': str(pd.Timestamp.now('UTC').tz_localize(None)),
+                           'reason': reason, 'equity_pnl_pct': pnl})
         msg = (f"📕 {MODE_TAG} 出場 {pos['symbol']} {pos['direction'].upper()}\n"
                f"原因: {reason}（依成交價還原推斷）  損益: {pnl:+.2f}%（風險{pos['risk_frac']*100:.2f}%）\n"
                f"進場: {fmt_taipei(pos['entry_time'])} @ {pos['entry_price']:.4f}\n"
@@ -142,6 +155,8 @@ def process_live_position(testnet_ex, pos, cutoffs):
             ticker = testnet_ex.fetch_ticker(pos['symbol'])
             exit_price = ticker['last']
             pnl = leg_pnl_pct(pos['direction'], pos['entry_price'], exit_price, pos['sl_price'], pos['risk_frac'])
+            append_trade_log({**pos, 'exit_price': exit_price, 'exit_time': str(pd.Timestamp.now('UTC').tz_localize(None)),
+                               'reason': 'VOL_UNCONFIRMED', 'equity_pnl_pct': pnl})
             msg = (f"📕 {MODE_TAG} 出場 {pos['symbol']} {pos['direction'].upper()}\n"
                    f"原因: VOL_UNCONFIRMED  損益: {pnl:+.2f}%\n"
                    f"進場: {fmt_taipei(pos['entry_time'])} @ {pos['entry_price']:.4f}\n"
@@ -155,19 +170,28 @@ def process_live_position(testnet_ex, pos, cutoffs):
 
 
 def try_open_position(testnet_ex, symbol, cand, cutoffs_meta):
+    """NOTE on entry price: cand['entry_price'] is the THEORETICAL signal
+    price (where detect_entry() saw the trigger touched, up to ~5 minutes
+    ago given this script's poll interval) -- used below only to size the
+    trade and gate the margin check (an approximation, fine for a go/
+    no-go decision). The REAL fill price is fetched AFTER the market
+    order executes (get_actual_fill_price()) and is what SL/TP actually
+    get placed relative to, and what's recorded as entry_price -- found
+    necessary 2026-09-21 after a live SOL/USDT entry showed a ~2% gap
+    between the theoretical signal price and the real fill."""
     adx_p1, adx_p99 = cutoffs_meta['adx_p1s'][symbol], cutoffs_meta['adx_p99s'][symbol]
-    direction, entry_price, atr = cand['direction'], cand['entry_price'], cand['atr']
+    direction, theoretical_price, atr = cand['direction'], cand['entry_price'], cand['atr']
     adx_value = cand['adx']
     risk_frac = v7.adx_scaled_risk(adx_value, adx_p1, adx_p99)
 
-    sl_price = entry_price - v7.SL_ATR_MULT * atr if direction == 'long' else entry_price + v7.SL_ATR_MULT * atr
-    tp_price = entry_price + v7.TP_ATR_MULT * atr if direction == 'long' else entry_price - v7.TP_ATR_MULT * atr
+    theoretical_sl = (theoretical_price - v7.SL_ATR_MULT * atr if direction == 'long'
+                       else theoretical_price + v7.SL_ATR_MULT * atr)
 
     balance = testnet_ex.fetch_balance()['USDT']['total'] or 0.0
     risk_usd = balance * risk_frac
-    sl_dist_price = abs(entry_price - sl_price)
+    sl_dist_price = abs(theoretical_price - theoretical_sl)
     qty_raw = risk_usd / sl_dist_price if sl_dist_price > 0 else 0.0
-    notional = qty_raw * entry_price
+    notional = qty_raw * theoretical_price
     margin_needed = notional / FIXED_LEVERAGE
 
     if balance <= 0 or margin_needed > balance * MAX_MARGIN_FRACTION:
@@ -183,10 +207,19 @@ def try_open_position(testnet_ex, symbol, cand, cutoffs_meta):
         return None
 
     set_leverage(testnet_ex, symbol, FIXED_LEVERAGE)
-    result = open_position_with_sl_tp(testnet_ex, symbol, direction, qty,
-                                       testnet_ex.price_to_precision(symbol, sl_price),
-                                       testnet_ex.price_to_precision(symbol, tp_price))
-    real_entry_price = result['entry'].get('average') or result['entry'].get('price') or entry_price
+    entry_order = place_market_entry(testnet_ex, symbol, direction, qty)
+    real_entry_price = get_actual_fill_price(testnet_ex, symbol, entry_order['id'])
+    if real_entry_price is None:
+        # Trade record not queryable yet (rare timing edge case) -- fall back to the theoretical
+        # price rather than crash; SL/TP still gets ATTACHED (a position with none at all would
+        # be far worse), just potentially off by whatever the real slippage turns out to be.
+        real_entry_price = theoretical_price
+
+    sl_price = real_entry_price - v7.SL_ATR_MULT * atr if direction == 'long' else real_entry_price + v7.SL_ATR_MULT * atr
+    tp_price = real_entry_price + v7.TP_ATR_MULT * atr if direction == 'long' else real_entry_price - v7.TP_ATR_MULT * atr
+    sl_tp = place_sl_tp(testnet_ex, symbol, direction, qty,
+                         testnet_ex.price_to_precision(symbol, sl_price),
+                         testnet_ex.price_to_precision(symbol, tp_price))
 
     new_pos = {
         'symbol': symbol, 'direction': direction, 'entry_time': str(cand['entry_time']),
@@ -194,11 +227,13 @@ def try_open_position(testnet_ex, symbol, cand, cutoffs_meta):
         'risk_frac': float(risk_frac), 'sl_price': float(sl_price), 'tp_price': float(tp_price),
         'hour_start': str(cand['hour_start']), 'hour_end': str(cand['hour_end']),
         'vol_confirmed': False, 'qty': qty, 'leverage': FIXED_LEVERAGE,
-        'sl_order_id': result['sl']['id'], 'tp_order_id': result['tp']['id'],
+        'sl_order_id': sl_tp['sl']['id'], 'tp_order_id': sl_tp['tp']['id'],
     }
+    slippage_pct = (real_entry_price - theoretical_price) / theoretical_price * 100
     msg = (f"📗 {MODE_TAG} 進場 {symbol} {direction.upper()}\n"
-           f"時間: {fmt_taipei(cand['entry_time'])}  進場價: {real_entry_price:.4f}（下單量{qty}，槓桿{FIXED_LEVERAGE}x）\n"
-           f"停損: {sl_price:.4f}  停利: {tp_price:.4f}\n"
+           f"時間: {fmt_taipei(cand['entry_time'])}  訊號價: {theoretical_price:.4f}  "
+           f"實際成交: {real_entry_price:.4f}（滑價{slippage_pct:+.2f}%，下單量{qty}，槓桿{FIXED_LEVERAGE}x）\n"
+           f"停損: {sl_price:.4f}  停利: {tp_price:.4f}（依實際成交價重算）\n"
            f"風險: {risk_frac*100:.2f}%（帳戶權益${balance:.2f}）  ADX(14): {adx_value:.1f}\n"
            f"即時推估量能比: {cand['projected_vol_ratio']:.2f}（收盤後會再次確認真實量能）")
     print(msg)
