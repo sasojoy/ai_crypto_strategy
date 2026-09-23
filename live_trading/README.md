@@ -1,0 +1,45 @@
+# Live Trading (v7, TESTNET)
+
+**This places REAL orders** (on Binance Futures TESTNET so far -- fake money, real exchange mechanics) -- unlike `paper_trading/`, which only ever simulates. Built 2026-09-21 onward at the user's request, after v7 (`paper_trading/momentum_monitor_v7.py`) had accumulated enough dev-window + live-paper track record to be worth testing for real execution. Deliberately independent of the old, unused v600.x `PerpPredator`/`emergency_kill.py` code under `src/` -- no shared naming, no shared assumptions, per the user's explicit instruction.
+
+## Files
+
+- `binance_client.py` -- all order-placement primitives (connection, leverage, market entry, conditional SL/TP orders, market close, cancellation, position/order lookup). Everything dangerous goes through this one file.
+- `live_v7.py` -- the executor. Reuses `momentum_monitor_v7.py`'s validated `detect_entry()`/`adx_scaled_risk()`/`portfolio_risk()` **unchanged** (imported, not copy-pasted) so live signal logic can never silently drift from what was backtested/paper-traded. Everything downstream of signal detection (sizing, leverage, order placement, reconciliation, safety checks) is new.
+- `test_connection.py` -- STEP 1: read-only connectivity check (balance/positions/orders/ticker). No orders placed.
+- `test_order_mechanics.py` -- STEP 2: manual `open`/`close` smoke test of the order-placement primitives on one symbol, arbitrary SL/TP, used to validate the mechanics before ever wiring real signals to them.
+
+## Setup
+
+Needs `BINANCE_TESTNET_API_KEY` / `BINANCE_TESTNET_API_SECRET` in the project-root `.env` (get these from https://testnet.binancefuture.com/, GitHub OAuth login, then generate an API key there -- fund the account via the site's Faucet button, real trading needs a non-zero balance). `TRADING_MODE` in `binance_client.py` defaults to `'testnet'` and **refuses to run as anything else** -- mainnet credentials (`BINANCE_API_KEY`/`BINANCE_API_SECRET`) are not read anywhere yet; that's a deliberate, separate, not-yet-requested next step, not an oversight.
+
+## How it runs
+
+Scheduled task `LiveTrading-V7Testnet`, currently every 1 minute (shortened from an initial 5 minutes 2026-09-22 -- the user noticed a real ~2% entry-price gap between signal and fill, traced to the polling interval, see "Known issues" below). Runs via `pythonw.exe` (not `python.exe`) so it doesn't pop a console window on every trigger -- confirmed `sys.stdout` is `None` under `pythonw.exe` on this Python version but `print()` silently no-ops rather than raising, so nothing breaks, console output is just invisible (Telegram messages + `state/live_v7_trades_log.csv` are the durable record instead). Registered in `paper_trading/watchdog.py`'s monitored task list (interval synced to match) since a stalled run here means open positions stop being checked for SL/TP health -- worse than a stalled paper monitor.
+
+Signal detection reads **public** market data from real Binance (no credentials) via `momentum_monitor_v7.py`'s own `fetch_recent_1h`/`fetch_1m_since` -- so signals are driven by genuine market conditions, not testnet's thin/synthetic order book. Only the resulting orders go to testnet.
+
+## Safety mechanisms
+
+- **Fixed, conservative leverage** (`FIXED_LEVERAGE = 3`), not dynamically raised to fit an oversized trade.
+- **Two independent margin caps**, whichever is tighter wins: a trade's required margin must fit within both `MAX_MARGIN_FRACTION` (30%) of total account equity AND 95% of currently *free* (available) balance. The free-balance cap is what actually limits cumulative exposure as multiple positions stack up -- the equity-fraction cap alone let margin usage exceed the intended bound once more than one symbol had a position open (fixed 2026-09-23).
+- **Real SL/TP as exchange-side conditional orders** (`STOP_MARKET`/`TAKE_PROFIT_MARKET`, `reduceOnly` + explicit quantity), placed relative to the REAL fill price (not the pre-fill theoretical signal price -- see "Known issues"), so protection is active even if this script isn't running at the exact moment a price level is hit.
+- **`emergency_close_naked_position()`**: if SL/TP placement raises anything after a real entry already filled, immediately market-closes the just-opened position (retrying the close itself a few times) rather than let the position sit unprotected. Alerts loudly either way.
+- **`check_for_orphan_positions()`**: runs at the start of every `main()` -- flags (alert-only, never auto-manages) any real exchange position on a tracked symbol that local state doesn't know about, from ANY cause. Backstop for the above, and for anything else (manual intervention, a future bug) that could cause the same desync.
+- **`check_and_repair_conditional_orders()`**: runs on every still-open tracked position, every run -- looks up each SL/TP order's real status (`algoStatus`) and immediately re-arms (and loudly alerts on) any that aren't `'NEW'`. This is the fix for the real incident described below, not a hypothetical.
+
+## Known issues found and fixed (all discovered via direct testnet testing, not review alone)
+
+1. **Binance Futures `STOP_MARKET`/`TAKE_PROFIT_MARKET` orders route to a separate "conditional/algo order" system** (`POST/GET/DELETE /fapi/v1/algoOrder`) on this ccxt version (4.5.78) -- **regardless** of `closePosition` vs `reduceOnly`+quantity. Plain `fetch_order()`/`fetch_orders()`/`fetch_open_orders()`/`cancel_all_orders()` do not see these at all; an order can be genuinely live (`algoStatus: NEW`) while looking exactly like a silent failure. Fix: always pass `params={'conditional': True}` (ccxt's own documented param) for SL/TP monitoring/cancellation -- see `binance_client.fetch_open_conditional_orders()`/`cancel_all_conditional_orders()`.
+2. **Binance Futures MARKET order responses never populate `average`/`price`** (Binance's raw response always has `"price": "0.00"` for a MARKET order -- that field only means anything for LIMIT orders). The original code's fallback chain silently used the stale pre-fill theoretical signal price instead, which was off by ~2% on a live SOL/USDT entry (5-minute poll interval at the time gave price room to move between signal and execution). Fix: `binance_client.get_actual_fill_price()` reads the true average price from `fetch_my_trades()` after the entry fills; `live_v7.py` now places SL/TP relative to that, not the theoretical price. Also: **trade fills carry no `reduceOnly` field** -- exit reconciliation originally tried to identify the closing fill that way and always missed it; fixed to use `realizedPnl != 0` instead (exactly `0` for an opening/adding fill, non-zero for a closing one).
+3. **A real SL order TRIGGERED but was then REJECTED** by Binance's own `PERCENT_PRICE` price-band protection filter (2026-09-22/23) -- the live SOL/USDT position sat completely unprotected for ~9 hours because nothing checked conditional-order health separately from "is the position still open". This is what `check_and_repair_conditional_orders()` (above) now catches every run.
+4. Margin-cap and naked-position-on-crash gaps -- see "Safety mechanisms" above; both found by reasoning about failure modes before either happened for real, then verified by deliberately triggering each path against testnet (a synthetic orphan position, a simulated SL/TP-placement exception) before trusting them.
+
+## State files (`state/`, gitignored, same convention as `paper_trading/state/`)
+
+- `live_v7_state.json` -- current open position(s) (source of truth is always re-verified against the real exchange every run, this is bookkeeping/metadata only) + per-symbol cooldown timestamps.
+- `live_v7_trades_log.csv` -- append-only closed-trade history (added 2026-09-21 -- originally missing; Telegram messages and console output both scroll away and this runs unattended, so a durable local record matters more here than for the paper monitors, which already had one).
+
+## Not yet done (deliberately, in order)
+
+Mainnet credentials/support -> multi-day+ testnet soak observation before that conversation even starts -> then, separately, mainnet with minimal capital. Funding-rate cost is not yet tracked in the recorded P&L (price-only currently) -- real account equity will drift from what the trade log shows over multi-day holds. No circuit breaker (consecutive-loss or daily-drawdown pause) yet.

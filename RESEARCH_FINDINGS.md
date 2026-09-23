@@ -414,6 +414,28 @@ AUC = 0.5 代表模型的判斷力等同於丟硬幣；本報告所有 ML 測試
 
 ---
 
+## v7實盤（testnet）執行系統：從0到發現並修復一次真實裸倉事故（2026-09-21～23）
+
+使用者在v7/v8上線模擬盤後提出「想串接幣安API來跑實戰」。這是整個研究線第一次從「純模擬/回測」跨到「真的下單」，風險等級完全不同，過程分階段進行、每一步都先在**Binance Futures測試網**（假錢，真實交易所機制）驗證過才往下走，全程沒有動用過主網金鑰（`TRADING_MODE`寫死只接受`'testnet'`，主網支援是刻意保留、之後才要做的獨立決定）。發現repo裡還留有一套舊的v600.x「PerpPredator」ML模型實盤程式碼（`src/market_futures.py`、`src/emergency_kill.py`等），經使用者明確指示**完全不管、當死代碼忽略**，新系統`live_trading/`從零獨立建立，不共用命名或假設。
+
+**階段1～2（testnet連線 + 下單機制驗證）：** 申請測試網API金鑰、設定`.env`後，寫`test_connection.py`（唯讀）確認能連線抓帳戶/持倉/掛單。接著`test_order_mechanics.py`實測真實下單機制，過程中發現**這版ccxt把`STOP_MARKET`/`TAKE_PROFIT_MARKET`停損停利單全部路由到幣安一套獨立的「條件單／algo order」系統**（`/fapi/v1/algoOrder`），跟一般訂單分開——用一般的`fetch_open_orders()`/`fetch_order()`/`cancel_all_orders()`完全查不到、也取消不掉這些單子，即使它們其實已經成功建立且正常運作（`algoStatus: NEW`）。修好後（用ccxt自己支援的`conditional: True`參數）才確認整個「進場+掛真實停損停利+平倉+清乾淨」流程在testnet上跑得通。
+
+**階段3（接上v7真實訊號 → 正式部署）：** `live_trading/live_v7.py`直接重用`momentum_monitor_v7.py`已驗證過的訊號邏輯（`detect_entry`、ADX風險縮放、相關性風險預算，import不複製，避免悄悄跟論文驗證版本分岔），訊號偵測用**真實幣安公開行情**（不是testnet那種薄流動性數據），只有實際下單才送到testnet。用真實testnet帳戶餘額算部位大小、固定3倍槓桿、保證金超過帳戶30%上限就略過不下單。手動測試（合成訊號、真實NEAR進場）驗證整條路徑無誤後，註冊5分鐘一次的排程任務`LiveTrading-V7Testnet`正式開始跑。
+
+**發現並修好：進場價記錄錯誤（2026-09-21）。** 使用者主動要求「對一下本機跟幣安模擬盤是否一致」，查出本機記錄的SOL進場價（113.745）跟幣安真實成交價（115.82）差了快2%。根因：**Binance期貨市價單的回應本身永遠不會填`average`/`price`欄位**（只有LIMIT單才有意義），原本的retry邏輯會悄悄退回去用「訊號偵測當下的理論門檻價」，而該訊號可能是最多5分鐘前偵測到的——這段輪詢間隔內價格已經跑掉，滑價就是這樣來的。修法：市價進場後改用`fetch_my_trades()`查真實成交價，SL/TP改成依真實成交價重新計算才下單（不是依理論價）。已經在跑的SOL部位也直接在交易所上取消重掛修正，本機記錄同步更新。**這個發現也直接導出後續使用者問的「縮短排程間隔」討論——2026-09-22把輪詢間隔從5分鐘縮到1分鐘**，因為`detect_entry()`本身是回頭掃描K棒找「第一根滿足條件的分鐘」，輪詢頻率不影響「抓到哪個訊號」，只影響「多快反應」，純粹縮小滑價窗口、沒有副作用。同一天也把所有排程任務（模擬盤+實盤）從`python.exe`改成`pythonw.exe`，解決每次觸發都跳出cmd視窗的問題（實測確認`pythonw.exe`底下`sys.stdout`是`None`但`print()`不會噴例外，只是悄悄失效，不影響Telegram通知跟CSV紀錄這兩個持久記錄管道）。
+
+**使用者問「除了滑價還有什麼隱憂」，順著這個問題主動稽核程式碼，抓到三個安全缺口，其中一個不是假設情境、是真的已經發生（2026-09-23）：**
+
+1. **進場後掛停損停利單那一步如果失敗，部位會變成完全沒保護的裸倉**——市價進場成功後，如果掛SL/TP時出錯（網路、rate limit），整個function會直接崩潰，本機state完全沒有這筆的記錄，之後也不會有任何run去檢查它。修法：包一層try/except，失敗就立刻自動緊急平倉（最多重試3次），不管平倉成功與否都發最高等級Telegram警報。
+2. **保證金上限沒有考慮其他部位已經佔用的保證金**——原本只拿「這筆需要的保證金」跟「帳戶總權益的30%」比，如果同一輪有多個symbol觸發訊號，會各自拿同一個總權益數字獨立檢查，實際疊加起來可能遠超過原本想限制的曝險。修法：同時檢查「總權益30%」跟「目前可用餘額95%」，取較嚴格者，可用餘額會隨著已開部位自然縮小，正確反映累積曝險。
+3. **🔴 實測時直接發現的真實事故：SOL部位的停損單前一天19:17已經觸發，但被幣安自己的`PERCENT_PRICE`價格保護機制拒絕執行**（`rejectReason: "The counterparty's best price does not meet the PERCENT_PRICE filter limit"`），導致這筆部位**裸露曝險將近9小時**都沒被發現——因為原本的邏輯只檢查「部位是不是變成空的」，從沒檢查過「掛著的保護單本身是否還活著」。發現當下立刻手動重新掛回SL/TP、同步本機記錄，然後補上`check_and_repair_conditional_orders()`：**每次執行、對每一筆還開著的部位，都主動查詢SL/TP條件單的真實狀態（`algoStatus`），只要不是正常待觸發的`NEW`，立刻重新掛回並大聲警報**。
+
+另外加了`check_for_orphan_positions()`當最後一道防線：每次執行一開始，先掃過所有symbol，看交易所上有沒有「本機state完全不知道」的真實部位（不管原因是上面第1點的崩潰、手動介入、還是未來其他還沒發現的bug），只警報不自動接管。四個新機制都直接對testnet實測驗證過（合成孤兒部位、模擬掛單失敗、觸發保證金上限、確認裸倉修復後乾淨），不是只寫完就信任。
+
+**現況（2026-09-23）：** `live_trading/`獨立成一套完整系統（見`live_trading/README.md`），`LiveTrading-V7Testnet`每1分鐘跑一次、`pythonw.exe`背景執行、已加入`watchdog.py`監控名單。仍是testnet，主網支援、資金費率成本追蹤、連續虧損斷路器都還沒做，是刻意保留、之後才要決定的下一步，不是遺漏。
+
+---
+
 ## 附錄：本次研究產出的檔案（皆未加入 git 追蹤，可視需要保留或刪除）
 
 - 回測/驗證腳本：`scripts/oos_backtest.py`、`scripts/walk_forward_backtest.py`、`scripts/walk_forward_funding.py`、`scripts/dev_daily_trend.py`、`scripts/dev_pairs_meanreversion.py`、`scripts/dev_feature_ablation.py`、`scripts/dev_orderflow.py`
