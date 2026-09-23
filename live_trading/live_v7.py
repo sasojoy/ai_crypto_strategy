@@ -33,11 +33,50 @@ WHAT'S DIFFERENT FROM THE PAPER MONITOR:
 NOT YET DONE (deliberately, in order): mainnet credentials/support,
 running this on a schedule (still manually invoked while validating),
 multi-day soak testing on testnet before ANY mainnet conversation.
+
+TWO SAFETY GAPS FOUND AND FIXED 2026-09-23 (found by reasoning about
+failure modes, not yet observed in production -- fixed proactively before
+either could actually happen for real):
+  1. If the entry market order succeeded but placing SL/TP then raised
+     (network blip, rate limit, anything) the function used to just crash
+     -- leaving a REAL, live position on the exchange with NO stop-loss
+     and NO record of it in local state at all, so no future run would
+     even know to look at it. try_open_position() now wraps SL/TP
+     placement in try/except; on failure it immediately emergency-closes
+     the just-opened position (retrying the close itself a few times) and
+     sends the loudest possible alert either way -- worst case after this
+     fix is "missed one signal," never "silently naked position."
+  2. The margin cap only checked "does this ONE trade's margin exceed
+     MAX_MARGIN_FRACTION of TOTAL equity" -- with multiple symbols
+     signaling in the same run, each check passed independently against
+     the same total-equity number, so margin usage could stack across
+     positions well past what MAX_MARGIN_FRACTION was meant to bound.
+     Now also requires the trade's margin to fit within currently FREE
+     (available) balance, which shrinks as other positions commit margin
+     -- whichever of the two caps is tighter wins.
+  3. Added check_for_orphan_positions(): runs at the start of every main()
+     call, independent of the above -- flags (loudly, does not attempt to
+     auto-manage) any real exchange position on a tracked symbol that
+     local state doesn't know about, from ANY cause (not just #1 above --
+     also catches manual intervention, a future bug, etc.). Defense in
+     depth, not a replacement for #1.
+  4. FOURTH gap, found live (not hypothetical) while testing the above:
+     a real SOL/USDT SL order TRIGGERED but was then REJECTED by
+     Binance's own PERCENT_PRICE price-band protection filter -- the
+     position stayed open and went COMPLETELY UNPROTECTED for ~9 hours
+     because process_live_position() only ever checked "did the position
+     go flat", never "are the SL/TP conditional orders I placed still
+     alive". Added check_and_repair_conditional_orders(), called on every
+     still-open position every run: looks up each order's real
+     algoStatus and immediately re-arms (and loudly alerts on) any that
+     aren't 'NEW'. Manually restored protection on the live SOL position
+     before this fix landed.
 """
 import json
 import os
 import sys
 import math
+import time
 
 import numpy as np
 import pandas as pd
@@ -56,7 +95,8 @@ from src.tz import fmt_taipei
 
 from binance_client import (
     make_exchange, set_leverage, place_market_entry, get_actual_fill_price, place_sl_tp,
-    close_position_market, cancel_all_conditional_orders, get_open_position, TRADING_MODE,
+    close_position_market, cancel_all_conditional_orders, fetch_open_conditional_orders,
+    get_open_position, TRADING_MODE,
 )
 
 FIXED_LEVERAGE = 3          # conservative, fixed (not dynamically raised to fit bigger trades)
@@ -126,6 +166,96 @@ def leg_pnl_pct(direction, entry_price, exit_price, sl_price, risk_frac):
     return (pnl / sl_dist_pct) * risk_frac * 100 if sl_dist_pct > 0 else 0.0
 
 
+def check_for_orphan_positions(testnet_ex, state):
+    """Defense in depth (2026-09-23): flags ANY real exchange position on
+    a tracked symbol that local state doesn't know about -- from ANY
+    cause (a crash between entry and SL/TP, manual intervention on the
+    exchange UI, a future bug not yet found). Alert-only, does not try to
+    auto-manage it -- we don't know its intended risk_frac/atr/sl/tp, so
+    guessing would just be a different way to get this wrong. Runs at the
+    start of every main() regardless of whether try_open_position()'s own
+    emergency-close path also exists -- one is a fast first response,
+    this is the backstop that still catches it if that path itself
+    somehow doesn't run."""
+    known_symbols = {p['symbol'] for p in state['positions']}
+    for s in v7.SYMBOLS:
+        real_pos = get_open_position(testnet_ex, s)
+        if real_pos is not None and s not in known_symbols:
+            orders = fetch_open_conditional_orders(testnet_ex, s)
+            msg = (f"🚨🚨 {MODE_TAG} 偵測到孤兒部位！{s} {real_pos['side']} {real_pos['contracts']} "
+                   f"@ {real_pos['entryPrice']}，本機state完全沒有記錄這筆，"
+                   f"目前保護單(SL/TP)數量: {len(orders)}。這不是本程式自己開的追蹤部位（或本機記錄遺失），"
+                   f"請立刻確認並視情況手動處理，不會被自動接管。")
+            print(msg)
+            send_telegram_msg(msg)
+
+
+def emergency_close_naked_position(testnet_ex, symbol, direction, qty, entry_price, original_error):
+    """SL/TP placement failed after a real entry already filled -- close
+    the naked position immediately rather than leave it unprotected.
+    Retries the close itself a few times (the original failure might be a
+    transient network/rate-limit blip that also affects the close
+    attempt) before giving up and escalating to the loudest possible
+    alert."""
+    last_err = None
+    for attempt in range(3):
+        try:
+            cancel_all_conditional_orders(testnet_ex, symbol)  # clean up whichever of SL/TP DID get placed
+            close_position_market(testnet_ex, symbol, direction, qty)
+            return (f"⚠️ {MODE_TAG} SL/TP掛單失敗（{original_error}），已自動緊急平倉 "
+                    f"{symbol} {direction.upper()} qty={qty} @ ~{entry_price:.4f}，沒有曝險部位殘留。")
+        except Exception as close_err:
+            last_err = close_err
+            time.sleep(2)
+    return (f"🚨🚨🚨 {MODE_TAG} 緊急！{symbol} {direction.upper()} qty={qty} @ {entry_price:.4f} "
+            f"SL/TP掛單失敗（{original_error}），自動緊急平倉也失敗（{last_err}）——"
+            f"目前是完全沒有保護的裸倉，請立刻手動到交易所處理！")
+
+
+def check_and_repair_conditional_orders(testnet_ex, pos):
+    """Verifies pos['sl_order_id']/pos['tp_order_id'] are still live
+    (algoStatus == 'NEW') and re-arms any that aren't. Found necessary
+    2026-09-23: a live SOL/USDT SL order TRIGGERED but was then REJECTED
+    by Binance's PERCENT_PRICE price-band protection filter (a real
+    Binance safety mechanism that can reject a conditional order's
+    resulting market order if it would fill too far from the current
+    price) -- the position stayed open and completely unprotected for
+    ~9 hours afterward because nothing previously checked conditional-
+    order health separately from "is the position still open". This is
+    a real observed failure mode, not a hypothetical."""
+    changed = False
+    for leg, order_id_key, price_key in [('SL', 'sl_order_id', 'sl_price'), ('TP', 'tp_order_id', 'tp_price')]:
+        order_id = pos.get(order_id_key)
+        if not order_id:
+            continue
+        try:
+            info = testnet_ex.fapiPrivateGetAlgoOrder({'algoId': order_id})
+        except Exception:
+            continue  # transient lookup failure -- don't panic-repair on a query error, retry next run
+        status = info.get('algoStatus')
+        if status != 'NEW':
+            reject_reason = info.get('rejectReason', '').strip()
+            msg = (f"⚠️ {MODE_TAG} {pos['symbol']}的{leg}單狀態異常（{status}"
+                   f"{'：' + reject_reason if reject_reason else ''}），正在重新掛回保護單...")
+            print(msg)
+            send_telegram_msg(msg)
+            exit_side = 'sell' if pos['direction'] == 'long' else 'buy'
+            order_type = 'STOP_MARKET' if leg == 'SL' else 'TAKE_PROFIT_MARKET'
+            try:
+                new_order = testnet_ex.create_order(
+                    pos['symbol'], order_type, exit_side, pos['qty'], None,
+                    params={'stopPrice': testnet_ex.price_to_precision(pos['symbol'], pos[price_key]),
+                            'reduceOnly': True},
+                )
+                pos[order_id_key] = new_order['id']
+                changed = True
+                send_telegram_msg(f"✅ {MODE_TAG} {pos['symbol']}的{leg}單已重新掛回，id={new_order['id']}")
+            except Exception as e:
+                send_telegram_msg(f"🚨🚨 {MODE_TAG} {pos['symbol']}的{leg}單重新掛回也失敗（{e}）"
+                                   f"——請立刻手動確認這筆部位的保護狀態！")
+    return pos, changed
+
+
 def process_live_position(testnet_ex, pos, cutoffs):
     real_pos = get_open_position(testnet_ex, pos['symbol'])
     if real_pos is None:
@@ -141,6 +271,8 @@ def process_live_position(testnet_ex, pos, cutoffs):
         print(msg)
         send_telegram_msg(msg)
         return pos, False
+
+    pos, _ = check_and_repair_conditional_orders(testnet_ex, pos)
 
     hour_end = pd.Timestamp(pos['hour_end'])
     now = pd.Timestamp.now('UTC').tz_localize(None)
@@ -187,16 +319,28 @@ def try_open_position(testnet_ex, symbol, cand, cutoffs_meta):
     theoretical_sl = (theoretical_price - v7.SL_ATR_MULT * atr if direction == 'long'
                        else theoretical_price + v7.SL_ATR_MULT * atr)
 
-    balance = testnet_ex.fetch_balance()['USDT']['total'] or 0.0
+    balance_info = testnet_ex.fetch_balance()['USDT']
+    balance = balance_info['total'] or 0.0       # total equity -- what risk_frac is sized against
+    free_balance = balance_info['free'] or 0.0   # available margin -- shrinks as other positions commit margin
     risk_usd = balance * risk_frac
     sl_dist_price = abs(theoretical_price - theoretical_sl)
     qty_raw = risk_usd / sl_dist_price if sl_dist_price > 0 else 0.0
     notional = qty_raw * theoretical_price
     margin_needed = notional / FIXED_LEVERAGE
 
-    if balance <= 0 or margin_needed > balance * MAX_MARGIN_FRACTION:
-        msg = (f"⏭️ {MODE_TAG} 訊號略過（所需保證金 ${margin_needed:.2f} 超過帳戸權益的"
-               f"{MAX_MARGIN_FRACTION*100:.0f}%上限，帳戶餘額${balance:.2f}）"
+    # Two independent caps, whichever is tighter wins (2026-09-23 fix): the equity-fraction cap
+    # alone let margin usage stack past MAX_MARGIN_FRACTION once more than one symbol had an open
+    # position, since each check was against the SAME total-equity number in isolation. The
+    # free-balance cap (with a 5% buffer for fees/fluctuation) is what actually shrinks as
+    # existing positions commit margin, so it's the one that correctly limits cumulative exposure.
+    cap_by_equity = balance * MAX_MARGIN_FRACTION
+    cap_by_free = free_balance * 0.95
+    effective_cap = min(cap_by_equity, cap_by_free)
+
+    if balance <= 0 or margin_needed > effective_cap:
+        msg = (f"⏭️ {MODE_TAG} 訊號略過（所需保證金 ${margin_needed:.2f} 超過上限 ${effective_cap:.2f}，"
+               f"取「總權益{MAX_MARGIN_FRACTION*100:.0f}%=${cap_by_equity:.2f}」跟「可用餘額95%=${cap_by_free:.2f}」"
+               f"較嚴格者；總權益${balance:.2f}、可用${free_balance:.2f}）"
                f"{symbol} {direction.upper()} @ {fmt_taipei(cand['entry_time'])}")
         print(msg)
         send_telegram_msg(msg)
@@ -217,9 +361,18 @@ def try_open_position(testnet_ex, symbol, cand, cutoffs_meta):
 
     sl_price = real_entry_price - v7.SL_ATR_MULT * atr if direction == 'long' else real_entry_price + v7.SL_ATR_MULT * atr
     tp_price = real_entry_price + v7.TP_ATR_MULT * atr if direction == 'long' else real_entry_price - v7.TP_ATR_MULT * atr
-    sl_tp = place_sl_tp(testnet_ex, symbol, direction, qty,
-                         testnet_ex.price_to_precision(symbol, sl_price),
-                         testnet_ex.price_to_precision(symbol, tp_price))
+    try:
+        sl_tp = place_sl_tp(testnet_ex, symbol, direction, qty,
+                             testnet_ex.price_to_precision(symbol, sl_price),
+                             testnet_ex.price_to_precision(symbol, tp_price))
+    except Exception as e:
+        # Entry already filled for real -- a naked, unprotected position is far worse than a
+        # missed signal, so emergency-close rather than let this propagate and crash the run
+        # with no record of the position anywhere (2026-09-23 fix -- see module docstring).
+        msg = emergency_close_naked_position(testnet_ex, symbol, direction, qty, real_entry_price, e)
+        print(msg)
+        send_telegram_msg(msg)
+        return None
 
     new_pos = {
         'symbol': symbol, 'direction': direction, 'entry_time': str(cand['entry_time']),
@@ -250,6 +403,8 @@ def main():
                     'adx_p99s': thresholds['adx_p99_within_tercile_by_symbol']}
     corr = thresholds['correlation_matrix']
     state = load_state()
+
+    check_for_orphan_positions(testnet_ex, state)
 
     still_open = []
     for pos in state['positions']:
