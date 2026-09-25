@@ -67,7 +67,7 @@ def place_market_entry(exchange, symbol, direction, qty):
     return exchange.create_order(symbol, 'market', entry_side, qty)
 
 
-def get_actual_fill_price(exchange, symbol, order_id):
+def get_actual_fill_price(exchange, symbol, order_id, retries=4, retry_delay_sec=1.5):
     """The REAL average fill price for order_id, read from the trade
     record (fetch_my_trades), not the order response (see
     place_market_entry()'s docstring -- market order responses never
@@ -76,12 +76,27 @@ def get_actual_fill_price(exchange, symbol, order_id):
     fallback) came out ~2% away from the real fill (115.82) -- over a
     5-minute poll interval, price can move enough for this to matter for
     both the recorded entry price AND for where SL/TP actually end up
-    relative to the true cost basis."""
-    matching = [t for t in exchange.fetch_my_trades(symbol, limit=10) if str(t['order']) == str(order_id)]
-    if not matching:
-        return None
-    total_qty = sum(float(t['amount']) for t in matching)
-    return sum(float(t['price']) * float(t['amount']) for t in matching) / total_qty
+    relative to the true cost basis.
+
+    RETRIES (added 2026-09-25): the very first version of this function
+    queried fetch_my_trades() exactly once and returned None -- silently
+    triggering the caller's "theoretical price" fallback -- if the fill
+    wasn't indexed there yet. Confirmed this isn't actually rare: a real
+    AVAX/USDT entry hit it and rode with SL/TP computed off the stale
+    theoretical price (same class of bug as the SOL incident) until this
+    session's own health check caught the mismatch. A short retry loop
+    resolves the ordinary indexing-lag case; if it's still not there
+    after ~6 seconds, something is genuinely wrong and the caller's
+    fallback is the right call, not an infinite wait."""
+    import time
+    for attempt in range(retries):
+        matching = [t for t in exchange.fetch_my_trades(symbol, limit=10) if str(t['order']) == str(order_id)]
+        if matching:
+            total_qty = sum(float(t['amount']) for t in matching)
+            return sum(float(t['price']) * float(t['amount']) for t in matching) / total_qty
+        if attempt < retries - 1:
+            time.sleep(retry_delay_sec)
+    return None
 
 
 def place_sl_tp(exchange, symbol, direction, qty, sl_price, tp_price):

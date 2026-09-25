@@ -354,10 +354,17 @@ def try_open_position(testnet_ex, symbol, cand, cutoffs_meta):
     entry_order = place_market_entry(testnet_ex, symbol, direction, qty)
     real_entry_price = get_actual_fill_price(testnet_ex, symbol, entry_order['id'])
     if real_entry_price is None:
-        # Trade record not queryable yet (rare timing edge case) -- fall back to the theoretical
-        # price rather than crash; SL/TP still gets ATTACHED (a position with none at all would
-        # be far worse), just potentially off by whatever the real slippage turns out to be.
+        # get_actual_fill_price() already retried several times (2026-09-25) -- if it's STILL
+        # None here, something is genuinely off, not ordinary indexing lag. Fall back to the
+        # theoretical price rather than crash (SL/TP still gets ATTACHED -- a position with none
+        # at all would be far worse), but alert loudly: a real AVAX/USDT entry hit exactly this
+        # path before the retry existed and rode with SL/TP off a stale price until a manual
+        # health check caught it, so this is not a "safe to stay silent" edge case.
         real_entry_price = theoretical_price
+        warn_msg = (f"⚠️ {MODE_TAG} {symbol}查不到真實成交價（重試後仍失敗），"
+                    f"暫時使用訊號理論價{theoretical_price:.4f}計算SL/TP，請留意之後可能需要手動核對真實成交價並修正。")
+        print(warn_msg)
+        send_telegram_msg(warn_msg)
 
     sl_price = real_entry_price - v7.SL_ATR_MULT * atr if direction == 'long' else real_entry_price + v7.SL_ATR_MULT * atr
     tp_price = real_entry_price + v7.TP_ATR_MULT * atr if direction == 'long' else real_entry_price - v7.TP_ATR_MULT * atr
