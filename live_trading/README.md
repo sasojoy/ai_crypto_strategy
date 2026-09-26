@@ -30,14 +30,12 @@ Both processes now read-modify-write `state/live_v7_state.json` -- every `load_s
 
 Signal detection (both the WS daemon and, historically, `live_v7.py`'s own poll) reads **public** market data from real Binance (no credentials) -- so signals are driven by genuine market conditions, not testnet's thin/synthetic order book. Only the resulting orders go to testnet.
 
-**Registering the WS daemon's task requires an elevated PowerShell session** (a boot trigger can't be registered as a regular user, unlike every other task in this project):
+**Registering the WS daemon's task requires an elevated PowerShell session** (a boot trigger can't be registered as a regular user, unlike every other task in this project). Run `register_ws_task.ps1` (in this directory) from an elevated PowerShell -- a script FILE rather than pasted lines specifically to avoid `$repo`/`$pythonw` failing to survive a copy-paste across separate command invocations (hit exactly this 2026-09-26: pasted lines executed with those variables empty, producing `New-ScheduledTaskAction : ... argument is null or empty`):
 ```powershell
-$repo = "...\live_trading"; $pythonw = "...\venv\Scripts\pythonw.exe"
-$wsSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Seconds 0)
-$wsAction = New-ScheduledTaskAction -Execute $pythonw -Argument "ws_entry_detector.py" -WorkingDirectory $repo
-Register-ScheduledTask -TaskName "LiveTrading-WsEntryDetector" -Action $wsAction -Trigger (New-ScheduledTaskTrigger -AtStartup) -Settings $wsSettings
+cd C:\path\to\ai_crypto_strategy\live_trading
+.\register_ws_task.ps1
 ```
-`-ExecutionTimeLimit (New-TimeSpan -Seconds 0)` is not optional -- Task Scheduler's default 3-day execution limit would otherwise silently kill this long-running daemon after 3 days.
+It resolves `pythonw.exe`'s path itself (`$PSScriptRoot`-relative, no hardcoded machine path to get wrong) and prints what it registered. `-ExecutionTimeLimit (New-TimeSpan -Seconds 0)` inside it is not optional -- Task Scheduler's default 3-day execution limit would otherwise silently kill this long-running daemon after 3 days.
 
 ## Safety mechanisms
 
