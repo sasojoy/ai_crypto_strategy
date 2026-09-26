@@ -103,7 +103,18 @@ LOOKBACK_DAYS = 45
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 STATE_PATH = os.path.join(THIS_DIR, 'state', 'momentum_v7_state.json')
 TRADES_LOG_PATH = os.path.join(THIS_DIR, 'state', 'momentum_v7_trades_log.csv')
+DECISION_LOG_PATH = os.path.join(THIS_DIR, 'state', 'momentum_v7_decision_log.csv')
 THRESHOLDS_PATH = os.path.join(THIS_DIR, 'thresholds.json')
+
+# Mirrors live_trading/live_v7.py's DECISION_LOG_COLUMNS (2026-09-26, added after the user asked
+# why paper and live v7's trade counts over the same window didn't match, and pointed out neither
+# side had a durable record to explain why -- only the live side had a per-signal skip reason
+# logged anywhere. This paper-side log is simpler (no margin cap here -- that's a live-only
+# concept) but keeps the SAME column names/order so a future comparison can diff the two files
+# directly instead of reconciling two different shapes.
+DECISION_LOG_COLUMNS = ['logged_at', 'symbol', 'direction', 'signal_entry_time', 'entry_price',
+                        'adx', 'projected_vol_ratio', 'decision', 'detail',
+                        'trial_risk', 'risk_budget', 'n_open', 'max_concurrent']
 
 exchange = ccxt.binance({'enableRateLimit': True, 'options': {'defaultType': 'future'}})
 
@@ -140,6 +151,19 @@ def save_state(state):
 def append_trade_log(row):
     os.makedirs(os.path.dirname(TRADES_LOG_PATH), exist_ok=True)
     pd.DataFrame([row]).to_csv(TRADES_LOG_PATH, mode='a', header=not os.path.exists(TRADES_LOG_PATH), index=False)
+
+
+def log_decision(**fields):
+    """Durable record of every signal detect_entry() finds and whether it
+    was entered or skipped (portfolio risk budget) -- see
+    live_trading/live_v7.py's log_decision() for the full rationale. Only
+    called when detect_entry() actually returns a candidate, same
+    deliberate choice as the live side."""
+    row = {col: fields.get(col, '') for col in DECISION_LOG_COLUMNS}
+    row['logged_at'] = str(pd.Timestamp.now('UTC').tz_localize(None))
+    os.makedirs(os.path.dirname(DECISION_LOG_PATH), exist_ok=True)
+    pd.DataFrame([row], columns=DECISION_LOG_COLUMNS).to_csv(
+        DECISION_LOG_PATH, mode='a', header=not os.path.exists(DECISION_LOG_PATH), index=False)
 
 
 def fetch_recent_1h(symbol):
@@ -393,6 +417,13 @@ def main():
                    f"ADX={cand['adx']:.1f}")
             print(msg)
             send_telegram_msg(msg)
+            log_decision(symbol=s, direction=cand['direction'], signal_entry_time=cand['entry_time'],
+                         entry_price=cand['entry_price'], adx=cand['adx'],
+                         projected_vol_ratio=cand['projected_vol_ratio'], decision='SKIPPED_PORTFOLIO_RISK',
+                         detail=f"trial_risk {trial_risk:.2f} > budget {RISK_BUDGET} or "
+                                f"n_open {n_open} >= max {MAX_CONCURRENT_GROUPS}",
+                         trial_risk=trial_risk, risk_budget=RISK_BUDGET, n_open=n_open,
+                         max_concurrent=MAX_CONCURRENT_GROUPS)
             continue
 
         atr = cand['atr']
@@ -401,6 +432,9 @@ def main():
         sl_price = entry_price - SL_ATR_MULT * atr if direction == 'long' else entry_price + SL_ATR_MULT * atr
         tp_price = entry_price + TP_ATR_MULT * atr if direction == 'long' else entry_price - TP_ATR_MULT * atr
         risk_frac = adx_scaled_risk(cand['adx'], adx_p1s[s], adx_p99s[s])
+        log_decision(symbol=s, direction=direction, signal_entry_time=cand['entry_time'],
+                     entry_price=entry_price, adx=cand['adx'],
+                     projected_vol_ratio=cand['projected_vol_ratio'], decision='ENTERED', detail='')
 
         new_pos = {
             'symbol': s, 'direction': direction, 'entry_time': str(cand['entry_time']),

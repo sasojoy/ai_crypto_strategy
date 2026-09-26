@@ -472,6 +472,32 @@ AUC = 0.5 代表模型的判斷力等同於丟硬幣；本報告所有 ML 測試
 
 ---
 
+## paper vs live v7交易數量對不起來，補上決策紀錄（2026-09-26）
+
+使用者問「模擬盤v7」跟「幣安testnet實盤v7」在同一段時間窗（9/20~9/26）的交易數量對不起來是怎麼回事。逐筆比對兩邊的`entry_time`+`symbol`+`direction`後，找到兩個原因：
+
+**1. live比paper晚上線，漏掉最早3筆訊號**（SOL空、ETH空、NEAR多，9/20當天），單純是live那時候還沒開始跑，不是漏抓。
+
+**2. 一模一樣的訊號、進場時間完全相同，卻一個賺一個賠——具體案例：SOL多單 2026-09-21 08:38：**
+
+| | 進場價 | 結果 |
+|---|---|---|
+| paper | 113.745（理論訊號價，backtest假設零滑價）| TP，+3.4% |
+| live | 115.82（真實成交，滑價+1.8%）| SL，-1.96% |
+
+因為live的真實成交價比paper的理論價高1.8%，整組SL/TP價位跟著平移，SOL之後價格漲到足以碰到paper較低的停利點、但沒漲到live較高的停利點，接下來兩天回落、跌破live較高的停損點（該價位其實還在paper停利點之下）。**同一個訊號因為進場時機差幾分鐘、成交價差1.8%，結果從贏變輸**——這正是paper（理想化模擬）跟live（真實執行）本質上的落差，不是bug。
+
+使用者對此表示「這就不應該啊，而且事後也沒紀錄不知道原因，請慎重改善」。**問題不在於落差本身（那是真實世界必然存在的執行風險），而在於「發生的當下沒有留下任何永久紀錄可以事後回溯」**——原本只有會捲走的Telegram訊息跟`print()`（`pythonw.exe`底下console輸出還會直接消失），略過訊號的真正原因（保證金不足、風險預算已滿）完全沒有留痕。
+
+**修法：新增決策紀錄檔，記錄`detect_entry()`找到的每一個訊號後續發生了什麼**（進場、或略過及確切原因），不是只記錄成交的交易：
+- `live_trading/state/live_v7_decision_log.csv`：欄位涵蓋訊號本身（symbol/direction/理論價/ADX/量能比）、決策結果（`ENTERED`/`SKIPPED_MARGIN`/`SKIPPED_PORTFOLIO_RISK`/`EMERGENCY_CLOSED`）、以及對應的數字依據（保證金需求、有效上限、風險預算、真實成交價、滑價%）
+- `paper_trading/state/momentum_v7_decision_log.csv`：同樣欄位命名/順序（保證金相關欄位不適用故留空），刻意讓兩邊格式一致，之後可以直接對兩份檔案做diff
+- 只在`detect_entry()`真的找到候選訊號時才寫入，不是每次執行、每個幣種都寫——否則絕大多數是「什麼都沒發生」的空紀錄，反而會淹沒真正有意義的那幾筆
+
+四種決策類型都已經直接測試過寫入格式正確、欄位不會因為不同決策類型而錯位。**至於滑價本身能不能再縮小**：目前已經是1分鐘輪詢（README「已知問題」章節的下限），要再往下探需要改成即時WebSocket K棒推送、訊號一出現就立刻反應，不是輪詢架構能達到的，屬於另一個更大的工程決定，這次沒有做，只記錄現況。
+
+---
+
 ## 附錄：本次研究產出的檔案（皆未加入 git 追蹤，可視需要保留或刪除）
 
 - 回測/驗證腳本：`scripts/oos_backtest.py`、`scripts/walk_forward_backtest.py`、`scripts/walk_forward_funding.py`、`scripts/dev_daily_trend.py`、`scripts/dev_pairs_meanreversion.py`、`scripts/dev_feature_ablation.py`、`scripts/dev_orderflow.py`

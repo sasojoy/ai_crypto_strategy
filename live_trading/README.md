@@ -41,6 +41,7 @@ Signal detection reads **public** market data from real Binance (no credentials)
 
 - `live_v7_state.json` -- current open position(s) (source of truth is always re-verified against the real exchange every run, this is bookkeeping/metadata only) + per-symbol cooldown timestamps.
 - `live_v7_trades_log.csv` -- append-only closed-trade history (added 2026-09-21 -- originally missing; Telegram messages and console output both scroll away and this runs unattended, so a durable local record matters more here than for the paper monitors, which already had one).
+- `live_v7_decision_log.csv` -- append-only record of EVERY signal `detect_entry()` finds and what happened to it: entered (with real fill price/slippage/qty), or skipped and exactly why (`SKIPPED_MARGIN`, `SKIPPED_PORTFOLIO_RISK`, `EMERGENCY_CLOSED`). Added 2026-09-26 after the user pointed out that paper and live v7's trade counts over the same window didn't match with no way to reconstruct why -- Telegram/console were the only record and both scroll away. `paper_trading/state/momentum_v7_decision_log.csv` mirrors this on the paper side (same column names, minus the margin-related fields that don't apply there) so the two can be diffed directly. Only logs signals that actually fired (not every symbol/every run that found nothing) -- that would be nearly all rows and would drown out the ones that matter.
 
 ## Not yet done (deliberately, in order)
 

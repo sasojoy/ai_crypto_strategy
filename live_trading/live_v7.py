@@ -106,6 +106,18 @@ MODE_TAG = f"[{TRADING_MODE.upper()}-v7]"
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 STATE_PATH = os.path.join(THIS_DIR, 'state', 'live_v7_state.json')
 TRADES_LOG_PATH = os.path.join(THIS_DIR, 'state', 'live_v7_trades_log.csv')
+DECISION_LOG_PATH = os.path.join(THIS_DIR, 'state', 'live_v7_decision_log.csv')
+
+# Fixed column order for the decision log (2026-09-26) -- every row uses this SAME schema
+# (unused fields left blank) so appends never produce a ragged/misaligned CSV. Every field a
+# decision might plausibly need to explain itself is here up front, not added ad hoc later.
+DECISION_LOG_COLUMNS = [
+    'logged_at', 'symbol', 'direction', 'signal_entry_time', 'theoretical_price', 'adx',
+    'projected_vol_ratio', 'decision', 'detail',
+    'trial_risk', 'risk_budget', 'n_open', 'max_concurrent',
+    'risk_frac', 'balance_total', 'balance_free', 'margin_needed', 'effective_cap',
+    'real_entry_price', 'slippage_pct', 'qty',
+]
 
 
 def load_state():
@@ -129,6 +141,25 @@ def append_trade_log(row):
     this). Same convention as paper_trading/*_trades_log.csv."""
     os.makedirs(os.path.dirname(TRADES_LOG_PATH), exist_ok=True)
     pd.DataFrame([row]).to_csv(TRADES_LOG_PATH, mode='a', header=not os.path.exists(TRADES_LOG_PATH), index=False)
+
+
+def log_decision(**fields):
+    """Durable record of EVERY signal detect_entry() ever finds, and what
+    live_v7 did about it -- entered, or skipped and exactly why (margin
+    cap, portfolio risk budget, SL/TP placement failure). Added 2026-09-26
+    after the user asked why paper and live v7's trade counts over the
+    same window didn't match and pointed out there was no record anywhere
+    to reconstruct why -- Telegram messages and console output both
+    scroll away and aren't queryable later, same reasoning as
+    append_trade_log(). Only called when detect_entry() actually returns
+    a candidate -- not logging every symbol/every run that found nothing
+    is a deliberate choice, not an oversight, since that would be nearly
+    all rows and would drown out the ones that matter."""
+    row = {col: fields.get(col, '') for col in DECISION_LOG_COLUMNS}
+    row['logged_at'] = str(pd.Timestamp.now('UTC').tz_localize(None))
+    os.makedirs(os.path.dirname(DECISION_LOG_PATH), exist_ok=True)
+    pd.DataFrame([row], columns=DECISION_LOG_COLUMNS).to_csv(
+        DECISION_LOG_PATH, mode='a', header=not os.path.exists(DECISION_LOG_PATH), index=False)
 
 
 def infer_exit_price_and_reason(testnet_ex, pos):
@@ -344,12 +375,19 @@ def try_open_position(testnet_ex, symbol, cand, cutoffs_meta):
                f"{symbol} {direction.upper()} @ {fmt_taipei(cand['entry_time'])}")
         print(msg)
         send_telegram_msg(msg)
+        log_decision(symbol=symbol, direction=direction, signal_entry_time=cand['entry_time'],
+                     theoretical_price=theoretical_price, adx=adx_value,
+                     projected_vol_ratio=cand['projected_vol_ratio'], decision='SKIPPED_MARGIN',
+                     detail=f"margin_needed ${margin_needed:.2f} > effective_cap ${effective_cap:.2f}",
+                     risk_frac=risk_frac, balance_total=balance, balance_free=free_balance,
+                     margin_needed=margin_needed, effective_cap=effective_cap)
         return None
 
     qty = float(testnet_ex.amount_to_precision(symbol, qty_raw))
     if qty <= 0:
         return None
 
+    price_fallback_used = False
     set_leverage(testnet_ex, symbol, FIXED_LEVERAGE)
     entry_order = place_market_entry(testnet_ex, symbol, direction, qty)
     real_entry_price = get_actual_fill_price(testnet_ex, symbol, entry_order['id'])
@@ -361,6 +399,7 @@ def try_open_position(testnet_ex, symbol, cand, cutoffs_meta):
         # path before the retry existed and rode with SL/TP off a stale price until a manual
         # health check caught it, so this is not a "safe to stay silent" edge case.
         real_entry_price = theoretical_price
+        price_fallback_used = True
         warn_msg = (f"⚠️ {MODE_TAG} {symbol}查不到真實成交價（重試後仍失敗），"
                     f"暫時使用訊號理論價{theoretical_price:.4f}計算SL/TP，請留意之後可能需要手動核對真實成交價並修正。")
         print(warn_msg)
@@ -379,6 +418,12 @@ def try_open_position(testnet_ex, symbol, cand, cutoffs_meta):
         msg = emergency_close_naked_position(testnet_ex, symbol, direction, qty, real_entry_price, e)
         print(msg)
         send_telegram_msg(msg)
+        log_decision(symbol=symbol, direction=direction, signal_entry_time=cand['entry_time'],
+                     theoretical_price=theoretical_price, adx=adx_value,
+                     projected_vol_ratio=cand['projected_vol_ratio'], decision='EMERGENCY_CLOSED',
+                     detail=f"SL/TP placement raised: {e}", risk_frac=risk_frac,
+                     balance_total=balance, balance_free=free_balance,
+                     real_entry_price=real_entry_price, qty=qty)
         return None
 
     new_pos = {
@@ -398,6 +443,12 @@ def try_open_position(testnet_ex, symbol, cand, cutoffs_meta):
            f"即時推估量能比: {cand['projected_vol_ratio']:.2f}（收盤後會再次確認真實量能）")
     print(msg)
     send_telegram_msg(msg)
+    log_decision(symbol=symbol, direction=direction, signal_entry_time=cand['entry_time'],
+                 theoretical_price=theoretical_price, adx=adx_value,
+                 projected_vol_ratio=cand['projected_vol_ratio'], decision='ENTERED',
+                 detail='price_fallback_used' if price_fallback_used else '',
+                 risk_frac=risk_frac, balance_total=balance, balance_free=free_balance,
+                 real_entry_price=real_entry_price, slippage_pct=slippage_pct, qty=qty)
     return new_pos
 
 
@@ -453,6 +504,13 @@ def main():
                    f"{s} @ {fmt_taipei(cand['entry_time'])}")
             print(msg)
             send_telegram_msg(msg)
+            log_decision(symbol=s, direction=cand['direction'], signal_entry_time=cand['entry_time'],
+                         theoretical_price=cand['entry_price'], adx=cand['adx'],
+                         projected_vol_ratio=cand['projected_vol_ratio'], decision='SKIPPED_PORTFOLIO_RISK',
+                         detail=f"trial_risk {trial_risk:.2f} > budget {v7.RISK_BUDGET} or "
+                                f"n_open {n_open} >= max {v7.MAX_CONCURRENT_GROUPS}",
+                         trial_risk=trial_risk, risk_budget=v7.RISK_BUDGET, n_open=n_open,
+                         max_concurrent=v7.MAX_CONCURRENT_GROUPS)
             continue
 
         new_pos = try_open_position(testnet_ex, s, cand, cutoffs_meta)
