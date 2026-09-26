@@ -498,6 +498,22 @@ AUC = 0.5 代表模型的判斷力等同於丟硬幣；本報告所有 ML 測試
 
 ---
 
+## 即時WebSocket K棒推送，取代輪詢做訊號偵測（2026-09-26）
+
+延續上一節「要再往下探需要改成即時WebSocket」的紀錄，使用者提出「我們準備來做即時WebSocket K棒推送」。範圍上使用者明確限定「只換掉接入偵測學的部分（偵測新訊號），其他不動」——部位管理、SL/TP健康檢查、孤兒偵測都留在既有的`live_v7.py` 1分鐘輪詢模型，不動。
+
+**架構**：`momentum_monitor_v7.py`的`detect_entry()`拆成兩半——`compute_entry_thresholds()`（從最後收盤K棒算出這小時的多空觸發價跟量能基準，含2026-09-19 fresh-cross guard）+ `check_bar_for_signal()`（給定某根K棒的高低價跟目前累計量能，判斷有沒有同時滿足「碰到觸發價」跟「量能推估比達標」）。`detect_entry()`本身重組成呼叫這兩個函式，行為完全不變（已用即時市場資料跑過smoke test確認無異常）；新的`live_trading/ws_entry_detector.py`用`ccxt.pro`的`watch_ohlcv()`對5個幣種各開一條WebSocket（公開資料，不用金鑰，跟其他訊號偵測同樣的慣例），即時餵給`check_bar_for_signal()`，不用等分鐘K棒收盤。量能推估公式的`minutes_elapsed`從整數根數推廣成「已收盤分鐘數+目前這根分鐘的經過秒數/60」的小數值——在整分鐘邊界上會退化成跟輪詢版一模一樣的整數，中間的每個時間點則是合理的內插，不是另一套規則。
+
+`test_ws_connection.py`（唯讀，不下單）先確認`ccxt.pro`（已包在既有`ccxt`套件內，不用額外安裝）真的能即時推送：BTC/USDT 20秒內收到24次更新，約每0.83秒一次，遠快於原本的1分鐘輪詢。
+
+**跨程序狀態鎖**：`live_v7.py`（輪詢，做部位管理）跟`ws_entry_detector.py`（即時偵測新訊號）現在會同時讀寫`live_v7_state.json`，新增`state_lock.py`（Windows沒有`fcntl`，用排他建立鎖檔+逾時偷鎖處理程序死掉留下的殘留鎖）包住兩邊的`load_state()...save_state()`週期。開倉決策邏輯（保證金檢查、相關性風險預算、`try_open_position()`）從`live_v7.py`的`main()`內聯迴圈抽成`attempt_entry()`，兩邊呼叫同一份，避免各自維護一份邏輯久了會drift。
+
+**排程**：`ws_entry_detector.py`是常駐程序，用Task Scheduler的「開機啟動」觸發器（`LiveTrading-WsEntryDetector`）而非固定間隔——這點需要系統管理員權限的PowerShell才能註冊，跟本專案其他工作不同。每~20秒寫一次心跳檔，`watchdog.py`（既有的15分鐘巡檢）新增心跳過期3分鐘視為「掛掉或卡住」的判斷，用`Stop-`再`Start-ScheduledTask`強制重啟（先Stop是因為卡住但程序還活著的情況，`-MultipleInstances IgnoreNew`會讓單純的Start沒有效果）。這正是使用者要求的「簡單版」：仍用Task Scheduler，開機啟動+獨立看守程式定期檢查重啟，沒有另外引入新的程序管理框架。
+
+**判定**：純工程延遲優化，不改變訊號邏輯本身（已驗證`detect_entry()`重構前後行為一致），不需要走holdout額度。截至記錄時，WS常駐工作因需要系統管理員權限尚待使用者手動註冊，其餘部分（重構、daemon本體、鎖、watchdog擴充）皆已建置並跑過testnet smoke test。
+
+---
+
 ## 附錄：本次研究產出的檔案（皆未加入 git 追蹤，可視需要保留或刪除）
 
 - 回測/驗證腳本：`scripts/oos_backtest.py`、`scripts/walk_forward_backtest.py`、`scripts/walk_forward_funding.py`、`scripts/dev_daily_trend.py`、`scripts/dev_pairs_meanreversion.py`、`scripts/dev_feature_ablation.py`、`scripts/dev_orderflow.py`

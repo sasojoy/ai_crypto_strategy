@@ -24,6 +24,19 @@ Checks per task:
      force-run. Its LastRunTime only gets older forever once disabled,
      which would otherwise look identical to a silently-failed trigger.
 
+ALSO checks LiveTrading-WsEntryDetector (2026-09-26), the always-on
+WebSocket real-time signal daemon (live_trading/ws_entry_detector.py) --
+per the user's explicit choice ("簡單版：仍然用Task Scheduler，但設成開機就
+啟動+別的看守程式定期檢查活著沒、死掉就重啟"), it's registered with an
+"At startup" trigger rather than an interval, so the staleness logic above
+(which compares LastRunTime against an expected interval) doesn't apply to
+it. Instead its liveness is judged by a heartbeat FILE the daemon writes
+every ~20s (state/ws_detector_heartbeat.txt) -- if that file is missing or
+older than WS_HEARTBEAT_STALE_MINUTES, the daemon is presumed dead or
+hung and is forcibly stopped-then-started (Stop- before Start- specifically
+to also catch "hung but the process is technically still alive", which
+`-MultipleInstances IgnoreNew` would otherwise block a plain restart on).
+
 Only sends a Telegram message when it finds and/or heals something -- silent
 on a clean run, consistent with keeping notification volume low.
 """
@@ -31,7 +44,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -39,6 +52,11 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.notifier import send_telegram_msg
+
+WS_DETECTOR_TASK = 'LiveTrading-WsEntryDetector'
+WS_HEARTBEAT_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                  'live_trading', 'state', 'ws_detector_heartbeat.txt')
+WS_HEARTBEAT_STALE_MINUTES = 3
 
 # task name -> expected interval in minutes (matches the Register-ScheduledTask
 # calls in README.md's Scheduling section)
@@ -102,6 +120,40 @@ def force_run(name):
     run_ps(f"Start-ScheduledTask -TaskName '{name}'")
 
 
+def restart_task(name):
+    # Stop first (not just Start) so this also recovers a HUNG-but-still-alive process --
+    # `-MultipleInstances IgnoreNew` on the task's own settings would otherwise silently no-op
+    # a plain Start-ScheduledTask against a process Task Scheduler still considers "Running".
+    run_ps(f"Stop-ScheduledTask -TaskName '{name}' -ErrorAction SilentlyContinue; "
+           f"Start-Sleep -Seconds 1; Start-ScheduledTask -TaskName '{name}'")
+
+
+def check_ws_detector():
+    """live_trading/ws_entry_detector.py runs on an "At startup" trigger,
+    not an interval, so it needs a different liveness check than every
+    other task here -- see this module's docstring."""
+    info = get_task_info(WS_DETECTOR_TASK)
+    if not info:
+        return [f"❓ {WS_DETECTOR_TASK}：排程工作不存在（可能被移除或改名）"]
+    if info.get('State') == 'Disabled':
+        return []
+
+    age_min = None
+    if os.path.exists(WS_HEARTBEAT_PATH):
+        try:
+            with open(WS_HEARTBEAT_PATH) as f:
+                last_beat = datetime.fromisoformat(f.read().strip())
+            age_min = (datetime.utcnow() - last_beat).total_seconds() / 60.0
+        except (ValueError, OSError):
+            age_min = None  # unparseable/unreadable -- treat the same as "no heartbeat yet"
+
+    if age_min is None or age_min > WS_HEARTBEAT_STALE_MINUTES:
+        restart_task(WS_DETECTOR_TASK)
+        detail = "從未寫過心跳檔" if age_min is None else f"心跳已超過 {age_min:.1f} 分鐘沒更新"
+        return [f"🔧 {WS_DETECTOR_TASK}：{detail}（懷疑已死掉或卡住），已強制重啟"]
+    return []
+
+
 def main():
     now = datetime.now().astimezone()
     reports = []
@@ -154,6 +206,8 @@ def main():
 
         if healed:
             reports.append(f"\U0001F527 {name}：" + "；".join(healed))
+
+    reports.extend(check_ws_detector())
 
     if not reports:
         return  # everything healthy, stay silent

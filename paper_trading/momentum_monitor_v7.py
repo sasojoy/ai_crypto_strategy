@@ -242,10 +242,19 @@ def threshold_price(prev_close, avg_gain_prev, avg_loss_prev, target_rsi):
     raise ValueError(target_rsi)
 
 
-def detect_entry(symbol, df_closed, causal_cutoff):
-    """Same as momentum_monitor_v3.py's detect_entry() (including the
-    2026-09-19 fresh-cross guard), plus capturing the last closed bar's
-    ADX(14) for risk sizing."""
+def compute_entry_thresholds(symbol, df_closed):
+    """The "per-hour setup" half of anticipatory-entry detection: from the
+    LAST CLOSED bar's state, solves the long/short threshold prices (with
+    the 2026-09-19 fresh-cross guard) and the causal volume MA needed to
+    evaluate the still-forming hour. Returns None if there's nothing
+    tradeable this hour (not enough history, or RSI already crossed both
+    ways -- can't happen, but crossed the one side that matters).
+
+    Split out from detect_entry() 2026-09-26 so BOTH the REST-polling path
+    (detect_entry() below) and a real-time WebSocket-fed path
+    (live_trading/ws_entry_detector.py) can share this identical logic
+    instead of one being copy-pasted and risking drift -- only the "how do
+    I get 1-minute bar data" half differs between the two."""
     if len(df_closed) < 21:
         return None
     last_close = df_closed['close'].iloc[-1]
@@ -267,26 +276,59 @@ def detect_entry(symbol, df_closed, causal_cutoff):
         return None
 
     hour_start = df_closed['timestamp'].iloc[-1] + pd.Timedelta(hours=1)
-    dfm = fetch_1m_since(symbol, hour_start)
+    return {
+        'thr_long': thr_long, 'thr_short': thr_short, 'vol_ma20_causal': vol_ma20_causal,
+        'atr': float(atr_sizing), 'adx': float(adx_value),
+        'hour_start': hour_start, 'hour_end': hour_start + pd.Timedelta(hours=1),
+    }
+
+
+def check_bar_for_signal(setup, bar_high, bar_low, cum_vol, minutes_elapsed, causal_cutoff):
+    """The "does THIS bar/moment satisfy touch+volume" half -- takes
+    `setup` (compute_entry_thresholds()'s return), a single bar's high/low
+    (or the still-forming current bar's high/low so far, for the
+    real-time path), the volume accumulated so far THIS HOUR, and how many
+    minutes (can be fractional, for the real-time path) have elapsed in
+    the hour. Returns a candidate dict (minus symbol/entry_time, which the
+    caller fills in from its own context) or None."""
+    projected_ratio = (cum_vol * (60.0 / minutes_elapsed)) / setup['vol_ma20_causal'] if minutes_elapsed > 0 else 0.0
+    direction, entry_price = None, None
+    if setup['thr_long'] is not None and bar_high >= setup['thr_long']:
+        direction, entry_price = 'long', setup['thr_long']
+    elif setup['thr_short'] is not None and bar_low <= setup['thr_short']:
+        direction, entry_price = 'short', setup['thr_short']
+    if direction is not None and projected_ratio >= causal_cutoff:
+        return {
+            'direction': direction, 'entry_price': float(entry_price),
+            'atr': setup['atr'], 'adx': setup['adx'],
+            'hour_start': setup['hour_start'], 'hour_end': setup['hour_end'],
+            'minutes_into_hour': minutes_elapsed, 'projected_vol_ratio': float(projected_ratio),
+        }
+    return None
+
+
+def detect_entry(symbol, df_closed, causal_cutoff):
+    """Same as momentum_monitor_v3.py's detect_entry() (including the
+    2026-09-19 fresh-cross guard), plus capturing the last closed bar's
+    ADX(14) for risk sizing. Now built from compute_entry_thresholds() +
+    check_bar_for_signal() (2026-09-26 refactor) -- behavior is
+    UNCHANGED, only reorganized so the real-time WebSocket path can reuse
+    the same core logic instead of a separate, potentially-drifting copy."""
+    setup = compute_entry_thresholds(symbol, df_closed)
+    if setup is None:
+        return None
+
+    dfm = fetch_1m_since(symbol, setup['hour_start'])
     if dfm.empty:
         return None
 
     cum_vol = 0.0
     for i, bar in enumerate(dfm.itertuples(), start=1):
         cum_vol += bar.volume
-        projected_ratio = (cum_vol * (60.0 / i)) / vol_ma20_causal
-        direction, entry_price = None, None
-        if thr_long is not None and bar.high >= thr_long:
-            direction, entry_price = 'long', thr_long
-        elif thr_short is not None and bar.low <= thr_short:
-            direction, entry_price = 'short', thr_short
-        if direction is not None and projected_ratio >= causal_cutoff:
-            return {
-                'direction': direction, 'entry_price': float(entry_price),
-                'entry_time': bar.timestamp, 'atr': float(atr_sizing), 'adx': float(adx_value),
-                'hour_start': hour_start, 'hour_end': hour_start + pd.Timedelta(hours=1),
-                'minutes_into_hour': i, 'projected_vol_ratio': float(projected_ratio),
-            }
+        cand = check_bar_for_signal(setup, bar.high, bar.low, cum_vol, i, causal_cutoff)
+        if cand is not None:
+            cand['entry_time'] = bar.timestamp
+            return cand
     return None
 
 

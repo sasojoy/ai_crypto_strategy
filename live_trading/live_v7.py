@@ -71,6 +71,28 @@ either could actually happen for real):
      algoStatus and immediately re-arms (and loudly alerts on) any that
      aren't 'NEW'. Manually restored protection on the live SOL position
      before this fix landed.
+
+SPLIT WITH ws_entry_detector.py (2026-09-26): per the user's explicit
+scoping ("只換掉接入偵測學的部分（偵測新訊號），其他不動" -- only replace the
+signal-DETECTION part, leave everything else alone), NEW-signal detection
+moved to ws_entry_detector.py, a separate long-running daemon fed by a
+real-time Binance WebSocket kline stream (ccxt.pro) instead of this
+script's 1-minute REST poll -- cuts signal-to-execution latency from up to
+~1 minute down to roughly the streaming update interval (sub-second).
+THIS script keeps everything else: orphan detection, SL/TP health
+checks/repair, and position-close reconciliation, still on the original
+1-minute polling model (none of that needs faster-than-1-minute reaction,
+and reusing the proven polling logic for it was the user's explicit
+choice). attempt_entry() below is the exact "should I take this signal,
+and if so open it" logic factored out of what used to be inline in
+main()'s per-symbol loop -- ws_entry_detector.py calls it directly so
+there is exactly one copy of the entry-decision logic, not two that could
+drift apart.
+
+Because two processes now read-modify-write live_v7_state.json
+concurrently (this script every minute; the WS daemon the instant a
+real-time signal fires), every load_state()...save_state() cycle in
+both files is wrapped in state_lock.py's cross-process file lock.
 """
 import json
 import os
@@ -98,6 +120,7 @@ from binance_client import (
     close_position_market, cancel_all_conditional_orders, fetch_open_conditional_orders,
     get_open_position, TRADING_MODE,
 )
+from state_lock import state_lock
 
 FIXED_LEVERAGE = 3          # conservative, fixed (not dynamically raised to fit bigger trades)
 MAX_MARGIN_FRACTION = 0.30  # never commit more than 30% of account equity as margin to one trade
@@ -452,73 +475,87 @@ def try_open_position(testnet_ex, symbol, cand, cutoffs_meta):
     return new_pos
 
 
-def main():
-    testnet_ex = make_exchange()
+def load_thresholds_meta():
+    """Bundles the pieces attempt_entry() needs out of v7.load_thresholds()
+    -- shared by main() and ws_entry_detector.py so both build the exact
+    same shape from the exact same source file."""
     thresholds = v7.load_thresholds()
-    cutoffs = thresholds['vol_ratio_top_tercile_cutoff_by_symbol']
-    causal_cutoffs = thresholds['vol_ratio_top_tercile_cutoff_causal_by_symbol']
-    cutoffs_meta = {'adx_p1s': thresholds['adx_p1_within_tercile_by_symbol'],
-                    'adx_p99s': thresholds['adx_p99_within_tercile_by_symbol']}
-    corr = thresholds['correlation_matrix']
-    state = load_state()
+    return {
+        'cutoffs': thresholds['vol_ratio_top_tercile_cutoff_by_symbol'],
+        'causal_cutoffs': thresholds['vol_ratio_top_tercile_cutoff_causal_by_symbol'],
+        'cutoffs_meta': {'adx_p1s': thresholds['adx_p1_within_tercile_by_symbol'],
+                          'adx_p99s': thresholds['adx_p99_within_tercile_by_symbol']},
+        'corr': thresholds['correlation_matrix'],
+    }
 
-    check_for_orphan_positions(testnet_ex, state)
 
-    still_open = []
-    for pos in state['positions']:
-        pos, is_open = process_live_position(testnet_ex, pos, cutoffs)
-        if is_open:
-            still_open.append(pos)
-    state['positions'] = still_open
-    n_open = len(state['positions'])
+def attempt_entry(testnet_ex, state, s, cand, th):
+    """Given a candidate signal already found by v7.detect_entry() (from
+    EITHER this script's own poll, historically, or now
+    ws_entry_detector.py's real-time WebSocket stream), decides whether to
+    take it against the CURRENT state (already-open/cooldown/portfolio-risk
+    checks) and if so opens it. Mutates and returns `state`; the caller is
+    responsible for save_state() under the same lock it loaded state
+    with, so this function never saves state itself -- it may be one of
+    several checks a caller wants to do before persisting.
 
+    2026-09-26: factored out of what used to be inline in main()'s
+    per-symbol loop when signal detection moved to ws_entry_detector.py --
+    this is the ONE copy of "should I take this signal" logic; do not
+    duplicate it back into the WS daemon."""
+    if any(p['symbol'] == s for p in state['positions']):
+        return state  # already have a live position on this symbol
     now = pd.Timestamp.now('UTC').tz_localize(None)
-    for s in v7.SYMBOLS:
-        if any(p['symbol'] == s for p in state['positions']):
-            continue  # already have a live position on this symbol
-        last_entry = state['last_entry_time'].get(s)
-        if last_entry is not None and (now - pd.Timestamp(last_entry)) < pd.Timedelta(hours=v7.COOLDOWN_HOURS):
-            continue
+    last_entry = state['last_entry_time'].get(s)
+    if last_entry is not None and (now - pd.Timestamp(last_entry)) < pd.Timedelta(hours=v7.COOLDOWN_HOURS):
+        return state
 
-        df = v7.fetch_recent_1h(s)
-        if len(df) < 21:
-            print(f"{s}: not enough closed-bar history yet, skipping")
-            continue
-        avg_gain, avg_loss = v7.compute_rsi_state(df['close'])
-        df['avg_gain'] = avg_gain
-        df['avg_loss'] = avg_loss
-        df['atr'] = v7.compute_atr(df)
-        df['adx'] = v7.compute_adx(df)
+    state['last_entry_time'][s] = str(cand['entry_time'])
+    n_open = len(state['positions'])
+    real_open_legs = [(p['symbol'], p['direction']) for p in state['positions']]
+    trial_risk = v7.portfolio_risk(real_open_legs + [(s, cand['direction'])], th['corr'])
+    if n_open >= v7.MAX_CONCURRENT_GROUPS or trial_risk > v7.RISK_BUDGET:
+        msg = (f"⏭️ {MODE_TAG} 訊號略過，相關性風險預算已滿（{trial_risk:.2f} > {v7.RISK_BUDGET}）"
+               f"{s} @ {fmt_taipei(cand['entry_time'])}")
+        print(msg)
+        send_telegram_msg(msg)
+        log_decision(symbol=s, direction=cand['direction'], signal_entry_time=cand['entry_time'],
+                     theoretical_price=cand['entry_price'], adx=cand['adx'],
+                     projected_vol_ratio=cand['projected_vol_ratio'], decision='SKIPPED_PORTFOLIO_RISK',
+                     detail=f"trial_risk {trial_risk:.2f} > budget {v7.RISK_BUDGET} or "
+                            f"n_open {n_open} >= max {v7.MAX_CONCURRENT_GROUPS}",
+                     trial_risk=trial_risk, risk_budget=v7.RISK_BUDGET, n_open=n_open,
+                     max_concurrent=v7.MAX_CONCURRENT_GROUPS)
+        return state
 
-        cand = v7.detect_entry(s, df, causal_cutoffs[s])
-        if cand is None:
-            continue
-        state['last_entry_time'][s] = str(cand['entry_time'])
+    new_pos = try_open_position(testnet_ex, s, cand, th['cutoffs_meta'])
+    if new_pos is not None:
+        state['positions'].append(new_pos)
+    return state
 
-        real_open_legs = []
-        for p in state['positions']:
-            real_open_legs.append((p['symbol'], p['direction']))
-        trial_risk = v7.portfolio_risk(real_open_legs + [(s, cand['direction'])], corr)
-        if n_open >= v7.MAX_CONCURRENT_GROUPS or trial_risk > v7.RISK_BUDGET:
-            msg = (f"⏭️ {MODE_TAG} 訊號略過，相關性風險預算已滿（{trial_risk:.2f} > {v7.RISK_BUDGET}）"
-                   f"{s} @ {fmt_taipei(cand['entry_time'])}")
-            print(msg)
-            send_telegram_msg(msg)
-            log_decision(symbol=s, direction=cand['direction'], signal_entry_time=cand['entry_time'],
-                         theoretical_price=cand['entry_price'], adx=cand['adx'],
-                         projected_vol_ratio=cand['projected_vol_ratio'], decision='SKIPPED_PORTFOLIO_RISK',
-                         detail=f"trial_risk {trial_risk:.2f} > budget {v7.RISK_BUDGET} or "
-                                f"n_open {n_open} >= max {v7.MAX_CONCURRENT_GROUPS}",
-                         trial_risk=trial_risk, risk_budget=v7.RISK_BUDGET, n_open=n_open,
-                         max_concurrent=v7.MAX_CONCURRENT_GROUPS)
-            continue
 
-        new_pos = try_open_position(testnet_ex, s, cand, cutoffs_meta)
-        if new_pos is not None:
-            state['positions'].append(new_pos)
-            n_open += 1
+def main():
+    """Reconciliation only (2026-09-26): orphan check, per-position SL/TP
+    health check/repair, and close detection -- all still on the original
+    1-minute poll. NEW-signal detection/entry now lives in
+    ws_entry_detector.py (a separate always-on process); see this module's
+    docstring for why the split happened and attempt_entry() for the
+    shared entry-decision logic both processes ultimately call."""
+    testnet_ex = make_exchange()
+    th = load_thresholds_meta()
 
-    save_state(state)
+    with state_lock(STATE_PATH):
+        state = load_state()
+        check_for_orphan_positions(testnet_ex, state)
+
+        still_open = []
+        for pos in state['positions']:
+            pos, is_open = process_live_position(testnet_ex, pos, th['cutoffs'])
+            if is_open:
+                still_open.append(pos)
+        state['positions'] = still_open
+
+        save_state(state)
     print(f"\nRun complete ({TRADING_MODE}). Open positions: {len(state['positions'])}.")
 
 
