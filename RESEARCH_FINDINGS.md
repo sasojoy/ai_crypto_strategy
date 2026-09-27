@@ -514,6 +514,20 @@ AUC = 0.5 代表模型的判斷力等同於丟硬幣；本報告所有 ML 測試
 
 ---
 
+## WS daemon上線後仍出現嚴重滑價，找到並修復真正原因（2026-09-27）
+
+WS daemon註冊上線約12小時後，使用者回報「好像又出現嚴重的滑價問題」——NEAR/USDT多單，訊號價5.2825、實際成交5.3890，滑價+2.02%。乍看會以為是即時偵測本身不夠快，但決策紀錄顯示`signal_entry_time`到`logged_at`只差約8秒，遠比舊的1分鐘輪詢快——代表偵測到訊號後「執行」本身很快，問題出在「偵測到訊號的時間點」本身就已經太晚。
+
+**逐步還原真相**：拉出事發當時NEAR/USDT的真實1分鐘K線，發現價格早在05:46就已經碰到理論觸發價5.2825（當時價格區間5.245→5.379），但daemon一直到05:50:03才觸發訊號——中間差了整整4分鐘，這段時間價格持續狂奔到5.38+。用`compute_entry_thresholds()`重建當時的真實setup（`vol_ma20_causal=4,823,631.7`、`causal_cutoff=2.5547`）反推：只要用REST歷史資料重算，早在05:46（第47分鐘，那根K棒本身量能暴增到411萬）累計量能推估比就已經比門檻多出約45%的餘裕，理論上應該在那時候就觸發，而不是4分鐘後。
+
+**根本原因**：`ws_entry_detector.py`的`cum_vol`完全只靠daemon自己收到的即時WebSocket tick累加，沒有任何獨立校驗機制。`watch_symbol()`的重連迴圈會靜默吞掉任何WebSocket暫時斷線/錯誤（只印到console，`pythonw.exe`底下直接消失，也沒寫進任何持久檔案）——只要某一分鐘漏收到哪怕一個tick，那一分鐘的量能就會被永久低估，一直到那小時結束都不會被修正，導致後續每一次`check_bar_for_signal()`判斷都要等更多「新」量能累積進來彌補缺口，訊號因此被系統性地延遲觸發。這不是「策略設計本來就會這樣」（一開始也曾懷疑是策略本身追高的正常代價，但用真實歷史資料反推顯示條件其實早就該成立），而是WS daemon自己的資料完整性漏洞。
+
+**修法**：`refresh_setup_loop()`現在除了原本每`REFRESH_SECONDS`（60秒）重算一次門檻，也同時用REST重新抓這個小時已收盤的1分鐘K棒、覆寫`minute_volumes`裡對應的量能——任何WebSocket漏掉的分鐘，最多在下一次refresh週期（60秒內）就會被權威的REST資料自動修正，不會整小時都錯下去。目前仍在形成中的那一分鐘則繼續靠更頻繁的即時WS tick更新。同時新增兩個持久紀錄檔（呼應「決策一定要留痕」的既有原則）：`ws_events_log.csv`記錄每次WebSocket斷線/重連事件、`ws_signal_debug_log.csv`記錄每次觸發訊號當下的`minutes_elapsed`/`cum_vol`/`closed_minute_count`/量能推估比——這次事故完全是靠手動重建REST歷史才查出原因，之後不該再需要這樣做。
+
+已重啟daemon套用修法，重啟後心跳跟watchdog檢查皆正常。**判定**：真實的daemon資料完整性bug，不是滑價無法避免的策略特性——但even修好之後，訊號偵測仍然仰賴WebSocket即時資料本身的完整性，不可能做到零延遲，只是把「漏一個tick就整小時失準」的脆弱點修掉。
+
+---
+
 ## 附錄：本次研究產出的檔案（皆未加入 git 追蹤，可視需要保留或刪除）
 
 - 回測/驗證腳本：`scripts/oos_backtest.py`、`scripts/walk_forward_backtest.py`、`scripts/walk_forward_funding.py`、`scripts/dev_daily_trend.py`、`scripts/dev_pairs_meanreversion.py`、`scripts/dev_feature_ablation.py`、`scripts/dev_orderflow.py`

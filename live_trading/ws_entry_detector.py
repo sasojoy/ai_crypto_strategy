@@ -71,6 +71,8 @@ from binance_client import make_exchange, TRADING_MODE
 MODE_TAG = f"[{TRADING_MODE.upper()}-v7-WS]"
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 HEARTBEAT_PATH = os.path.join(THIS_DIR, 'state', 'ws_detector_heartbeat.txt')
+WS_EVENTS_LOG_PATH = os.path.join(THIS_DIR, 'state', 'ws_events_log.csv')
+SIGNAL_DEBUG_LOG_PATH = os.path.join(THIS_DIR, 'state', 'ws_signal_debug_log.csv')
 
 REFRESH_SECONDS = 60       # how often each symbol's closed-bar setup (thresholds/ATR/ADX) is recomputed via REST
 THRESHOLDS_REFRESH_SECONDS = 300  # how often threshold_report.py's output file is re-read, to pick up updates live
@@ -88,6 +90,33 @@ per_symbol = {s: {
 shared = {'th': None}  # live_v7.load_thresholds_meta() result, refreshed periodically
 
 
+def log_ws_event(symbol, event, detail):
+    """Durable record of WS disconnects/reconnects (2026-09-27) -- console
+    output is invisible under pythonw.exe and this daemon has no other way
+    to surface a transient WS drop after the fact. Added after a real
+    NEAR/USDT entry fired ~4 minutes late with no record anywhere of
+    WHY -- same 'don't wait for the user to notice a gap' reasoning as
+    live_v7.py's decision log."""
+    os.makedirs(os.path.dirname(WS_EVENTS_LOG_PATH), exist_ok=True)
+    row = {'logged_at': str(pd.Timestamp.now('UTC').tz_localize(None)), 'symbol': symbol,
+           'event': event, 'detail': detail}
+    pd.DataFrame([row]).to_csv(WS_EVENTS_LOG_PATH, mode='a', header=not os.path.exists(WS_EVENTS_LOG_PATH), index=False)
+
+
+def log_signal_debug(symbol, cand, minutes_elapsed, cum_vol, closed_minute_count):
+    """Durable record of the exact numeric basis for every real-time fire
+    (2026-09-27) -- lets a future 'why did this take so long / why did
+    price already move so much' question be answered by reading a file
+    instead of re-deriving it from scratch against REST history, which is
+    how the 2026-09-27 NEAR/USDT late-fire bug was actually diagnosed."""
+    os.makedirs(os.path.dirname(SIGNAL_DEBUG_LOG_PATH), exist_ok=True)
+    row = {'logged_at': str(pd.Timestamp.now('UTC').tz_localize(None)), 'symbol': symbol,
+           'direction': cand['direction'], 'entry_price': cand['entry_price'],
+           'minutes_elapsed': minutes_elapsed, 'cum_vol': cum_vol,
+           'closed_minute_count': closed_minute_count, 'projected_vol_ratio': cand['projected_vol_ratio']}
+    pd.DataFrame([row]).to_csv(SIGNAL_DEBUG_LOG_PATH, mode='a', header=not os.path.exists(SIGNAL_DEBUG_LOG_PATH), index=False)
+
+
 def refresh_setup(symbol):
     """Blocking REST call -- run via asyncio.to_thread so it never stalls
     the event loop's WebSocket processing. Same pipeline live_v7.py/the
@@ -97,21 +126,47 @@ def refresh_setup(symbol):
     want here -- we're feeding it from the WS stream instead)."""
     df = v7.fetch_recent_1h(symbol)
     if len(df) < 21:
-        return None
+        return None, None
     avg_gain, avg_loss = v7.compute_rsi_state(df['close'])
     df['avg_gain'] = avg_gain
     df['avg_loss'] = avg_loss
     df['atr'] = v7.compute_atr(df)
     df['adx'] = v7.compute_adx(df)
-    return v7.compute_entry_thresholds(symbol, df)
+    setup = v7.compute_entry_thresholds(symbol, df)
+    minute_bars = None
+    if setup is not None:
+        try:
+            minute_bars = v7.fetch_1m_since(symbol, setup['hour_start'])
+        except Exception:
+            minute_bars = None
+    return setup, minute_bars
 
 
 async def refresh_setup_loop(symbol):
+    """Also BACKFILLS minute_volumes from REST every REFRESH_SECONDS --
+    found necessary 2026-09-27 after a real NEAR/USDT entry fired ~4
+    minutes later than it should have (confirmed by replaying the exact
+    setup against REST history: the touch+volume condition was already
+    satisfied by minute 47 with a healthy margin, but the daemon didn't
+    fire until minute ~51). The daemon's cum_vol was built ENTIRELY from
+    its own live WebSocket tick history -- any missed/dropped WS update
+    (a transient disconnect `watch_symbol()`'s except-and-retry loop
+    swallows silently) permanently under-counts that minute's volume for
+    the rest of the hour, since nothing ever re-derives it. This REST
+    backfill overwrites minute_volumes with the authoritative closed-bar
+    volume every refresh cycle, so a dropped WS tick is corrected within
+    one REFRESH_SECONDS cycle instead of silently degrading detection for
+    the rest of the hour. The current still-forming minute keeps getting
+    updated far more frequently by the live WS ticks in between."""
     while True:
         try:
-            setup = await asyncio.to_thread(refresh_setup, symbol)
+            setup, minute_bars = await asyncio.to_thread(refresh_setup, symbol)
             if setup is not None:
                 per_symbol[symbol]['setup'] = setup
+            if minute_bars is not None and not minute_bars.empty:
+                mv = per_symbol[symbol]['minute_volumes']
+                for row in minute_bars.itertuples():
+                    mv[row.timestamp] = row.volume
         except Exception as e:
             print(f"{MODE_TAG} {symbol}: refresh_setup failed ({e}), keeping previous setup")
         await asyncio.sleep(REFRESH_SECONDS)
@@ -158,6 +213,7 @@ async def watch_symbol(testnet_ex, symbol):
                 ohlcv = await exchange.watch_ohlcv(symbol, '1m')
             except Exception as e:
                 print(f"{MODE_TAG} {symbol}: WS error ({e}), reconnecting in {RECONNECT_BACKOFF_SECONDS}s")
+                log_ws_event(symbol, 'WS_ERROR', str(e))
                 await asyncio.sleep(RECONNECT_BACKOFF_SECONDS)
                 continue
 
@@ -197,6 +253,7 @@ async def watch_symbol(testnet_ex, symbol):
             cand['entry_time'] = now
             print(f"{MODE_TAG} {symbol} {cand['direction']} signal @ {cand['entry_price']} "
                   f"(vol_ratio={cand['projected_vol_ratio']:.2f}, minutes_elapsed={minutes_elapsed:.2f})")
+            log_signal_debug(symbol, cand, minutes_elapsed, cum_vol, len(closed_minutes))
             await asyncio.to_thread(handle_signal, testnet_ex, symbol, cand)
     finally:
         await exchange.close()
