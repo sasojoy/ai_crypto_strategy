@@ -526,6 +526,40 @@ WS daemon註冊上線約12小時後，使用者回報「好像又出現嚴重的
 
 已重啟daemon套用修法，重啟後心跳跟watchdog檢查皆正常。**判定**：真實的daemon資料完整性bug，不是滑價無法避免的策略特性——但even修好之後，訊號偵測仍然仰賴WebSocket即時資料本身的完整性，不可能做到零延遲，只是把「漏一個tick就整小時失準」的脆弱點修掉。
 
+**同一天的第二個小修復（重開機前發現）**：整理完整記錄時發現`ws_signal_debug_log.csv`上線幾小時內就累積到1154筆——因為`check_bar_for_signal()`本身沒有「已經觸發過」的記憶，只要價量條件持續成立，daemon每收到一次WebSocket tick（每分鐘約72次）就會再判斷一次真，`log_signal_debug()`原本沒有防重複、每次都寫，導致幾乎全是重複雜訊，反而淹沒真正有意義的那幾筆——跟這次NEAR事故本身想解決的問題（訊號淹沒在雜訊裡）恰好是同一種失敗模式。修法：每個幣種每小時最多寫一筆（用`debug_logged_hour`追蹤），已修復並重啟daemon套用。
+
+---
+
+## 重開機前系統快照（2026-09-27 22:21 台灣時間）
+
+使用者準備重開機，要求先做完整記錄。狀態如下：
+
+**排程任務**（`Get-ScheduledTask`直接查詢確認）：
+| 任務 | 狀態 | 觸發器類型 |
+|---|---|---|
+| LiveTrading-V7Testnet | Ready | 每1分鐘（TimeTrigger） |
+| LiveTrading-WsEntryDetector | Running | 開機啟動（BootTrigger） |
+| PaperTrading-MomentumV1/V7/V8 | Ready | 整點/每5分鐘（TimeTrigger） |
+| PaperTrading-Funding | Ready | 每小時（TimeTrigger） |
+| PaperTrading-ThresholdReport | Ready | 每小時（TimeTrigger） |
+| PaperTrading-Watchdog | Ready | 每15分鐘（TimeTrigger） |
+
+**確認可安全重開機**：所有`TimeTrigger`的排程工作是Windows Task Scheduler原生持久化機制，重開機後會自動恢復，不需要任何手動動作。`LiveTrading-WsEntryDetector`用`BootTrigger`，正是為了在每次開機時自動啟動而設計的——這次重開機是它第一次真正被「開機觸發」（之前都是手動`Start-ScheduledTask`），算是這個機制上線後的第一次真實驗證。
+
+**持倉現況（`health_check.py`）**：
+- live testnet v7：SOL/USDT long 26.05 @ 124.22，本機/交易所對帳一致，SL/TP兩張都在。帳戶權益$4817.87、可用$3750.86
+- 模擬盤：v1持倉0筆（累計-11.29%，22筆已平倉）、v7持倉1筆（累計+7.96%，16筆已平倉）、v8持倉0筆（累計+5.94%，9筆已平倉）
+
+**WS daemon運作紀錄（新增的持久化log首次派上用場）**：
+- `ws_events_log.csv`：14:09左右5個幣種同時出現一次WebSocket斷線重連（`closing code 1006`），屬正常暫時性斷線，daemon自動重連，心跳沒有中斷
+- `ws_signal_debug_log.csv`：修法上線後的第一筆真實訊號（SOL/USDT 08:00進場）滑價只有-0.29%，相較修法前NEAR事故的+2.02%改善明顯——雖然只有一筆，不足以下定論，但方向正確
+- BTC/USDT 13:34出現一次`SKIPPED_MARGIN`（需要保證金$3458 > 上限$1451），決策紀錄留痕清楚，正常的風控行為，不是異常
+
+**重開機後建議確認事項**：
+1. `LiveTrading-WsEntryDetector`任務狀態是否自動變成`Running`（不需手動`Start-ScheduledTask`）
+2. `state/ws_detector_heartbeat.txt`重開機後多久恢復更新（正常應該在開機後數十秒內，取決於系統開機到排程服務就緒的時間）
+3. 跑一次`health_check.py`確認本機/交易所倉位對帳一致（重開機不會影響交易所上的真實部位，只是本機監控程序中斷重啟）
+
 ---
 
 ## 附錄：本次研究產出的檔案（皆未加入 git 追蹤，可視需要保留或刪除）
