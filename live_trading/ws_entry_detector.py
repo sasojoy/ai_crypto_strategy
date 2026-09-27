@@ -85,6 +85,7 @@ per_symbol = {s: {
     'current_minute_ts': None,
     'current_bar_high': None,
     'current_bar_low': None,
+    'debug_logged_hour': None,  # last hour_start log_signal_debug() already fired for, this symbol
 } for s in v7.SYMBOLS}
 
 shared = {'th': None}  # live_v7.load_thresholds_meta() result, refreshed periodically
@@ -108,7 +109,14 @@ def log_signal_debug(symbol, cand, minutes_elapsed, cum_vol, closed_minute_count
     (2026-09-27) -- lets a future 'why did this take so long / why did
     price already move so much' question be answered by reading a file
     instead of re-deriving it from scratch against REST history, which is
-    how the 2026-09-27 NEAR/USDT late-fire bug was actually diagnosed."""
+    how the 2026-09-27 NEAR/USDT late-fire bug was actually diagnosed.
+    Caller (watch_symbol()) is responsible for only calling this once per
+    symbol per hour -- check_bar_for_signal() keeps returning a candidate
+    on EVERY subsequent WS tick once price/volume conditions are met (it's
+    pure math, no memory of "already fired"), so logging unconditionally
+    here produced ~72 rows/minute per symbol while a condition held (1154
+    rows within hours of going live) -- nearly all of them identical
+    noise, drowning the rows that actually mattered."""
     os.makedirs(os.path.dirname(SIGNAL_DEBUG_LOG_PATH), exist_ok=True)
     row = {'logged_at': str(pd.Timestamp.now('UTC').tz_localize(None)), 'symbol': symbol,
            'direction': cand['direction'], 'entry_price': cand['entry_price'],
@@ -253,7 +261,9 @@ async def watch_symbol(testnet_ex, symbol):
             cand['entry_time'] = now
             print(f"{MODE_TAG} {symbol} {cand['direction']} signal @ {cand['entry_price']} "
                   f"(vol_ratio={cand['projected_vol_ratio']:.2f}, minutes_elapsed={minutes_elapsed:.2f})")
-            log_signal_debug(symbol, cand, minutes_elapsed, cum_vol, len(closed_minutes))
+            if st.get('debug_logged_hour') != hour_start:
+                log_signal_debug(symbol, cand, minutes_elapsed, cum_vol, len(closed_minutes))
+                st['debug_logged_hour'] = hour_start
             await asyncio.to_thread(handle_signal, testnet_ex, symbol, cand)
     finally:
         await exchange.close()
