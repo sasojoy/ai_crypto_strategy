@@ -562,6 +562,25 @@ WS daemon註冊上線約12小時後，使用者回報「好像又出現嚴重的
 
 ---
 
+## 重開機後驗證：BootTrigger沒有觸發，是看門狗救回來的（2026-09-28）
+
+**結果**：三項檢查最終都正常，但WS daemon的「開機自動啟動」機制首次真實驗證**失敗**。
+
+- 開機時間 2026-09-27 22:24:42；`LiveTrading-WsEntryDetector`直到 **22:34:38** 才啟動——剛好是`PaperTrading-Watchdog`每15分鐘的執行時間點（:04/:19/:34/:49），而BootTrigger本身沒有設延遲。實際上是看門狗發現心跳檔過期，呼叫`restart_task`把它拉起來的，開機觸發器沒有作用。
+- **推定原因**：任務的Principal是`LogonType=InteractiveToken`（「只在使用者登入時執行」）。BootTrigger在開機、使用者尚未登入時觸發，InteractiveToken任務此時無法執行，就被跳過。（TaskScheduler Operational事件記錄沒開，無法用事件佐證，但時間點吻合度很高。）
+- **影響**：開機後有約10分鐘沒有WS訊號偵測；看門狗這道保險確實發揮作用。
+- 心跳：之後持續正常；09-28 00:59 UTC 5個幣種同時一次ping-pong timeout斷線，自動重連。
+- `health_check.py`：全部通過。SOL/USDT多單於重開機後 22:28（台灣時間）觸發SL出場（-1.13%，122.08），由1分鐘排程的倉位管理正常處理；live目前空倉，權益$4795.76。模擬盤v1/v7/v8數字同重開機前。
+- 注意：`health_check.py`須用`venv\Scripts\python.exe`執行，系統`python`沒有`ccxt`。
+
+**待辦（尚未執行，需使用者確認）**：把觸發器由`-AtStartup`改為`-AtLogOn -User <本人>`——其他所有任務本來就是InteractiveToken、只在登入時跑，改成登入觸發不會多出新限制，且不需要系統管理員權限：
+```powershell
+Set-ScheduledTask -TaskName LiveTrading-WsEntryDetector -Trigger (New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME")
+```
+套用後同步修改`live_trading/register_ws_task.ps1`第17行。另一選項是改成「不論使用者是否登入都執行」（需密碼或S4U），但其他任務也得一起改才一致。
+
+---
+
 ## 附錄：本次研究產出的檔案（皆未加入 git 追蹤，可視需要保留或刪除）
 
 - 回測/驗證腳本：`scripts/oos_backtest.py`、`scripts/walk_forward_backtest.py`、`scripts/walk_forward_funding.py`、`scripts/dev_daily_trend.py`、`scripts/dev_pairs_meanreversion.py`、`scripts/dev_feature_ablation.py`、`scripts/dev_orderflow.py`
