@@ -82,9 +82,13 @@ TASK_HAS_NOT_RUN = 267011  # 0x41303, SCHED_S_TASK_HAS_NOT_RUN -- not an error
 
 
 def run_ps(cmd, timeout=30):
+    # This runs under pythonw.exe (no console), so each console child would
+    # otherwise get its own new window -- a burst of ~8 flashing windows every
+    # 15 minutes. CREATE_NO_WINDOW keeps them hidden.
     result = subprocess.run(
         ['powershell', '-NoProfile', '-NonInteractive', '-Command', cmd],
         capture_output=True, text=True, timeout=timeout,
+        creationflags=subprocess.CREATE_NO_WINDOW,
     )
     return result.stdout.strip()
 
