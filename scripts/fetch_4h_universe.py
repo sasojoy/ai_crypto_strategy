@@ -12,16 +12,20 @@ and the 5 coins the original test used (BTC/ETH/SOL/NEAR/AVAX), so the new
 sample is independent. Survivorship bias: today's top coins are survivors;
 the cup test's controls use the same coins, so comparisons stay fair.
 
-Output: data/backtest_cache/universe_4h/<BASE>_USDT_4h.csv
+Output: data/backtest_cache/universe_<tf>/<BASE>_USDT_<tf>.csv
+`python fetch_4h_universe.py 1h` fetches the same universe at 1H (for
+running v7's 1H signal on these coins).
 """
 import os
+import sys
 import time
 
 import ccxt
 import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_DIR = os.path.join(ROOT, 'data', 'backtest_cache', 'universe_4h')
+TF = sys.argv[1] if len(sys.argv) > 1 else '4h'
+OUT_DIR = os.path.join(ROOT, 'data', 'backtest_cache', f'universe_{TF}')
 N_COINS = 45
 START = '2020-01-01T00:00:00Z'
 END = pd.Timestamp('2026-01-01')
@@ -42,17 +46,22 @@ def main():
     tickers = ex.fetch_tickers([m['symbol'] for m in perps])
     ranked = sorted(perps, key=lambda m: tickers.get(m['symbol'], {}).get('quoteVolume') or 0, reverse=True)
     chosen = ranked[:N_COINS]
+    ref_dir = os.path.join(ROOT, 'data', 'backtest_cache', 'universe_4h')
+    if TF != '4h' and os.path.isdir(ref_dir):
+        # Reuse the exact 4h universe (volume ranks drift day to day).
+        bases = {f.split('_USDT_')[0] for f in os.listdir(ref_dir) if f.endswith('.csv')}
+        chosen = [m for m in perps if m['base'] in bases]
     print('Universe:', ', '.join(m['base'] for m in chosen), flush=True)
 
     since0 = ex.parse8601(START)
     for m in chosen:
-        path = os.path.join(OUT_DIR, f"{m['base']}_USDT_4h.csv")
+        path = os.path.join(OUT_DIR, f"{m['base']}_USDT_{TF}.csv")
         if os.path.exists(path):
             print(f"  {m['base']}: cached", flush=True)
             continue
         rows, since = [], since0
         while True:
-            batch = ex.fetch_ohlcv(m['symbol'], '4h', since=since, limit=1500)
+            batch = ex.fetch_ohlcv(m['symbol'], TF, since=since, limit=1500)
             if not batch:
                 break
             rows += batch
