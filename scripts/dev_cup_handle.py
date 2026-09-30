@@ -32,6 +32,10 @@ Controls (the real question is whether the CUP SHAPE adds anything):
     target distances drawn from the real cup trades).
 Reported for 2020-23 and 2024-25 separately.
 
+`python dev_cup_handle.py universe` re-runs the IDENTICAL rules (4H only)
+on the 45 other coins from scripts/fetch_4h_universe.py -- an independent
+sample, since the rules were fixed on BTC/ETH/SOL/NEAR/AVAX.
+
 Not part of the deployed app; safe to delete after use.
 """
 import os
@@ -149,10 +153,19 @@ def stats_line(label, r):
     return f"  {label:34s} n={len(r):4d}  win={(r > 0).mean()*100:5.1f}%  PF={pf:5.2f}  avgR={r.mean():+.3f}"
 
 
-def run(tf, c, rng):
+UNIVERSE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            'data', 'backtest_cache', 'universe_4h')
+
+
+def load_universe(sym):
+    df = pd.read_csv(os.path.join(UNIVERSE_DIR, sym.replace('/', '_') + '_4h.csv'), parse_dates=['timestamp'])
+    return df[df['timestamp'] < pd.Timestamp('2026-01-01')].sort_values('timestamp').reset_index(drop=True)
+
+
+def run(tf, c, rng, symbols=SYMBOLS, loader=load_1h):
     rows, ctrl, pools = [], [], []
-    for s in SYMBOLS:
-        x = resample(load_1h(s), c['rule'])
+    for s in symbols:
+        x = resample(loader(s), c['rule'])
         h, l, cl, atr = x['high'].values, x['low'].values, x['close'].values, x['atr'].values
         ts = x['timestamp'].values
         for tr in find_cups(x, c):
@@ -229,10 +242,19 @@ def run(tf, c, rng):
     print(f"  ATR 2/4 exits: random avgR median {np.median(sims_a):+.3f}; cup beats {(d.r_atr.mean() > sims_a).mean()*100:.1f}% of draws")
     print(f"  plain-breakout control avgR (ATR) {ctrl.r_atr.mean():+.3f} vs cup {d.r_atr.mean():+.3f}")
     d.to_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), f'cup_handle_trades_{tf}.csv'), index=False)
+    return d
 
 
 def main():
     rng = np.random.default_rng(5)
+    if len(sys.argv) > 1 and sys.argv[1] == 'universe':
+        syms = sorted(f[:-len('_USDT_4h.csv')] + '/USDT' for f in os.listdir(UNIVERSE_DIR) if f.endswith('_4h.csv'))
+        d = run('4H_universe', CONFIG['4H'], rng, syms, load_universe)
+        if d is not None and len(d):
+            v = d[d.vol_ratio >= 1.5]
+            print(f"\n  cup+vol trades per coin: {v.groupby('symbol').size().sort_values(ascending=False).head(10).to_dict()}")
+            print(f"  cup+vol avgR per year: {v.groupby(v.time.dt.year).r_atr.agg(['count', 'mean']).round(3).to_dict('index')}")
+        return
     for tf, c in CONFIG.items():
         run(tf, c, rng)
 
