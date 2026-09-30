@@ -5,6 +5,11 @@ window only) for the 15-coin optimization basket
 
 Output: data/backtest_cache/funding_basket/<BASE>_USDT_funding.csv
         columns: timestamp (funding settlement time, UTC), funding_rate
+
+`python fetch_funding_basket.py universe` instead fetches the 35 coins of
+the 45-coin universe (data/backtest_cache/universe_1h) that are NOT in the
+basket, into data/backtest_cache/funding_universe/ -- the independent
+sample for the pre-registered short-side crowding test.
 """
 import os
 import sys
@@ -23,11 +28,16 @@ END = pd.Timestamp('2026-01-01')
 
 
 def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
+    out_dir, bases = OUT_DIR, ORIGINAL + MAJORS
+    if len(sys.argv) > 1 and sys.argv[1] == 'universe':
+        out_dir = os.path.join(ROOT, 'data', 'backtest_cache', 'funding_universe')
+        u1h = os.path.join(ROOT, 'data', 'backtest_cache', 'universe_1h')
+        bases = sorted({f.split('_USDT_')[0] for f in os.listdir(u1h) if f.endswith('.csv')} - set(ORIGINAL + MAJORS))
+    os.makedirs(out_dir, exist_ok=True)
     ex = ccxt.binanceusdm({'enableRateLimit': True})
     ex.load_markets()
-    for base in ORIGINAL + MAJORS:
-        path = os.path.join(OUT_DIR, f'{base}_USDT_funding.csv')
+    for base in bases:
+        path = os.path.join(out_dir, f'{base}_USDT_funding.csv')
         if os.path.exists(path):
             print(f'  {base}: cached', flush=True)
             continue
