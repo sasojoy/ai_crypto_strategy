@@ -101,6 +101,20 @@ def main(cohort):
                   f"funding {x.funding.mean()*100:+5.2f}%  avgR {x.ret.mean()/STOP:+.2f}  {'PASS' if all(checks) else 'x'}")
             q = np.percentile(x.ret * 100, [10, 25, 50, 75, 90])
             print(f"      return percentiles 10/25/50/75/90: {np.round(q, 1)}")
+    if cohort == 'holdout':
+        # Pre-registered holdout criteria (RESEARCH_FINDINGS.md): L30 primary, H30 secondary.
+        x = d[d.hold == 30]
+        trim = lambda v: np.sort(v)[:-max(1, int(round(len(v) * 0.05)))].mean()
+        l30 = [x.ret.mean() > 0, x.ret.median() > 0, trim(x.ret.values) > 0, x.excess.mean() > 0]
+        e = x.excess.dropna()
+        h30 = [e.mean() > 0, e.median() > 0, trim(e.values) > 0]
+        print('\n' + '=' * 110 + '\nHOLDOUT VERDICTS (30-day hold)')
+        print(f"  L30 short:  n={len(x)} mean {x.ret.mean()*100:+.1f}%  median {x.ret.median()*100:+.1f}%  "
+              f"trimmed {trim(x.ret.values)*100:+.1f}%  excess {x.excess.mean()*100:+.1f}%  -> {'PASSES' if all(l30) else 'FAILS'}")
+        print(f"  H30 hedged: n={len(e)} mean {e.mean()*100:+.1f}%  median {e.median()*100:+.1f}%  "
+              f"trimmed {trim(e.values)*100:+.1f}%  -> {'PASSES' if all(h30) else 'FAILS'}")
+        print(x.groupby(x.onboard.dt.to_period('Q')).agg(n=('ret', 'size'), mean=('ret', 'mean'), excess=('excess', 'mean')).round(3).to_string())
+        return
     print(f"\n  LISTING SHORT ({cohort}) {'PASSES' if ok else 'FAILS'}")
     d.to_csv(os.path.join(ROOT, 'scripts', f'listing_short_{cohort}.csv'), index=False)
 
