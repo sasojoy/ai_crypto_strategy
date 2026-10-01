@@ -984,6 +984,15 @@ Set-ScheduledTask -TaskName LiveTrading-WsEntryDetector -Trigger (New-ScheduledT
 
 ---
 
+## 新候選BRK4H：4H突破＋區間中點停損＋3R（事先登記 2026-10-01）
+
+來源：收斂突破測試的對照組，開發區四格（2期×2樣本）皆為正。規格完全照對照組凍結（`scripts/prereg_squeeze_breakout.py`的control）：4H K棒；收盤突破前20根最高（多）／最低（空）；同一幣6根內不重複進場；停損＝前20根區間中點；停利＝3R；最長180根；0.14%成本。
+
+1. **2026封存區驗證（BRK4H在2026的表現尚未被看過；2026市場狀態曾在v7研究中被描述性檢視過，屬輕度污染，在此註明）**：50幣、2026-01-01起、180根持有窗口完整的訊號。**通過＝15幣籃與35新幣的平均R都>0**。只跑一次。
+2. **前瞻追蹤**（不論封存區結果都啟動，作為最終依據）：`scripts/forward_tracker_brk4h.py`，2026-10-01起的訊號；BRK4H單筆R標準差約1.8、預期優勢約+0.05R，需約5,000筆已結束交易做最終判定（50幣約一年）：平均R>0且單尾t檢定p<0.05才算確認。
+
+---
+
 ## 附錄：本次研究產出的檔案（皆未加入 git 追蹤，可視需要保留或刪除）
 
 - 回測/驗證腳本：`scripts/oos_backtest.py`、`scripts/walk_forward_backtest.py`、`scripts/walk_forward_funding.py`、`scripts/dev_daily_trend.py`、`scripts/dev_pairs_meanreversion.py`、`scripts/dev_feature_ablation.py`、`scripts/dev_orderflow.py`
