@@ -71,7 +71,7 @@ def fetch(ex, b):
     df = pd.DataFrame(rows, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     df = df.drop_duplicates('timestamp').sort_values('timestamp')
-    df = df[df['timestamp'] < pd.Timestamp.utcnow().tz_localize(None).floor('h')]  # drop the still-forming bar
+    df = df[df['timestamp'] < pd.Timestamp.now('UTC').tz_localize(None).floor('h')]  # drop the still-forming bar
     df.to_csv(os.path.join(OUT, f'{b}_USDT_1h.csv'), index=False)
     return df.reset_index(drop=True)
 
