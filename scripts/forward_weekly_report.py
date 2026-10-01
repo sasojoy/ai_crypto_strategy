@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from src.notifier import send_telegram_msg
 import forward_tracker
 import brk4h
+import forward_switcher
 
 FWD = forward_tracker.OUT
 
@@ -60,6 +61,11 @@ def main():
         path = os.path.join(FWD, csv)
         if os.path.exists(path):
             parts.append(summarize(name, path, n))
+    try:
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+            parts.append('【策略切換器】\n  ' + forward_switcher.run())
+    except Exception:
+        errors.append(f"策略切換器 執行失敗：\n{traceback.format_exc()[-600:]}")
     msg = f"📊 【前瞻追蹤週報】{datetime.now():%Y-%m-%d}\n（50幣、凍結規則、2026-10-01起）\n\n" + '\n\n'.join(parts)
     if errors:
         msg += '\n\n⚠️ ' + '\n'.join(errors)

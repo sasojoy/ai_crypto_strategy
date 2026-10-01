@@ -111,6 +111,8 @@ def ann_stats(r):
 def main():
     px, funding = full_daily_panel()
     raw = {**xs_streams(px, funding), **trade_streams()}
+    # Raw (un-normalized) weekly streams, frozen as the warm-up history for forward_switcher.py.
+    pd.DataFrame(raw).sort_index().to_csv(os.path.join(ROOT, 'scripts', 'regime_switch_raw_frozen.csv'))
     streams = pd.DataFrame({k: normalize(v) for k, v in raw.items()})
     streams = streams[streams.index >= '2020-07-01'].fillna(0.0)
     years = sorted(set(streams.index.year))
