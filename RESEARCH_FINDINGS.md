@@ -946,6 +946,17 @@ Set-ScheduledTask -TaskName LiveTrading-WsEntryDetector -Trigger (New-ScheduledT
 
 ---
 
+## v7前瞻追蹤器：50幣、凍結規則（2026-10-01事先登記）
+
+使用者目標：確認v7是否仍有優勢，並找新策略（小資金、以小搏大）。v7優勢很薄（長期約+0.07R/筆、單筆標準差約1.4R），要統計上確認需約1,500筆；實盤只做5幣（每月約25筆）要好幾年，因此改用50幣前瞻追蹤（約每年2,900筆）。
+
+- 腳本：`scripts/forward_tracker.py`。規則凍結：RSI(14)穿越30/70（8根冷卻）、動能方向、量能比高於各幣**開發區凍結門檻**（`scripts/forward_frozen_cutoffs.json`，2026-10-01由2020～2025資料算出）、收盤進場、SL 2×/TP 4×ATR、最長168小時、0.14%成本。
+- 只統計2026-10-01 00:00 UTC之後開盤的訊號K棒；每次執行重新下載最新資料（含2026-08起暖身）、輸出`data/forward/forward_trades.csv`。
+- **判定規則**：累積≥1,500筆已結束交易時做最終判定——平均R>0且單尾t檢定p<0.05才算「優勢確認」，否則「未確認」。中途執行只回報、不提前下結論、不改規則。
+- 收盤進場是代理（實盤v7用1分鐘提前進場），追蹤的是「訊號本身」的優勢。
+
+---
+
 ## 附錄：本次研究產出的檔案（皆未加入 git 追蹤，可視需要保留或刪除）
 
 - 回測/驗證腳本：`scripts/oos_backtest.py`、`scripts/walk_forward_backtest.py`、`scripts/walk_forward_funding.py`、`scripts/dev_daily_trend.py`、`scripts/dev_pairs_meanreversion.py`、`scripts/dev_feature_ablation.py`、`scripts/dev_orderflow.py`
