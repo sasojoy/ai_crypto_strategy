@@ -1026,6 +1026,20 @@ Set-ScheduledTask -TaskName LiveTrading-WsEntryDetector -Trigger (New-ScheduledT
 
 ---
 
+## 新策略3：橫截面動能（事先登記 2026-10-01，開發區）
+
+動機：方向性策略在近兩年普遍退化；橫截面策略做多強勢幣、做空弱勢幣，市場中性，不依賴整體大趨勢。加密貨幣有1～4週橫截面動能的學術證據（Liu, Tsyvinski & Wu 2022）。
+
+規格（固定，跑之前commit）：
+- 日線收盤（UTC），50幣（有28天歷史才納入），每週一00:00 UTC再平衡。
+- 排名：過去28天報酬（主）；另登記7天版本（副，看是動能還是短期反轉）。
+- 部位：做多前20%、做空後20%，各邊等權，多空金額相等（總曝險1＝多0.5＋空0.5）。
+- 成本：每次換倉依權重變動量×0.07%/邊；資金費率用實際歷史值（多方付、空方收，依持有期間逐8小時加總）。
+- 評估：每週報酬序列，2020-23／2024-25分開的年化報酬、Sharpe、最大回撤。
+- **通過條件（28天主版本）**：(1) 50幣版兩期年化報酬（扣成本與資金費率）都>0；(2) 只用35新幣跑同樣規則，兩期也都>0；(3) 全期Sharpe贏過≥95%的「每週隨機排名」基準（1,000次）。都過才進入2026封存區驗證；7天版本只做描述，不據以判定。
+
+---
+
 ## 附錄：本次研究產出的檔案（皆未加入 git 追蹤，可視需要保留或刪除）
 
 - 回測/驗證腳本：`scripts/oos_backtest.py`、`scripts/walk_forward_backtest.py`、`scripts/walk_forward_funding.py`、`scripts/dev_daily_trend.py`、`scripts/dev_pairs_meanreversion.py`、`scripts/dev_feature_ablation.py`、`scripts/dev_orderflow.py`
