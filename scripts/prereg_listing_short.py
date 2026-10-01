@@ -71,7 +71,12 @@ def main(cohort):
     meta = pd.read_csv(os.path.join(d_dir, 'listings.csv'), parse_dates=['onboard'])
     bk = basket_closes(cohort)
     rows = []
+    skipped = [r.base for r in meta.itertuples() if not os.path.exists(os.path.join(d_dir, f'{r.base}_1d.csv'))]
+    if skipped:
+        print(f"  {len(skipped)} listings have no data (contract not currently fetchable): {', '.join(skipped)}")
     for r in meta.itertuples():
+        if r.base in skipped:
+            continue
         px = pd.read_csv(os.path.join(d_dir, f'{r.base}_1d.csv'), parse_dates=['timestamp'])
         fund = pd.read_csv(os.path.join(d_dir, f'{r.base}_funding.csv'), parse_dates=['timestamp'])
         for hold in (90, 30):

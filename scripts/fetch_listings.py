@@ -45,7 +45,11 @@ def main(cohort):
         until = since + (DAYS + 2) * 86_400_000
         path = os.path.join(out, f'{base}_1d.csv')
         if not os.path.exists(path):
-            bars = ex.fetch_ohlcv(sym, '1d', since=since, limit=DAYS)
+            try:
+                bars = ex.fetch_ohlcv(sym, '1d', since=since, limit=DAYS)
+            except ccxt.BadRequest as e:  # e.g. "Invalid symbol status" for delisted/settling contracts
+                print(f'  skip {base}: {e}', flush=True)
+                continue
             px = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             px['timestamp'] = pd.to_datetime(px['timestamp'], unit='ms')
             px.to_csv(path, index=False)
