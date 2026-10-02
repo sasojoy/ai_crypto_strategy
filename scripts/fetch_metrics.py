@@ -56,7 +56,12 @@ def fetch_coin(base):
 def main():
     os.makedirs(OUT, exist_ok=True)
     which = sys.argv[1]
-    bases = ORIGINAL + MAJORS if which == 'basket' else [c for c in coins() if c not in ORIGINAL + MAJORS]
+    if which == 'basket':
+        bases = ORIGINAL + MAJORS
+    elif which == 'others':
+        bases = [c for c in coins() if c not in ORIGINAL + MAJORS]
+    else:  # explicit comma list, for small foreground batches
+        bases = which.split(',')
     for b in bases:
         print(*fetch_coin(b), flush=True)
 
