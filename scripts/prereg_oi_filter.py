@@ -68,6 +68,11 @@ def build(bases):
     d['period'] = np.where(d.time < pd.Timestamp('2024-01-01'), '2022-23',
                            np.where(d.time < pd.Timestamp('2026-01-01'), '2024-25', '2026'))
     d['rising'] = d['doi'] > 0
+    if len(sys.argv) > 2 and sys.argv[2] == 'reverse':
+        # H_OIdown (registered after the basket result): the FALLING-OI group is the one expected
+        # to be better, so the "rising" label is flipped and every check below tests that direction.
+        d['rising'] = ~d['rising']
+        print("  [reverse mode: 'rising' below means OI FELL during the trigger hour]")
     return d
 
 
