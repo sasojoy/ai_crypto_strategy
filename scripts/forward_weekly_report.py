@@ -23,6 +23,7 @@ from src.notifier import send_telegram_msg
 import forward_tracker
 import brk4h
 import forward_switcher
+import forward_oi
 
 FWD = forward_tracker.OUT
 
@@ -61,6 +62,11 @@ def main():
         path = os.path.join(FWD, csv)
         if os.path.exists(path):
             parts.append(summarize(name, path, n))
+    try:
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+            parts.append('【v7＋未平倉量調整】\n  ' + forward_oi.run())
+    except Exception:
+        errors.append(f"v7＋未平倉量 執行失敗：\n{traceback.format_exc()[-600:]}")
     try:
         with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
             parts.append('【策略切換器】\n  ' + forward_switcher.run())
