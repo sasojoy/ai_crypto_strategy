@@ -1318,6 +1318,23 @@ Set-ScheduledTask -TaskName LiveTrading-WsEntryDetector -Trigger (New-ScheduledT
 
 ---
 
+## 新方向B：波動率風險溢酬 VRP（事先登記 2026-10-17，跑之前commit）
+
+**機制：** 選擇權買方（槓桿多頭買保護、散戶買call）長期付出高於事後實現波動的隱含波動，賣方收這個差額。這是加密市場裡機制最清楚、也是唯一不依賴方向預測的結構性溢酬；本專案從未測過選擇權資料。
+
+**資料：** Deribit DVOL（30天隱含波動指數，年化%），BTC與ETH，每小時，2021-03-24起（`data/backtest_cache/deribit/*_dvol_1h.csv`，`public/get_volatility_index_data`）。已實現波動用幣安永續1H收盤：未來720根1H對數報酬的平方和年化（×8766/720，開根號，年化%）。**開發區 2021-03-24～2025-12-31，2026不碰**（DVOL檔含2026但只看了筆數）。
+
+**定義：** 每天00:00 UTC取一個觀測：IV_t＝當時DVOL；RV_t＝接下來30天的已實現波動。**用不重疊的30天視窗**（從2021-03-24起每30天一個）做推論，避免重疊視窗的假顯著；重疊的日序列只作描述。
+
+**H_B1（溢酬存在）：** mean(IV − RV) > 0（vol點）。
+**H_B2（扣成本後可交易）：** 賣30天波動的近似損益＝IV − RV（vol點，每單位vega），扣除事前固定的成本 **2 vol點／視窗**（Deribit ATM跨式買賣價差約1.5＋手續費約0.5；這是假設，不是量過的）。mean(IV − RV − 2) > 0。
+
+**檢定（兩個假設，Bonferroni α=0.025，單尾）：** 不重疊視窗序列（BTC與ETH各約58個）t檢定與10,000次bootstrap。**通過條件（各自）：** BTC與ETH都 > 0、合併p < 0.025、2021-23與2024-25同方向。
+
+**通過後才報告（不作通過條件）：** 正視窗比例、最差視窗（尾端：2021-05、2022-05 LUNA、2022-11 FTX）、以1單位vega為部位的權益曲線與最大回撤、IV高低分位的溢酬差（描述）。**不通過就結案。** 腳本：`scripts/prereg_vrp.py`。
+
+---
+
 ## 附錄：本次研究產出的檔案（皆未加入 git 追蹤，可視需要保留或刪除）
 
 - 回測/驗證腳本：`scripts/oos_backtest.py`、`scripts/walk_forward_backtest.py`、`scripts/walk_forward_funding.py`、`scripts/dev_daily_trend.py`、`scripts/dev_pairs_meanreversion.py`、`scripts/dev_feature_ablation.py`、`scripts/dev_orderflow.py`
