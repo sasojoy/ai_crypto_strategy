@@ -1236,6 +1236,22 @@ Set-ScheduledTask -TaskName LiveTrading-WsEntryDetector -Trigger (New-ScheduledT
 
 ---
 
+## 資金費率套利模擬盤：條件式開關的切換成本大於收到的費率（2026-10-17）
+
+檢查`paper_trading/funding_monitor.py`（第十三次測試鎖定的「條件式」版本：3日均資金費率>0才持有，每次切換扣0.14%）從2026-09-09上線以來的狀態檔與事件紀錄，並用同一段真實資金費率（2026-09-09～10-17，每幣116次結算）重算「一直持有」對照：
+
+| | 一直持有可收 | 條件式實收 | 切換次數 | 切換成本 | 條件式淨額 |
+|---|---|---|---|---|---|
+| BTC | +0.450% | +0.441% | 3 | 0.42% | **+0.02%** |
+| ETH | +0.400% | +0.377% | 9 | 1.26% | **-0.88%** |
+
+- 這段期間平均每次結算只有0.0035～0.0039%、負結算僅16%。**一次切換（0.14%）等於36次結算、約12天的費率**；而3日均線在零附近來回（ETH有兩次切換時的均值是0.0000003%和0.00005%，純雜訊），所以開關規則在目前的費率水準下只會製造成本。
+- 原回測腳本（`dev_funding_carry.py`、`holdout_carry_validation.py`）未加入git且已不在磁碟上，無法確認封存區的+2.26%/yr是哪個版本、是否含切換成本；第十二次分析的表格裡BTC-only「無風控」版本本來就是Sharpe最高的。
+- **判定：條件式開關在低費率環境下是淨負的機制；若要部署，應以「一直持有、只在連續多次負結算時退出」的版本重新登記，不能沿用目前monitor的規則。** 這是一個執行層面的發現，不是新的策略假設；monitor規則未改（保留作為紀錄）。
+- 同日：模擬盤v1、v8停用（Disable，可復原）；五幣模擬盤與50幣前瞻追蹤器量的是同一訊號，但永遠達不到判定所需的樣本數。保留v7作為實盤v7的對照（兩者差距＝執行成本：9/19起模擬盤+3.45%、實盤-6.0%）。
+
+---
+
 ## 附錄：本次研究產出的檔案（皆未加入 git 追蹤，可視需要保留或刪除）
 
 - 回測/驗證腳本：`scripts/oos_backtest.py`、`scripts/walk_forward_backtest.py`、`scripts/walk_forward_funding.py`、`scripts/dev_daily_trend.py`、`scripts/dev_pairs_meanreversion.py`、`scripts/dev_feature_ablation.py`、`scripts/dev_orderflow.py`
