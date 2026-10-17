@@ -1270,6 +1270,20 @@ Set-ScheduledTask -TaskName LiveTrading-WsEntryDetector -Trigger (New-ScheduledT
 
 ---
 
+**結果（`scripts/prereg_session_structure.py`，50幣、52,608小時、2,192天）：兩個假設都未通過，結案。**
+
+| | 2020-23 | 2024-25 | 全期 | 15幣 | 35幣 |
+|---|---|---|---|---|---|
+| H_A1 美國時段 − 其他（bp/小時） | -0.79（p=0.74） | -2.25（p=0.93） | **-1.28（p=0.90）** | -1.02 | -1.52 |
+| H_A2 2020-23排前8小時 − 後8小時，在2024-25 | — | **-0.19（p=0.55）** | — | -0.84 | +0.09 |
+
+- 美國時段的報酬**沒有**比較高（方向反而是負的，但不顯著）。文獻裡的「美國時段效應」主要是BTC在2023-24 ETF期間的現象，在50幣等權、六年樣本上不存在。
+- 用2020-23挑出的好／壞小時，到2024-25差距歸零（-0.19 bp）：**小時平均報酬沒有任何可延續的結構**，純雜訊。
+- 描述性（不作假設，供方向D參考）：**波動率有非常清楚的日內結構**——13～16 UTC（美股開盤）中位數|報酬|50～56 bp，02～04 UTC 只有35～40 bp，相差約1.5倍；週六波動最低（34 bp）。資金費率結算前一小時+1.58 bp、後一小時-0.37 bp（和10/02「結算前漂移」測試結果一致：方向對但太小）。
+- **判定：日內「何時持有」沒有規律；日內「何時波動大」有規律但那不是方向資訊。** 時段只能作為低顆粒度策略的波動率條件，不能作為訊號。
+
+---
+
 ## 附錄：本次研究產出的檔案（皆未加入 git 追蹤，可視需要保留或刪除）
 
 - 回測/驗證腳本：`scripts/oos_backtest.py`、`scripts/walk_forward_backtest.py`、`scripts/walk_forward_funding.py`、`scripts/dev_daily_trend.py`、`scripts/dev_pairs_meanreversion.py`、`scripts/dev_feature_ablation.py`、`scripts/dev_orderflow.py`
