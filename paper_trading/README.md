@@ -119,6 +119,14 @@ $a4 = New-ScheduledTaskAction -Execute $python -Argument "threshold_report.py" -
 $t4 = New-ScheduledTaskTrigger -Once -At $hourlyAnchor -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 3650)
 Register-ScheduledTask -TaskName "PaperTrading-ThresholdReport" -Action $a4 -Trigger $t4 -Settings $batterySafe
 
+# 2026-10-18: daily frenzy-regime monitor (BTC funding 30-day annualised vs 10 %, quarterly basis
+# annualised vs 10 %); Telegram only when a flag flips or on Mondays; logs to data/forward/regime_log.csv.
+# Research basis: RESEARCH_FINDINGS.md "更正與方法檢討（2026-10-18）". Runs from the repo root, not $repo.
+$root = Split-Path $repo -Parent
+$aR = New-ScheduledTaskAction -Execute "$root\venv\Scripts\pythonw.exe" -Argument "scripts\regime_monitor.py" -WorkingDirectory $root
+$tR = New-ScheduledTaskTrigger -Daily -At 09:05
+Register-ScheduledTask -TaskName "PaperTrading-RegimeMonitor" -Action $aR -Trigger $tR -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -StartWhenAvailable)
+
 $a5 = New-ScheduledTaskAction -Execute $python -Argument "watchdog.py" -WorkingDirectory $repo
 $t5 = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 15) -RepetitionDuration (New-TimeSpan -Days 3650)
 Register-ScheduledTask -TaskName "PaperTrading-Watchdog" -Action $a5 -Trigger $t5 -Settings $batterySafe
