@@ -20,11 +20,11 @@ os.environ['SSL_CERT_FILE'] = certifi.where()
 os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 load_dotenv()
 
-from src.notifier import send_telegram_msg, send_rich_heartbeat
+from src.notifier import send_telegram_msg
 from src.features import calculate_features as extract_features
 from src.ml_model import CryptoMLModel
 
-STRATEGY_VERSION = "[H16_PREDATOR_V133.9_PRO]"
+STRATEGY_VERSION = "[v600.46]"
 REQUIRED_FEATURES = [
     'rsi', 'macd_hist', 'adx', 'atr_pct', 'vol_change_24h', 
     'volatility_24h', 'relative_strength_btc', 'btc_volatility_24h', 
@@ -42,7 +42,10 @@ def fetch_1h_data(symbol, limit=500):
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         return df
-    except: return pd.DataFrame()
+    except Exception:
+        print(f"💥 [Error] fetch_1h_data({symbol}) Failed:")
+        traceback.print_exc()
+        return pd.DataFrame()
 
 def run_strategy(ml_model):
     symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'NEAR/USDT', 'AVAX/USDT']

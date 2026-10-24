@@ -6,9 +6,17 @@ data/*.parquet
 models/*.joblib
 logs/*
 !logs/.gitkeep
+*.log
+backtest_result*.png
+backtest_results_*.csv
+audit_results.txt
+pm2_status.txt
 .venv/
 venv/
 ENV/
 .vscode/
 .idea/
 .env
+data/backtest_cache/
+paper_trading/state/
+live_trading/state/
