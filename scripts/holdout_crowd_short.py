@@ -16,13 +16,14 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+ARGS, sys.argv = sys.argv[1:], sys.argv[:1]  # dev_regime_switch parses sys.argv on import
 import prereg_crowd_short as P  # noqa: E402
 
 HSTART, HEND = pd.Timestamp('2026-01-01'), pd.Timestamp('2026-10-01')
 
 
 def main():
-    hyps = [a for a in sys.argv[1:] if a in P.NAMES]
+    hyps = [a for a in ARGS if a in P.NAMES]
     if not hyps:
         raise SystemExit('pass the hypotheses that passed dev, e.g. H1 H3')
     rng = np.random.default_rng(P.SEED)
