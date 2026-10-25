@@ -71,7 +71,8 @@ TASKS = {
     'PaperTrading-MomentumV8': 60,
     'PaperTrading-Funding': 60,
     'PaperTrading-ThresholdReport': 60,
-    'PaperTrading-RegimeMonitor': 1440,  # 2026-10-18: daily 09:05, funding-30d / quarterly-basis state
+    'PaperTrading-RegimeMonitor': 1440,
+    'LiveTrading-FundingCarry': 10080,  # 2026-10-25: weekly Monday 08:05, K1 funding-carry rebalance (dry or mainnet per .env)  # 2026-10-18: daily 09:05, funding-30d / quarterly-basis state
     'LiveTrading-V7Testnet': 1,  # 2026-09-22: shortened from 5min to 1min to cut the signal-to-
                                  # execution slippage window (real (testnet) order-execution loop
                                  # -- a stalled run here means open positions aren't being

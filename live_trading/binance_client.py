@@ -46,6 +46,28 @@ def make_exchange():
     return exchange
 
 
+def make_mainnet_exchange():
+    """REAL-MONEY connection (added 2026-10-25 for live_funding_carry.py, the
+    first mainnet executor, at the user's explicit request "小資金實作").
+    Deliberately a SEPARATE function: make_exchange() above still defaults
+    to testnet and is what live_v7.py uses, so adding mainnet here cannot
+    flip v7 onto real money by accident. Reads BINANCE_API_KEY /
+    BINANCE_API_SECRET from .env (create them on Binance with Futures
+    enabled and withdrawals DISABLED, ideally IP-restricted)."""
+    api_key = os.getenv('BINANCE_API_KEY')
+    api_secret = os.getenv('BINANCE_API_SECRET')
+    if not api_key or not api_secret:
+        raise RuntimeError("BINANCE_API_KEY / BINANCE_API_SECRET (mainnet) not set in .env")
+    exchange = ccxt.binanceusdm({
+        'apiKey': api_key,
+        'secret': api_secret,
+        'enableRateLimit': True,
+        'options': {'defaultType': 'future'},
+    })
+    exchange.load_markets()
+    return exchange
+
+
 def set_leverage(exchange, symbol, leverage):
     market = exchange.market(symbol)
     exchange.set_leverage(leverage, market['id'])

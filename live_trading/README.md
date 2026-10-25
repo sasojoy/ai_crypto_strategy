@@ -64,6 +64,22 @@ It resolves `pythonw.exe`'s path itself (`$PSScriptRoot`-relative, no hardcoded 
 - `ws_events_log.csv` -- append-only record of every WebSocket reconnect/error `ws_entry_detector.py` hits per symbol (added 2026-09-27, see "Known issues" #6 -- console output is invisible under `pythonw.exe` and this was previously the only place such an event would have shown up).
 - `ws_signal_debug_log.csv` -- append-only record of the exact `minutes_elapsed`/`cum_vol`/`closed_minute_count`/`projected_vol_ratio` behind every real-time signal `ws_entry_detector.py` fires (added 2026-09-27, same incident) -- lets a "why did this take so long" question be answered by reading a file instead of replaying REST history from scratch.
 
+## Funding-carry executor (K1) -- the first MAINNET-capable script (2026-10-25)
+
+`live_funding_carry.py` implements RESEARCH_FINDINGS.md "第三輪新方向 K" H_K1 exactly as backtested in `scripts/prereg_xs_funding.py`: every Monday 08:05 Taipei (= Monday 00:05 UTC, the backtest's "Sunday close"), rank the research's 50 USDT perps by the mean funding rate settled in the 7 days up to Sunday 00:00 UTC, LONG the 10 lowest, SHORT the 10 highest, 5 % of capital per leg, market-order rebalance, hold a week, no stops. Dev window: ann +31 %, Sharpe 1.17; 2026 holdout: ann +18.5 %, Sharpe 1.20 but p=0.15, i.e. it did NOT pass the pre-registered gate -- the user chose a small-capital live run knowing that ("小資金實作").
+
+- **Mode is set in `.env`**: `FUNDING_CARRY_MODE=dry` (default; public data only, logs the weekly book to `state/funding_carry_book.csv` -- a frozen forward track) or `live` (real orders on Binance USDT-M mainnet through `binance_client.make_mainnet_exchange()`, a SEPARATE function so `live_v7.py`'s testnet default is untouched). Live additionally needs `FUNDING_CARRY_CAPITAL_USDT` (gross notional of the book; margin used ≈ 1/3 of it at the fixed 3x leverage) and mainnet `BINANCE_API_KEY`/`BINANCE_API_SECRET` (Futures enabled, withdrawals disabled, IP-restricted if possible). Account must be in one-way position mode, cross margin.
+- **Guards**: equity must be ≥ 50 % of capital (effective leverage ≤ 2x); planned turnover must be < 2.2x capital; a leg under 10 USDT notional is skipped (so capital should be ≥ 400 USDT, better ≥ 1,000); one rebalance per week (a re-run for the same Sunday reference only reports); circuit breaker flattens everything and writes `state/funding_carry_STOP` if equity drops below 75 % of the equity at the first live rebalance; the same STOP file, if created by hand, flattens on the next run and blocks trading until deleted. `--status` reports, `--close-all --yes` flattens, `--dry` forces a dry run regardless of `.env`.
+- Task `LiveTrading-FundingCarry` (weekly, Monday 08:05, pythonw, repo root as working directory, StartWhenAvailable); watchdog expects a run every 10,080 minutes. Register/refresh with:
+  ```powershell
+  $root = "C:\path\to\ai_crypto_strategy"
+  $a = New-ScheduledTaskAction -Execute "$root\venv\Scripts\pythonw.exe" -Argument "live_trading\live_funding_carry.py" -WorkingDirectory $root
+  $t = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 08:05
+  Register-ScheduledTask -TaskName "LiveTrading-FundingCarry" -Action $a -Trigger $t -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -StartWhenAvailable) -Force
+  ```
+- Records: `state/funding_carry_state.json` (last reference week, initial equity, current book), `state/funding_carry_book.csv` (scores, ranks, targets, fills, fees per leg per week), `state/funding_carry_equity.csv` (equity, available, unrealised, week's funding income and commission per run). Telegram summary every run.
+- Known weaknesses, stated up front: the short leg concentrates in structurally high-funding coins (XMR was shorted 36 of 38 weeks in 2026, PEOPLE 33, ONE 29) -- single-name squeeze risk with no stop; 2026 Q3 was -35 % annualised; most of the 2026 return was funding income, the price part shrank to +7.5 %. The rule is frozen; none of this may be "fixed" in place -- a changed rule is a new pre-registration.
+
 ## Not yet done (deliberately, in order)
 
 Mainnet credentials/support -> multi-day+ testnet soak observation before that conversation even starts -> then, separately, mainnet with minimal capital. Funding-rate cost is not yet tracked in the recorded P&L (price-only currently) -- real account equity will drift from what the trade log shows over multi-day holds. No circuit breaker (consecutive-loss or daily-drawdown pause) yet.
