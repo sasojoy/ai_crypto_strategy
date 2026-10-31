@@ -161,7 +161,7 @@ def main():
         real, p = perm_p(d, q, rng)
         sub = {}
         for lab, m in (('2020-23', d.period == '2020-23'), ('2024-25', d.period == '2024-25'),
-                       ('15', d.sample == '15'), ('35', d.sample == '35'),
+                       ('15', d['sample'] == '15'), ('35', d['sample'] == '35'),
                        ('long', d.sgn == 1), ('short', d.sgn == -1)):
             sub[lab] = stat(d[m], q[m.values])
         consistent = all(np.sign(sub[k]) == np.sign(real) for k in ('2020-23', '2024-25', '15', '35'))
