@@ -150,8 +150,15 @@ def main():
         else:
             flag('info', txt + '。中段，因子無明顯方向')
     else:
-        f7b = funding_7d(ex, [base])
-        flag('info', f'橫截面費率：{base} 不在 50 個研究幣內，7 日平均費率 {f7b.get(base, np.nan)*100:.4f}%，無排名依據')
+        f7b = funding_7d(ex, [base]).get(base, np.nan)
+        pct = float((f7 < f7b).mean())
+        txt = f'橫截面費率：{base} 不在 50 個研究幣內；7 日平均費率 {f7b*100:.4f}%，對照 50 幣分布約第 {pct*100:.0f} 百分位（參考用）'
+        if (sgn > 0 and pct >= 0.8) or (sgn < 0 and pct <= 0.2):
+            flag('yellow', txt + '。站在套息因子的反面')
+        elif (sgn > 0 and pct <= 0.2) or (sgn < 0 and pct >= 0.8):
+            flag('info', txt + '。與套息因子同向')
+        else:
+            flag('info', txt)
 
     # 3-4. price structure
     df = ohlcv_1h(ex, base)
@@ -175,14 +182,18 @@ def main():
         flag('info', txt)
     vr = float(df['volume'].iloc[i] / df['volume'].iloc[i - 19:i + 1].mean())
     with open(os.path.join(S, 'forward_frozen_cutoffs.json')) as fh:
-        cut = json.load(fh).get(base)
-    if cut is not None:
-        if vr > cut:
-            flag('green', f'量能：最後一根 1H 量比 {vr:.2f} > 該幣凍結門檻 {cut:.2f}，有量能確認（各種規模的幣都成立）')
+        allcuts = json.load(fh)
+    cut = allcuts.get(base)
+    if cut is None:
+        ref = float(np.median(list(allcuts.values())))
+        if vr > ref:
+            flag('info', f'量能：最後一根 1H 量比 {vr:.2f}，高於 50 幣門檻中位數 {ref:.2f}（此幣無自己的凍結門檻，參考用）')
         else:
-            flag('yellow', f'量能：最後一根 1H 量比 {vr:.2f} ≤ 門檻 {cut:.2f}，沒有量能確認（無確認的訊號開發區平均為負）')
+            flag('yellow', f'量能：最後一根 1H 量比 {vr:.2f}，低於 50 幣門檻中位數 {ref:.2f}（此幣無自己的凍結門檻，參考用）')
+    elif vr > cut:
+        flag('green', f'量能：最後一根 1H 量比 {vr:.2f} > 該幣凍結門檻 {cut:.2f}，有量能確認（各種規模的幣都成立）')
     else:
-        flag('info', f'量能：最後一根 1H 量比 {vr:.2f}（此幣無凍結門檻）')
+        flag('yellow', f'量能：最後一根 1H 量比 {vr:.2f} ≤ 門檻 {cut:.2f}，沒有量能確認（無確認的訊號開發區平均為負）')
     r = float(df['rsi'].iloc[i])
     lines.append(f'⚪ RSI(14) {r:.0f}，ATR(14) {a14:.6g}（{a14/px*100:.2f}%），價格 {px:.6g}')
 
